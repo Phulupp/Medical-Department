@@ -686,7 +686,7 @@ h1, h2, h3 {
 
 .notes-form textarea {
   flex: 1;
-  resize: none;
+  resize: vertical;
   border: 1.5px solid #e2e5eb;
   background: var(--color-surface-soft);
   border-radius: var(--radius-sm);
@@ -694,8 +694,9 @@ h1, h2, h3 {
   font-size: 13.5px;
   font-family: inherit;
   color: var(--color-text);
-  min-height: 44px;
-  max-height: 90px;
+  min-height: 130px;
+  max-height: 400px;
+  line-height: 1.5;
 }
 
 .notes-form textarea:focus {
