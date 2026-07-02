@@ -468,6 +468,16 @@ h1, h2, h3 {
   border-radius: var(--radius-md);
   padding: 16px 18px;
   box-shadow: 0 4px 14px rgba(43, 52, 68, 0.05);
+  position: relative;
+}
+
+.info-card__delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
 }
 
 .info-card__name {
@@ -476,6 +486,7 @@ h1, h2, h3 {
   font-size: 14px;
   color: var(--color-text);
   margin-bottom: 5px;
+  padding-right: 22px;
 }
 
 .info-card__text {
@@ -556,10 +567,24 @@ h1, h2, h3 {
   overflow-y: auto;
 }
 
+.notes-list--page {
+  max-height: none;
+  overflow-y: visible;
+}
+
 .note-item {
-  background: var(--color-surface-soft);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
   border-radius: var(--radius-md);
-  padding: 12px 16px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.note-item__body {
+  flex: 1;
 }
 
 .note-item__text {
@@ -575,6 +600,10 @@ h1, h2, h3 {
   font-size: 11.5px;
   color: var(--color-text-soft);
   font-weight: 600;
+}
+
+.note-item__delete {
+  flex-shrink: 0;
 }
 
 .notes-empty {
@@ -624,6 +653,111 @@ h1, h2, h3 {
   font-weight: 700;
   font-size: 15px;
   color: #2f9c82;
+}
+
+/* --------------------------------------------------------------------------
+   6c. Schwarzes Brett (Start-Seite)
+   -------------------------------------------------------------------------- */
+.board-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 22px 26px;
+  margin-bottom: 20px;
+}
+
+.board-card h3 {
+  font-size: 16px;
+  margin-bottom: 14px;
+}
+
+.board-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.board-item {
+  background: linear-gradient(135deg, var(--color-peach-soft), var(--color-surface));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 20px 24px;
+  position: relative;
+}
+
+.board-item__pin {
+  position: absolute;
+  top: -10px;
+  left: 22px;
+  font-size: 18px;
+}
+
+.board-item__text {
+  font-size: 14.5px;
+  color: var(--color-text);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 12px;
+}
+
+.board-item__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--color-text-soft);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   6d. Verkaufslog: Eintrags-Formular
+   -------------------------------------------------------------------------- */
+.sale-form-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 24px 28px;
+  margin-bottom: 22px;
+}
+
+.sale-form-card h3 {
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.sale-form__row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.sale-form__field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sale-form__field--small {
+  flex: 0 0 150px;
+}
+
+.sale-form__field .field-label {
+  margin-top: 0;
+}
+
+.sale-form__verkaeufer {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-surface-soft);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+}
+
+.sale-form__submit {
+  margin-top: 6px;
 }
 
 /* --------------------------------------------------------------------------

@@ -91,7 +91,11 @@
       </div>
 
       <nav class="sidebar__nav">
-        <button class="nav__item nav__item--active" data-view="medikamente">
+        <button class="nav__item nav__item--active" data-view="start">
+          <span class="nav__icon">📌</span>
+          <span>Start</span>
+        </button>
+        <button class="nav__item" data-view="medikamente">
           <span class="nav__icon">💊</span>
           <span>Medikamente</span>
         </button>
@@ -102,6 +106,14 @@
         <button class="nav__item" data-view="verkaufslog">
           <span class="nav__icon">🧾</span>
           <span>Verkaufslog</span>
+        </button>
+        <button class="nav__item" data-view="notizen">
+          <span class="nav__icon">📝</span>
+          <span>Notizen</span>
+        </button>
+        <button class="nav__item" data-view="infos">
+          <span class="nav__icon">ℹ️</span>
+          <span>Infos</span>
         </button>
         <button class="nav__item" data-view="einstellungen">
           <span class="nav__icon">⚙️</span>
@@ -122,8 +134,8 @@
       <!-- Topbar -->
       <header class="topbar">
         <div class="topbar__title">
-          <h1 id="view-title">Medikamente</h1>
-          <p id="view-subtitle">Übersicht &amp; Verwaltung des Medikamentenbestands</p>
+          <h1 id="view-title">Start</h1>
+          <p id="view-subtitle">Schwarzes Brett – wichtige Ankündigungen</p>
         </div>
 
         <div class="topbar__user">
@@ -152,9 +164,28 @@
       </header>
 
       <!-- ============================ -->
+      <!-- VIEW: START (Schwarzes Brett) -->
+      <!-- ============================ -->
+      <section class="view view--active" id="view-start">
+        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
+        <div class="board-card" id="board-admin-form" hidden>
+          <h3>📌 Neue Ankündigung</h3>
+          <form class="notes-form" id="form-ankuendigung">
+            <textarea id="ankuendigung-input" placeholder="Wichtige Info für alle eintragen..." maxlength="500"></textarea>
+            <button type="submit" class="btn btn--primary">Veröffentlichen</button>
+          </form>
+        </div>
+
+        <div class="board-list" id="board-list">
+          <!-- wird per JavaScript befüllt -->
+        </div>
+        <p class="empty-state" id="board-empty" hidden>Noch keine Ankündigungen vorhanden.</p>
+      </section>
+
+      <!-- ============================ -->
       <!-- VIEW: MEDIKAMENTE            -->
       <!-- ============================ -->
-      <section class="view view--active" id="view-medikamente">
+      <section class="view" id="view-medikamente">
         <!-- Statistik-Karten -->
         <div class="stats">
           <div class="stat-card stat-card--mint">
@@ -184,10 +215,6 @@
           </div>
 
           <div class="toolbar__buttons">
-            <button class="btn btn--ghost" id="btn-toggle-info">
-              <span class="btn__icon">ⓘ</span>
-              Medikamenten-Infos
-            </button>
             <button class="btn btn--checkout" id="btn-checkout">
               <span class="btn__icon">🧾</span>
               Verkauf abschließen
@@ -196,31 +223,6 @@
               <span class="btn__icon">＋</span>
               Medikament hinzufügen
             </button>
-          </div>
-        </div>
-
-        <!-- Info-Panel: Wirkung/Beschreibung der Medikamente (ein-/ausklappbar) -->
-        <div class="info-panel" id="info-panel" hidden>
-          <div class="info-panel__header">
-            <h3>Medikamenten-Informationen</h3>
-            <p>Wirkung und Einsatzgebiet der einzelnen Medikamente</p>
-          </div>
-          <div class="info-panel__grid" id="info-panel-grid">
-            <!-- wird per JavaScript befüllt -->
-          </div>
-        </div>
-
-        <!-- Notizen-Karte -->
-        <div class="notes-card">
-          <div class="notes-card__header">
-            <h3>📝 Notizen</h3>
-          </div>
-          <form class="notes-form" id="form-note">
-            <textarea id="note-input" placeholder="Notiz eintragen..." maxlength="500"></textarea>
-            <button type="submit" class="btn btn--primary">Hinzufügen</button>
-          </form>
-          <div class="notes-list" id="notes-list">
-            <!-- wird per JavaScript befüllt -->
           </div>
         </div>
 
@@ -255,6 +257,86 @@
       </section>
 
       <!-- ============================ -->
+      <!-- VIEW: VERKAUFSLOG             -->
+      <!-- ============================ -->
+      <section class="view" id="view-verkaufslog">
+        <div class="sale-form-card">
+          <h3>🧾 Neuen Verkauf eintragen</h3>
+          <form class="sale-form" id="form-sale-entry">
+            <div class="sale-form__row">
+              <div class="sale-form__field">
+                <label class="field-label" for="sale-kunde">Kunde (Vor- &amp; Nachname)</label>
+                <input type="text" id="sale-kunde" class="field-input" placeholder="z. B. John Marston" required />
+              </div>
+              <div class="sale-form__field">
+                <label class="field-label" for="sale-medikament">Medikament</label>
+                <select id="sale-medikament" class="field-input" required>
+                  <option value="">Bitte auswählen...</option>
+                </select>
+              </div>
+            </div>
+            <div class="sale-form__row">
+              <div class="sale-form__field sale-form__field--small">
+                <label class="field-label" for="sale-menge">Menge</label>
+                <input type="number" id="sale-menge" class="field-input" min="1" step="1" value="1" required />
+              </div>
+              <div class="sale-form__field sale-form__field--small">
+                <label class="field-label" for="sale-datum">Datum</label>
+                <input type="date" id="sale-datum" class="field-input" required />
+              </div>
+              <div class="sale-form__field">
+                <label class="field-label">Verkäufer</label>
+                <p class="sale-form__verkaeufer" id="sale-form-verkaeufer">—</p>
+              </div>
+            </div>
+            <p class="field-error" id="sale-entry-error" hidden></p>
+            <button type="submit" class="btn btn--checkout sale-form__submit">Verkauf eintragen</button>
+          </form>
+        </div>
+
+        <div id="sales-log-list">
+          <!-- wird per JavaScript befüllt -->
+        </div>
+        <p class="empty-state" id="sales-log-empty" hidden>Noch keine Verkäufe eingetragen.</p>
+      </section>
+
+      <!-- ============================ -->
+      <!-- VIEW: NOTIZEN                 -->
+      <!-- ============================ -->
+      <section class="view" id="view-notizen">
+        <div class="notes-card">
+          <form class="notes-form" id="form-note">
+            <textarea id="note-input" placeholder="Notiz eintragen..." maxlength="500"></textarea>
+            <button type="submit" class="btn btn--primary">Hinzufügen</button>
+          </form>
+        </div>
+        <div class="notes-list notes-list--page" id="notes-list">
+          <!-- wird per JavaScript befüllt -->
+        </div>
+        <p class="empty-state" id="notes-empty" hidden>Noch keine Notizen vorhanden.</p>
+      </section>
+
+      <!-- ============================ -->
+      <!-- VIEW: INFOS                   -->
+      <!-- ============================ -->
+      <section class="view" id="view-infos">
+        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
+        <div class="notes-card" id="infos-admin-form" hidden>
+          <h3>ℹ️ Neuen Info-Eintrag hinzufügen</h3>
+          <form class="settings-form" id="form-add-info" style="flex-wrap: wrap;">
+            <input type="text" id="info-titel-input" class="field-input" placeholder="Titel, z. B. Medikamentenname" required style="flex: 1 1 220px;" />
+            <input type="text" id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required style="flex: 2 1 300px;" />
+            <input type="text" id="info-hinweis-input" class="field-input" placeholder="Zusatz-Hinweis (optional)" style="flex: 1 1 200px;" />
+            <button type="submit" class="btn btn--primary">Hinzufügen</button>
+          </form>
+        </div>
+
+        <div class="info-panel__grid" id="infos-grid">
+          <!-- wird per JavaScript befüllt -->
+        </div>
+      </section>
+
+      <!-- ============================ -->
       <!-- VIEW: MITARBEITER (Platzhalter) -->
       <!-- ============================ -->
       <section class="view" id="view-mitarbeiter">
@@ -267,16 +349,6 @@
           <h2>Weitere Funktionen folgen</h2>
           <p>Das Bearbeiten und Entfernen von Mitarbeitern wird in einem zukünftigen Update verfügbar sein. Neue Kollegen können sich aktuell über „Andere Person..." bei der Namensauswahl anmelden.</p>
         </div>
-      </section>
-
-      <!-- ============================ -->
-      <!-- VIEW: VERKAUFSLOG             -->
-      <!-- ============================ -->
-      <section class="view" id="view-verkaufslog">
-        <div id="sales-log-list">
-          <!-- wird per JavaScript befüllt -->
-        </div>
-        <p class="empty-state" id="sales-log-empty" hidden>Noch keine abgeschlossenen Verkäufe. Klick in der Medikamenten-Ansicht auf „Verkauf abschließen", sobald Mengen eingetragen sind.</p>
       </section>
 
       <!-- ============================ -->

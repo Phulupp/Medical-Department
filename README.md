@@ -8,14 +8,19 @@ dieselben, live aktuellen Daten – egal auf welchem PC).
 ## ✨ Funktionen
 
 - **Zugang per gemeinsamem Passwort + Namensauswahl** (kein Account-Login, kein `prompt()`)
+- **PIN-Schutz** für die festen Namen Heinrich & Grete, damit sich niemand sonst als diese ausgeben kann
 - **„Wer ist online“-Anzeige** oben in der App, live in Echtzeit
 - **Echtzeit-Synchronisierung**: Änderungen sind sofort bei allen Mitarbeitern sichtbar
-- **Sidebar-Navigation**: Medikamente, Mitarbeiter (mit Online-Status), Einstellungen (Platzhalter)
+- **Sidebar-Navigation**: Start, Medikamente, Mitarbeiter, Verkaufslog, Notizen, Infos, Einstellungen
+- **Start-Seite („Schwarzes Brett“)**: Landing-Page mit Ankündigungen, nur Admins dürfen posten
+- **Mitarbeiter-Hierarchie**: Chefarzt oben mit Krone, weitere Ränge darunter, live Online-Status
 - **Medikamententabelle**: Name, Preis, Menge, automatische Zwischensumme pro Zeile
-- **Medikamente hinzufügen / löschen / Preise bearbeiten**
+- **Medikamente hinzufügen / löschen (nur Admins) / Preise bearbeiten**
 - **Automatische Gesamtsumme** (Live-Statistik-Karten)
-- **Info-Panel** mit Wirkung/Einsatzgebiet jedes Medikaments (ein-/ausklappbar)
-- **Suchfeld** zum schnellen Filtern
+- **Verkaufslog mit Eintrags-Formular**: Kunde, Medikament, Menge, Datum – Verkäufer wird automatisch aus dem angemeldeten Nutzer eingetragen
+- **Notizen-Seite**: gemeinsame Notizen mit Autor + Datum/Uhrzeit, löschbar durch Admins oder den Verfasser selbst
+- **Infos-Seite**: Wirkung/Einsatzgebiet der Medikamente, von Admins erweiterbar
+- **Suchfeld** zum schnellen Filtern der Medikamentenliste
 - **Eigene, gestaltete Dialogfenster** statt `prompt()`/`confirm()`
 
 ## 📁 Projektstruktur

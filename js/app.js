@@ -40,9 +40,11 @@
 
   const MEDIKAMENTE_DOC = "department/medikamente";
   const MITARBEITER_DOC = "department/mitarbeiter";
+  const INFOS_DOC = "department/infos";
   const PRESENCE_COLLECTION = "presence";
   const NOTIZEN_COLLECTION = "notizen";
   const VERKAUFSLOG_COLLECTION = "verkaufslog";
+  const ANKUENDIGUNGEN_COLLECTION = "ankuendigungen";
   const ONLINE_SCHWELLE_MS = 45 * 1000;   // Nach 45s ohne Update gilt jemand als offline
   const HEARTBEAT_INTERVALL_MS = 20 * 1000;
 
@@ -68,6 +70,22 @@
     { id: "vitaminspritze", name: "Vitaminspritze", preis: 1, menge: 0, beschreibung: "Für Rancher." },
   ];
 
+  // Seed-Daten für die eigenständige Infos-Seite (Wirkung/Einsatzgebiet).
+  // Unabhängig von der Medikamentenliste - Admins können hier frei weitere
+  // Einträge hinzufügen oder entfernen.
+  const DEFAULT_INFOS = [
+    { id: "bandage", titel: "Bandage", text: "Heilt nicht direkt, überbrückt aber die Zeit bei einer Schusswunde." },
+    { id: "adrenalinspritze", titel: "Adrenalinspritze", text: "Heilt alles – sollte nur bei Bewusstlosigkeit oder im Notfall genutzt werden." },
+    { id: "cola", titel: "Cola", text: "Stärkt Herz-Kreislauf und Ausdauer." },
+    { id: "schiene", titel: "Schiene", text: "Für die Behandlung von Brüchen." },
+    { id: "riechsalz", titel: "Riechsalz", text: "Wirkt wie die Adrenalinspritze, aber schwächer. Verkauf an Bürger ist begrenzt.", hinweis: "8$ für Bürger · 6$ für Departments" },
+    { id: "schlangengift", titel: "Schlangengift", text: "Gegengift – hilft gegen Schlangenbisse." },
+    { id: "impfung", titel: "Impfung", text: "Schützt gegen Krankheiten." },
+    { id: "heilsalbe", titel: "Heilsalbe", text: "Hilft gegen Prellungen." },
+    { id: "fruchtbarkeitssalbe", titel: "Fruchtbarkeitssalbe", text: "Für Rancher." },
+    { id: "vitaminspritze", titel: "Vitaminspritze", text: "Für Rancher." },
+  ];
+
   /* ------------------------------------------------------------------------
      2. Anwendungsstatus
      ------------------------------------------------------------------------ */
@@ -80,7 +98,10 @@
   let unsubNotizen = null;
   let unsubVerkaufslog = null;
   let unsubMitarbeiter = null;
+  let unsubInfos = null;
+  let unsubAnkuendigungen = null;
   let mitarbeiterListe = [];       // Dynamische, in Firestore gespeicherte Mitarbeiterliste
+  let infosListe = [];             // Dynamische Infos-Seite
   let gewaehltesMitarbeiterGeschuetzt = false;
   let speicherTimer = null;
   let heartbeatTimer = null;
@@ -123,13 +144,34 @@
 
     staffGrid: document.getElementById("staff-grid"),
 
+    boardAdminForm: document.getElementById("board-admin-form"),
+    formAnkuendigung: document.getElementById("form-ankuendigung"),
+    ankuendigungInput: document.getElementById("ankuendigung-input"),
+    boardList: document.getElementById("board-list"),
+    boardEmpty: document.getElementById("board-empty"),
+
     formNote: document.getElementById("form-note"),
     noteInput: document.getElementById("note-input"),
     notesList: document.getElementById("notes-list"),
+    notesEmpty: document.getElementById("notes-empty"),
 
     btnCheckout: document.getElementById("btn-checkout"),
     salesLogList: document.getElementById("sales-log-list"),
     salesLogEmpty: document.getElementById("sales-log-empty"),
+    formSaleEntry: document.getElementById("form-sale-entry"),
+    saleKunde: document.getElementById("sale-kunde"),
+    saleMedikament: document.getElementById("sale-medikament"),
+    saleMenge: document.getElementById("sale-menge"),
+    saleDatum: document.getElementById("sale-datum"),
+    saleFormVerkaeufer: document.getElementById("sale-form-verkaeufer"),
+    saleEntryError: document.getElementById("sale-entry-error"),
+
+    infosAdminForm: document.getElementById("infos-admin-form"),
+    formAddInfo: document.getElementById("form-add-info"),
+    infoTitelInput: document.getElementById("info-titel-input"),
+    infoTextInput: document.getElementById("info-text-input"),
+    infoHinweisInput: document.getElementById("info-hinweis-input"),
+    infosGrid: document.getElementById("infos-grid"),
 
     einstellungenAdmin: document.getElementById("einstellungen-admin"),
     einstellungenLocked: document.getElementById("einstellungen-locked"),
@@ -155,10 +197,6 @@
     addError: document.getElementById("add-error"),
     btnConfirmAdd: document.getElementById("btn-confirm-add"),
 
-    btnToggleInfo: document.getElementById("btn-toggle-info"),
-    infoPanel: document.getElementById("info-panel"),
-    infoPanelGrid: document.getElementById("info-panel-grid"),
-
     modalEditPrice: document.getElementById("modal-edit-price"),
     editPriceName: document.getElementById("edit-price-name"),
     inputEditPrice: document.getElementById("input-edit-price"),
@@ -178,9 +216,12 @@
   };
 
   const VIEW_META = {
+    start: { title: "Start", subtitle: "Schwarzes Brett – wichtige Ankündigungen" },
     medikamente: { title: "Medikamente", subtitle: "Übersicht & Verwaltung des Medikamentenbestands" },
     mitarbeiter: { title: "Mitarbeiter", subtitle: "Verwaltung des medizinischen Personals" },
-    verkaufslog: { title: "Verkaufslog", subtitle: "Abgeschlossene Verkäufe im Überblick" },
+    verkaufslog: { title: "Verkaufslog", subtitle: "Verkäufe eintragen & Historie einsehen" },
+    notizen: { title: "Notizen", subtitle: "Gemeinsame Notizen des Teams" },
+    infos: { title: "Infos", subtitle: "Wirkung & Einsatzgebiet der Medikamente" },
     einstellungen: { title: "Einstellungen", subtitle: "Konfiguration des Medical Department Systems" },
   };
 
@@ -269,6 +310,13 @@
       hour: "2-digit",
       minute: "2-digit",
     });
+  }
+
+  // Formatiert ein "YYYY-MM-DD"-Datum (aus <input type="date">) ins deutsche Format
+  function formatiereDatum(isoDatum) {
+    const teile = isoDatum.split("-");
+    if (teile.length !== 3) return isoDatum;
+    return `${teile[2]}.${teile[1]}.${teile[0]}`;
   }
 
   /* ------------------------------------------------------------------------
@@ -426,6 +474,7 @@
 
     renderBenutzerBadge();
     renderMitarbeiterListe();
+    initialisiereVerkaufsformular();
 
     sessionId = sessionStorage.getItem("medicalDepartment.sessionId") || erzeugeSessionId();
     sessionStorage.setItem("medicalDepartment.sessionId", sessionId);
@@ -436,8 +485,19 @@
     abonniereNotizen();
     abonniereVerkaufslog();
     abonniereMitarbeiterliste();
+    abonniereInfos();
+    abonniereAnkuendigungen();
 
     window.addEventListener("beforeunload", entferneEigenePresence);
+  }
+
+  function initialisiereVerkaufsformular() {
+    if (!el.saleFormVerkaeufer) return;
+    el.saleFormVerkaeufer.textContent = aktuellerNutzer ? `${aktuellerNutzer.name} (${aktuellerNutzer.rolle})` : "—";
+
+    const heute = new Date();
+    const iso = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
+    el.saleDatum.value = iso;
   }
 
   function renderBenutzerBadge() {
@@ -796,6 +856,7 @@
           snapshot.forEach((doc) => {
             const d = doc.data();
             notizen.push({
+              id: doc.id,
               text: d.text,
               autor: d.autor,
               millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
@@ -809,17 +870,22 @@
 
   function renderNotizen(notizen) {
     el.notesList.innerHTML = "";
-    if (notizen.length === 0) {
-      el.notesList.innerHTML = `<p class="notes-empty">Noch keine Notizen vorhanden.</p>`;
-      return;
-    }
+    el.notesEmpty.hidden = notizen.length !== 0;
 
     notizen.forEach((notiz) => {
+      const darfLoeschen = istAdmin() || (aktuellerNutzer && aktuellerNutzer.name === notiz.autor);
+      const loeschButton = darfLoeschen
+        ? `<button type="button" class="icon-btn icon-btn--delete note-item__delete" data-role="delete-notiz" data-id="${notiz.id}" title="Notiz löschen">🗑</button>`
+        : "";
+
       const eintrag = document.createElement("div");
       eintrag.className = "note-item";
       eintrag.innerHTML = `
-        <div class="note-item__text">${escapeHtml(notiz.text)}</div>
-        <div class="note-item__meta">— ${escapeHtml(notiz.autor)} · ${formatiereZeitstempel(notiz.millis)} Uhr</div>
+        <div class="note-item__body">
+          <div class="note-item__text">${escapeHtml(notiz.text)}</div>
+          <div class="note-item__meta">— ${escapeHtml(notiz.autor)} · ${formatiereZeitstempel(notiz.millis)} Uhr</div>
+        </div>
+        ${loeschButton}
       `;
       el.notesList.appendChild(eintrag);
     });
@@ -845,9 +911,62 @@
       });
   });
 
+  el.notesList.addEventListener("click", (event) => {
+    const btn = event.target.closest('[data-role="delete-notiz"]');
+    if (!btn) return;
+    db.collection(NOTIZEN_COLLECTION).doc(btn.dataset.id).delete().catch(() => {
+      zeigeToast("Notiz konnte nicht gelöscht werden.");
+    });
+  });
+
   /* ------------------------------------------------------------------------
-     10c. Verkaufslog: Verkauf abschließen + Log anzeigen
+     10c. Verkaufslog: Formular-Eintrag, Sammel-Checkout + Log anzeigen
      ------------------------------------------------------------------------ */
+  if (el.formSaleEntry) {
+    el.formSaleEntry.addEventListener("submit", (event) => {
+      event.preventDefault();
+      el.saleEntryError.hidden = true;
+
+      const kunde = el.saleKunde.value.trim();
+      const medName = el.saleMedikament.value;
+      const menge = parseInt(el.saleMenge.value, 10);
+      const datum = el.saleDatum.value;
+
+      if (!kunde) return zeigeFeldFehler(el.saleEntryError, "Bitte Vor- und Nachname des Kunden eingeben.");
+      if (!medName) return zeigeFeldFehler(el.saleEntryError, "Bitte ein Medikament auswählen.");
+      if (isNaN(menge) || menge < 1) return zeigeFeldFehler(el.saleEntryError, "Bitte eine gültige Menge (mind. 1) eingeben.");
+      if (!datum) return zeigeFeldFehler(el.saleEntryError, "Bitte ein Datum wählen.");
+
+      const med = medikamente.find((m) => m.name === medName);
+      if (!med) return zeigeFeldFehler(el.saleEntryError, "Dieses Medikament existiert nicht mehr.");
+
+      const gesamtsumme = menge * Number(med.preis);
+
+      db.collection(VERKAUFSLOG_COLLECTION)
+        .add({
+          mitarbeiter: aktuellerNutzer ? aktuellerNutzer.name : "Unbekannt",
+          rolle: aktuellerNutzer ? aktuellerNutzer.rolle : "",
+          kunde: kunde,
+          datum: datum,
+          items: [{ name: med.name, menge: menge, preis: Number(med.preis) }],
+          gesamtsumme: gesamtsumme,
+          zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
+        })
+        .then(() => {
+          el.saleKunde.value = "";
+          el.saleMedikament.value = "";
+          el.saleMenge.value = "1";
+          zeigeToast(`Verkauf an „${kunde}“ über ${formatiereGeld(gesamtsumme)} eingetragen.`);
+        })
+        .catch((fehler) => {
+          console.error("Verkauf konnte nicht gespeichert werden:", fehler);
+          zeigeFeldFehler(el.saleEntryError, "Verkauf konnte nicht gespeichert werden.");
+        });
+    });
+  }
+
+  // Sammel-Checkout aus der Medikamententabelle (mehrere Artikel auf einmal,
+  // ohne Kundenname - z. B. für interne Bestandsanpassungen)
   el.btnCheckout.addEventListener("click", () => {
     const verkaufteArtikel = medikamente.filter((m) => (Number(m.menge) || 0) > 0);
 
@@ -863,6 +982,7 @@
       .add({
         mitarbeiter: aktuellerNutzer ? aktuellerNutzer.name : "Unbekannt",
         rolle: aktuellerNutzer ? aktuellerNutzer.rolle : "",
+        kunde: null,
         items: items,
         gesamtsumme: gesamtsumme,
         zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -892,6 +1012,8 @@
             verkaeufe.push({
               mitarbeiter: d.mitarbeiter,
               rolle: d.rolle,
+              kunde: d.kunde || null,
+              datum: d.datum || null,
               items: d.items || [],
               gesamtsumme: d.gesamtsumme || 0,
               millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
@@ -909,13 +1031,17 @@
 
     verkaeufe.forEach((verkauf) => {
       const itemsText = verkauf.items.map((i) => `${escapeHtml(i.name)} ×${i.menge} = ${formatiereGeld(i.menge * i.preis)}`).join("<br>");
+      const datumText = verkauf.datum ? formatiereDatum(verkauf.datum) : formatiereZeitstempel(verkauf.millis);
 
       const eintrag = document.createElement("div");
       eintrag.className = "sale-item";
       eintrag.innerHTML = `
         <div class="sale-item__header">
-          <span class="sale-item__employee">${escapeHtml(verkauf.mitarbeiter)} <span style="color:var(--color-text-soft);font-weight:500;">(${escapeHtml(verkauf.rolle || "")})</span></span>
-          <span class="sale-item__time">${formatiereZeitstempel(verkauf.millis)} Uhr</span>
+          <span class="sale-item__employee">
+            ${verkauf.kunde ? `${escapeHtml(verkauf.kunde)} <span style="color:var(--color-text-soft);font-weight:500;">— verkauft von ${escapeHtml(verkauf.mitarbeiter)}</span>` : escapeHtml(verkauf.mitarbeiter)}
+            <span style="color:var(--color-text-soft);font-weight:500;"> (${escapeHtml(verkauf.rolle || "")})</span>
+          </span>
+          <span class="sale-item__time">${datumText}</span>
         </div>
         <div class="sale-item__items">${itemsText}</div>
         <div class="sale-item__total">Gesamt: ${formatiereGeld(verkauf.gesamtsumme)}</div>
@@ -930,7 +1056,25 @@
   function render() {
     renderTabelle();
     renderStatistik();
-    renderInfoPanel();
+    populiereMedikamentDropdownVerkauf();
+  }
+
+  function populiereMedikamentDropdownVerkauf() {
+    if (!el.saleMedikament) return;
+    const aktuellerWert = el.saleMedikament.value;
+
+    el.saleMedikament.innerHTML = '<option value="">Bitte auswählen...</option>';
+    medikamente.forEach((med) => {
+      const option = document.createElement("option");
+      option.value = med.name;
+      option.textContent = `${med.name} (${formatiereGeld(med.preis)})`;
+      el.saleMedikament.appendChild(option);
+    });
+
+    // Auswahl nach Möglichkeit beibehalten (z. B. wenn nur die Menge eines anderen Medikaments geändert wurde)
+    if ([...el.saleMedikament.options].some((o) => o.value === aktuellerWert)) {
+      el.saleMedikament.value = aktuellerWert;
+    }
   }
 
   function renderTabelle() {
@@ -983,18 +1127,160 @@
     el.tableTotal.textContent = formatiereGeld(gesamtsumme);
   }
 
-  function renderInfoPanel() {
-    el.infoPanelGrid.innerHTML = "";
-    medikamente.forEach((med) => {
+  /* ------------------------------------------------------------------------
+     11b. Infos-Seite (eigenständig, admin-verwaltet)
+     ------------------------------------------------------------------------ */
+  function abonniereInfos() {
+    unsubInfos = docRef(INFOS_DOC).onSnapshot(
+      (doc) => {
+        if (doc.exists && Array.isArray(doc.data().liste)) {
+          infosListe = doc.data().liste;
+        } else {
+          infosListe = DEFAULT_INFOS.map((i) => ({ ...i }));
+          speichereInfos();
+        }
+        renderInfos();
+      },
+      (fehler) => console.error("Fehler beim Laden der Infos:", fehler)
+    );
+  }
+
+  function speichereInfos() {
+    docRef(INFOS_DOC)
+      .set({ liste: infosListe, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch((fehler) => {
+        console.error("Infos konnten nicht gespeichert werden:", fehler);
+        zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
+      });
+  }
+
+  function renderInfos() {
+    if (!el.infosGrid) return;
+    el.infosAdminForm.hidden = !istAdmin();
+
+    el.infosGrid.innerHTML = "";
+    infosListe.forEach((info) => {
       const card = document.createElement("div");
       card.className = "info-card";
-      const beschreibung = med.beschreibung && med.beschreibung.trim() ? med.beschreibung : "Keine Beschreibung hinterlegt.";
+      const loeschButton = istAdmin()
+        ? `<button type="button" class="icon-btn icon-btn--delete info-card__delete" data-role="delete-info" data-id="${info.id}" title="Eintrag löschen">🗑</button>`
+        : "";
       card.innerHTML = `
-        <span class="info-card__name">${escapeHtml(med.name)}</span>
-        <span class="info-card__text">${escapeHtml(beschreibung)}</span>
-        ${med.hinweis ? `<span class="info-card__hint">${escapeHtml(med.hinweis)}</span>` : ""}
+        ${loeschButton}
+        <span class="info-card__name">${escapeHtml(info.titel)}</span>
+        <span class="info-card__text">${escapeHtml(info.text)}</span>
+        ${info.hinweis ? `<span class="info-card__hint">${escapeHtml(info.hinweis)}</span>` : ""}
       `;
-      el.infoPanelGrid.appendChild(card);
+      el.infosGrid.appendChild(card);
+    });
+  }
+
+  if (el.formAddInfo) {
+    el.formAddInfo.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!istAdmin()) return;
+
+      const titel = el.infoTitelInput.value.trim();
+      const text = el.infoTextInput.value.trim();
+      const hinweis = el.infoHinweisInput.value.trim();
+      if (!titel || !text) return;
+
+      infosListe.push({ id: erzeugeId(titel), titel, text, hinweis: hinweis || undefined });
+      speichereInfos();
+      el.infoTitelInput.value = "";
+      el.infoTextInput.value = "";
+      el.infoHinweisInput.value = "";
+      zeigeToast(`„${titel}“ wurde zu den Infos hinzugefügt.`);
+    });
+  }
+
+  if (el.infosGrid) {
+    el.infosGrid.addEventListener("click", (event) => {
+      const btn = event.target.closest('[data-role="delete-info"]');
+      if (!btn || !istAdmin()) return;
+
+      const info = infosListe.find((i) => i.id === btn.dataset.id);
+      infosListe = infosListe.filter((i) => i.id !== btn.dataset.id);
+      speichereInfos();
+      if (info) zeigeToast(`„${info.titel}“ wurde entfernt.`);
+    });
+  }
+
+  /* ------------------------------------------------------------------------
+     11c. Start-Seite: Schwarzes Brett (admin-verwaltet)
+     ------------------------------------------------------------------------ */
+  function abonniereAnkuendigungen() {
+    unsubAnkuendigungen = db
+      .collection(ANKUENDIGUNGEN_COLLECTION)
+      .orderBy("zeitpunkt", "desc")
+      .limit(30)
+      .onSnapshot(
+        (snapshot) => {
+          const eintraege = [];
+          snapshot.forEach((doc) => {
+            const d = doc.data();
+            eintraege.push({
+              id: doc.id,
+              text: d.text,
+              autor: d.autor,
+              millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
+            });
+          });
+          renderAnkuendigungen(eintraege);
+        },
+        (fehler) => console.error("Fehler beim Laden der Ankündigungen:", fehler)
+      );
+  }
+
+  function renderAnkuendigungen(eintraege) {
+    el.boardAdminForm.hidden = !istAdmin();
+    el.boardEmpty.hidden = eintraege.length !== 0;
+    el.boardList.innerHTML = "";
+
+    eintraege.forEach((eintrag) => {
+      const loeschButton = istAdmin()
+        ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-ankuendigung" data-id="${eintrag.id}" title="Löschen">🗑</button>`
+        : "";
+
+      const karte = document.createElement("div");
+      karte.className = "board-item";
+      karte.innerHTML = `
+        <span class="board-item__pin">📌</span>
+        <div class="board-item__text">${escapeHtml(eintrag.text)}</div>
+        <div class="board-item__meta">
+          <span>— ${escapeHtml(eintrag.autor)} · ${formatiereZeitstempel(eintrag.millis)} Uhr</span>
+          ${loeschButton}
+        </div>
+      `;
+      el.boardList.appendChild(karte);
+    });
+  }
+
+  if (el.formAnkuendigung) {
+    el.formAnkuendigung.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!istAdmin()) return;
+
+      const text = el.ankuendigungInput.value.trim();
+      if (!text) return;
+
+      db.collection(ANKUENDIGUNGEN_COLLECTION)
+        .add({ text, autor: aktuellerNutzer.name, zeitpunkt: firebase.firestore.FieldValue.serverTimestamp() })
+        .then(() => {
+          el.ankuendigungInput.value = "";
+        })
+        .catch((fehler) => {
+          console.error("Ankündigung konnte nicht gespeichert werden:", fehler);
+          zeigeToast("Konnte nicht gespeichert werden.");
+        });
+    });
+  }
+
+  if (el.boardList) {
+    el.boardList.addEventListener("click", (event) => {
+      const btn = event.target.closest('[data-role="delete-ankuendigung"]');
+      if (!btn || !istAdmin()) return;
+      db.collection(ANKUENDIGUNGEN_COLLECTION).doc(btn.dataset.id).delete().catch(() => {});
     });
   }
 
@@ -1024,15 +1310,6 @@
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     document.querySelectorAll(".modal-overlay--visible").forEach(schliesseModal);
-  });
-
-  /* ------------------------------------------------------------------------
-     13. Info-Panel ein-/ausblenden
-     ------------------------------------------------------------------------ */
-  el.btnToggleInfo.addEventListener("click", () => {
-    const istSichtbar = !el.infoPanel.hidden;
-    el.infoPanel.hidden = istSichtbar;
-    el.btnToggleInfo.classList.toggle("btn--ghost-active", !istSichtbar);
   });
 
   /* ------------------------------------------------------------------------
