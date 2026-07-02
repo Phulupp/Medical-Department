@@ -10,6 +10,20 @@
   "use strict";
 
   /* ------------------------------------------------------------------------
+     0. Design (Hell/Dunkel) - wird sofort angewendet, noch bevor der Rest
+        der App lädt, damit das Design nicht kurz falsch aufblitzt.
+     ------------------------------------------------------------------------ */
+  const THEME_STORAGE_KEY = "aerztekammer.theme";
+
+  function wendeGespeichertesThemaAn() {
+    const gespeichert = localStorage.getItem(THEME_STORAGE_KEY);
+    if (gespeichert === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }
+  wendeGespeichertesThemaAn();
+
+  /* ------------------------------------------------------------------------
      1. Konstanten
      ------------------------------------------------------------------------ */
   // Gemeinsames Zugangspasswort für die Website. Zum Ändern: Wert hier
@@ -302,6 +316,44 @@
     div.textContent = text;
     return div.innerHTML;
   }
+
+  // Wandelt **fett** und __unterstrichen__ sicher in <strong>/<u> um.
+  // WICHTIG: escaped zuerst den kompletten Text (verhindert HTML-Injection),
+  // wendet die Formatierung erst danach auf den bereits sicheren Text an.
+  function formatiereNotizText(text) {
+    let sicher = escapeHtml(text);
+    sicher = sicher.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    sicher = sicher.replace(/__(.+?)__/g, "<u>$1</u>");
+    return sicher;
+  }
+
+  // Formatierungsleisten (Fett/Unterstrichen) mit den Textfeldern verbinden.
+  // Fügt bei markiertem Text **../__.. um die Auswahl herum ein, sonst an
+  // der Cursor-Position mit dem Cursor mittig zwischen den Markern.
+  document.querySelectorAll(".format-toolbar").forEach((toolbar) => {
+    const textarea = document.getElementById(toolbar.dataset.target);
+    if (!textarea) return;
+
+    toolbar.querySelectorAll(".format-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const marker = btn.dataset.format === "bold" ? "**" : "__";
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const ausgewaehlt = textarea.value.slice(start, end);
+
+        const neuerText =
+          textarea.value.slice(0, start) + marker + ausgewaehlt + marker + textarea.value.slice(end);
+        textarea.value = neuerText;
+        textarea.focus();
+
+        if (ausgewaehlt) {
+          textarea.setSelectionRange(start + marker.length, end + marker.length);
+        } else {
+          textarea.setSelectionRange(start + marker.length, start + marker.length);
+        }
+      });
+    });
+  });
 
   function initialenVon(name) {
     return (name || "?").trim().charAt(0).toUpperCase();
@@ -957,7 +1009,7 @@
       eintrag.className = `note-item note-item--${notiz.kategorie}`;
       eintrag.innerHTML = `
         <div class="note-item__body">
-          <div class="note-item__text">${escapeHtml(notiz.text)}</div>
+          <div class="note-item__text">${formatiereNotizText(notiz.text)}</div>
           <div class="note-item__meta">— ${escapeHtml(notiz.autor)}${rolleText} · ${formatiereZeitstempel(notiz.millis)} Uhr</div>
         </div>
         ${loeschButton}
@@ -1243,6 +1295,9 @@
         const itemsText = verkauf.items.map((i) => `${escapeHtml(i.name)} ×${i.menge} = ${formatiereGeld(i.menge * i.preis)}`).join("<br>");
         const zeitText = formatiereZeitstempel(verkauf.millis);
         const darfLoeschen = istAdmin();
+        const kundeAnzeige = verkauf.kunde
+          ? `${escapeHtml(verkauf.kunde)} <span style="color:var(--color-text-soft);font-weight:500;">— verkauft von ${escapeHtml(verkauf.mitarbeiter)}</span>`
+          : `<span style="color:var(--color-text-soft);font-style:italic;">Kein Kunde angegeben</span> <span style="color:var(--color-text-soft);font-weight:500;">— verkauft von ${escapeHtml(verkauf.mitarbeiter)}</span>`;
 
         const eintrag = document.createElement("div");
         eintrag.className = "sale-item";
@@ -1250,8 +1305,9 @@
         eintrag.innerHTML = `
           <div class="sale-item__header">
             <span class="sale-item__employee">
-              ${verkauf.kunde ? `${escapeHtml(verkauf.kunde)} <span style="color:var(--color-text-soft);font-weight:500;">— verkauft von ${escapeHtml(verkauf.mitarbeiter)}</span>` : escapeHtml(verkauf.mitarbeiter)}
+              ${kundeAnzeige}
               <span style="color:var(--color-text-soft);font-weight:500;"> (${escapeHtml(verkauf.rolle || "")})</span>
+              <button type="button" class="icon-btn icon-btn--edit sale-item__edit-kunde-btn" data-role="toggle-edit-kunde" data-id="${verkauf.id}" title="Kunde bearbeiten">✎</button>
             </span>
             <span class="sale-item__time">${zeitText}</span>
           </div>
@@ -1262,6 +1318,10 @@
               <button type="button" class="btn btn--ghost sale-item__add-btn" data-role="toggle-add-item" data-id="${verkauf.id}">+ Artikel hinzufügen</button>
               ${darfLoeschen ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-verkauf" data-id="${verkauf.id}" title="Verkauf löschen">🗑</button>` : ""}
             </div>
+          </div>
+          <div class="sale-item__add-form" id="edit-kunde-form-${verkauf.id}" hidden>
+            <input type="text" class="field-input" placeholder="Name des Kunden..." value="${verkauf.kunde ? escapeHtml(verkauf.kunde) : ""}" data-role="edit-kunde-input" />
+            <button type="button" class="btn btn--primary" data-role="confirm-edit-kunde" data-id="${verkauf.id}">Speichern</button>
           </div>
           <div class="sale-item__add-form" id="add-form-${verkauf.id}" hidden>
             <select class="field-input" data-role="add-item-select">
@@ -1312,6 +1372,34 @@
     if (toggleBtn) {
       const form = document.getElementById(`add-form-${toggleBtn.dataset.id}`);
       if (form) form.hidden = !form.hidden;
+      return;
+    }
+
+    const toggleKundeBtn = event.target.closest('[data-role="toggle-edit-kunde"]');
+    if (toggleKundeBtn) {
+      const form = document.getElementById(`edit-kunde-form-${toggleKundeBtn.dataset.id}`);
+      if (form) {
+        form.hidden = !form.hidden;
+        if (!form.hidden) form.querySelector('[data-role="edit-kunde-input"]').focus();
+      }
+      return;
+    }
+
+    const confirmKundeBtn = event.target.closest('[data-role="confirm-edit-kunde"]');
+    if (confirmKundeBtn) {
+      const verkaufId = confirmKundeBtn.dataset.id;
+      const zeile = confirmKundeBtn.closest(".sale-item__add-form");
+      const input = zeile.querySelector('[data-role="edit-kunde-input"]');
+      const neuerName = input.value.trim();
+
+      db.collection(VERKAUFSLOG_COLLECTION)
+        .doc(verkaufId)
+        .update({ kunde: neuerName || null })
+        .then(() => zeigeToast(neuerName ? `Kunde „${neuerName}“ gespeichert.` : "Kunde entfernt."))
+        .catch((fehler) => {
+          console.error("Kunde konnte nicht gespeichert werden:", fehler);
+          zeigeToast("Kunde konnte nicht gespeichert werden.");
+        });
       return;
     }
 
@@ -1395,6 +1483,10 @@
     el.emptyState.hidden = liste.length !== 0;
 
     const darfLoeschen = istAdmin();
+    // Verschieben nur möglich, wenn die Gesamtliste (unsortiert/ungefiltert)
+    // angezeigt wird - bei aktiver Suche wäre "nach oben/unten" verwirrend,
+    // da die Reihenfolge sich immer auf die komplette Medikamentenliste bezieht.
+    const darfVerschieben = darfLoeschen && !suchbegriff.trim();
 
     liste.forEach((med) => {
       const tr = document.createElement("tr");
@@ -1404,6 +1496,17 @@
       const loeschButton = darfLoeschen
         ? `<button class="icon-btn icon-btn--delete" data-role="delete" data-id="${med.id}" title="Medikament löschen">🗑</button>`
         : `<button class="icon-btn icon-btn--locked" disabled title="Nur Chefarzt & Stellv. Chefärztin dürfen löschen">🔒</button>`;
+
+      let verschiebenButtons = "";
+      if (darfVerschieben) {
+        const echterIndex = medikamente.findIndex((m) => m.id === med.id);
+        const istErste = echterIndex === 0;
+        const istLetzte = echterIndex === medikamente.length - 1;
+        verschiebenButtons = `
+          <button class="icon-btn icon-btn--move" data-role="move-up" data-id="${med.id}" title="Nach oben verschieben" ${istErste ? "disabled" : ""}>▲</button>
+          <button class="icon-btn icon-btn--move" data-role="move-down" data-id="${med.id}" title="Nach unten verschieben" ${istLetzte ? "disabled" : ""}>▼</button>
+        `;
+      }
 
       tr.innerHTML = `
         <td>
@@ -1419,6 +1522,7 @@
         <td class="subtotal">${formatiereGeld(zwischensumme)}</td>
         <td>
           <div class="row-actions">
+            ${verschiebenButtons}
             <button class="icon-btn icon-btn--edit" data-role="edit" data-id="${med.id}" title="Preis bearbeiten">✎</button>
             ${loeschButton}
           </div>
@@ -1426,6 +1530,26 @@
       `;
       el.tableBody.appendChild(tr);
     });
+  }
+
+  function verschiebeMedikament(id, richtung) {
+    if (!istAdmin()) {
+      zeigeToast("Nur Chefarzt & Stellv. Chefärztin dürfen die Reihenfolge ändern.");
+      return;
+    }
+
+    const index = medikamente.findIndex((m) => m.id === id);
+    if (index === -1) return;
+
+    const zielIndex = richtung === "up" ? index - 1 : index + 1;
+    if (zielIndex < 0 || zielIndex >= medikamente.length) return;
+
+    const temp = medikamente[index];
+    medikamente[index] = medikamente[zielIndex];
+    medikamente[zielIndex] = temp;
+
+    speichereMedikamenteInFirestore();
+    renderTabelle();
   }
 
   function renderStatistik() {
@@ -1483,8 +1607,8 @@
       card.innerHTML = `
         ${aktionsButtons}
         <span class="info-card__name">${escapeHtml(info.titel)}</span>
-        <span class="info-card__text">${escapeHtml(info.text)}</span>
-        ${info.hinweis ? `<span class="info-card__hint">${escapeHtml(info.hinweis)}</span>` : ""}
+        <span class="info-card__text">${formatiereNotizText(info.text)}</span>
+        ${info.hinweis ? `<span class="info-card__hint">${formatiereNotizText(info.hinweis)}</span>` : ""}
       `;
       el.infosGrid.appendChild(card);
     });
@@ -1604,7 +1728,7 @@
       karte.className = "board-item";
       karte.innerHTML = `
         <span class="board-item__pin">📌</span>
-        <div class="board-item__text">${escapeHtml(eintrag.text)}</div>
+        <div class="board-item__text">${formatiereNotizText(eintrag.text)}</div>
         <div class="board-item__meta">
           <span>— ${escapeHtml(eintrag.autor)} · ${formatiereZeitstempel(eintrag.millis)} Uhr</span>
           ${loeschButton}
@@ -1803,6 +1927,8 @@
 
     if (btn.dataset.role === "edit") oeffnePreisBearbeitenModal(btn.dataset.id);
     else if (btn.dataset.role === "delete") oeffneLoeschenModal(btn.dataset.id);
+    else if (btn.dataset.role === "move-up") verschiebeMedikament(btn.dataset.id, "up");
+    else if (btn.dataset.role === "move-down") verschiebeMedikament(btn.dataset.id, "down");
   });
 
   /* ------------------------------------------------------------------------
@@ -1848,6 +1974,36 @@
   el.inputEditPrice.addEventListener("keydown", (event) => {
     if (event.key === "Enter") el.btnConfirmEdit.click();
   });
+
+  /* ------------------------------------------------------------------------
+     20b. Design-Umschalter (Hell/Dunkel) in den Einstellungen
+     ------------------------------------------------------------------------ */
+  (function initThemeSwitch() {
+    const btnLight = document.getElementById("theme-btn-light");
+    const btnDark = document.getElementById("theme-btn-dark");
+    if (!btnLight || !btnDark) return;
+
+    function aktualisiereButtons() {
+      const istDark = document.documentElement.getAttribute("data-theme") === "dark";
+      btnLight.classList.toggle("theme-option--active", !istDark);
+      btnDark.classList.toggle("theme-option--active", istDark);
+    }
+
+    function setzeTheme(theme) {
+      if (theme === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+      }
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+      aktualisiereButtons();
+    }
+
+    btnLight.addEventListener("click", () => setzeTheme("light"));
+    btnDark.addEventListener("click", () => setzeTheme("dark"));
+
+    aktualisiereButtons(); // Beim Laden direkt den aktuell aktiven Button markieren
+  })();
 
   /* ------------------------------------------------------------------------
      21. Geheimes Easter Egg (7x auf das Logo klicken)
@@ -1910,7 +2066,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 7;
+  const APP_VERSION = 12;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

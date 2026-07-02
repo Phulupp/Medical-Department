@@ -13,7 +13,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=7" />
+  <link rel="stylesheet" href="css/style.css?v=12" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -177,6 +177,10 @@
         <div class="board-card" id="board-admin-form" hidden>
           <h3>📌 Neue Ankündigung</h3>
           <form class="notes-form" id="form-ankuendigung">
+            <div class="format-toolbar" data-target="ankuendigung-input">
+              <button type="button" class="format-btn" data-format="bold" title="Fett (markierten Text auswählen)"><strong>F</strong></button>
+              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen (markierten Text auswählen)"><u>U</u></button>
+            </div>
             <textarea id="ankuendigung-input" placeholder="Wichtige Info für alle eintragen..." maxlength="500"></textarea>
             <button type="submit" class="btn btn--primary">Veröffentlichen</button>
           </form>
@@ -330,6 +334,10 @@
 
         <div class="notes-card">
           <form class="notes-form" id="form-note">
+            <div class="format-toolbar" data-target="note-input">
+              <button type="button" class="format-btn" data-format="bold" title="Fett (markierten Text auswählen)"><strong>F</strong></button>
+              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen (markierten Text auswählen)"><u>U</u></button>
+            </div>
             <div class="notes-form__main">
               <textarea id="note-input" placeholder="Notiz eintragen..." maxlength="500"></textarea>
             </div>
@@ -352,7 +360,13 @@
           <form class="settings-form" id="form-add-info" style="flex-wrap: wrap;">
             <input type="hidden" id="info-editing-id" value="" />
             <input type="text" id="info-titel-input" class="field-input" placeholder="Titel, z. B. Medikamentenname" required style="flex: 1 1 220px;" />
-            <input type="text" id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required style="flex: 2 1 300px;" />
+            <div style="flex: 2 1 300px; display: flex; flex-direction: column; gap: 6px;">
+              <div class="format-toolbar" data-target="info-text-input" style="margin-bottom: 0;">
+                <button type="button" class="format-btn" data-format="bold" title="Fett (markierten Text auswählen)"><strong>F</strong></button>
+                <button type="button" class="format-btn" data-format="underline" title="Unterstrichen (markierten Text auswählen)"><u>U</u></button>
+              </div>
+              <input type="text" id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required />
+            </div>
             <input type="text" id="info-hinweis-input" class="field-input" placeholder="Zusatz-Hinweis (optional)" style="flex: 1 1 200px;" />
             <button type="submit" class="btn btn--primary" id="info-form-submit">Hinzufügen</button>
             <button type="button" class="btn btn--ghost" id="info-form-cancel" hidden>Abbrechen</button>
@@ -383,6 +397,22 @@
       <!-- VIEW: EINSTELLUNGEN            -->
       <!-- ============================ -->
       <section class="view" id="view-einstellungen">
+        <!-- Für alle Mitarbeiter sichtbar -->
+        <div class="settings-card">
+          <h3>🎨 Design</h3>
+          <p class="settings-card__hint">Diese Einstellung wird nur in deinem eigenen Browser gespeichert und gilt nicht für andere Mitarbeiter.</p>
+          <div class="theme-switch">
+            <button type="button" class="theme-option theme-option--active" id="theme-btn-light" data-theme="light">
+              <span class="theme-option__preview theme-option__preview--light"></span>
+              ☀️ Hell
+            </button>
+            <button type="button" class="theme-option" id="theme-btn-dark" data-theme="dark">
+              <span class="theme-option__preview theme-option__preview--dark"></span>
+              🌙 Dunkel
+            </button>
+          </div>
+        </div>
+
         <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
         <div id="einstellungen-admin" hidden>
           <div class="settings-card">
@@ -407,10 +437,10 @@
           </div>
         </div>
 
-        <!-- Für alle anderen: Platzhalter -->
+        <!-- Für Nicht-Admins: Platzhalter (statt Mitarbeiterverwaltung) -->
         <div id="einstellungen-locked" class="placeholder-card" hidden>
           <div class="placeholder-card__icon">⚙️</div>
-          <h2>Einstellungen</h2>
+          <h2>Weitere Einstellungen</h2>
           <p>Die Mitarbeiterverwaltung ist nur für Chefarzt und Stellv. Chefärztin sichtbar. Weitere Einstellungen folgen in einem zukünftigen Update.</p>
         </div>
       </section>
@@ -499,7 +529,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=7"></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/firebase-config.js?v=12"></script>
+  <script src="js/app.js?v=12"></script>
 </body>
 </html>

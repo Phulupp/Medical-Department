@@ -60,6 +60,63 @@
 }
 
 /* --------------------------------------------------------------------------
+   1b. Dark Mode – Farb-Overrides (aktiviert über [data-theme="dark"] am <html>)
+   -------------------------------------------------------------------------- */
+html[data-theme="dark"] {
+  /* Grundfarben: dunkles, warmes Anthrazit statt Creme/Weiß */
+  --color-bg: #16151a;               /* Sehr dunkler Hintergrund (fast schwarz) */
+  --color-surface: #211f26;          /* Karten / Modal – helleres Dunkelgrau */
+  --color-surface-soft: #2a2830;     /* Leicht abgesetzte Fläche innerhalb Karten */
+  --color-surface-raised: #322f38;   /* Eingabefelder - nochmal einen Ton heller */
+
+  /* Textfarben */
+  --color-text: #f3efe8;             /* Helles Warmweiß */
+  --color-text-muted: #a49d93;
+  --color-text-soft: #6f6a63;
+
+  /* Pastell-Akzente: gleicher Ton, etwas kräftiger für Kontrast auf Dunkel */
+  --color-mint: #6fcdb8;
+  --color-mint-soft: #1e3a34;
+  --color-blue: #85bdf2;
+  --color-blue-soft: #1c2f42;
+  --color-peach: #ffab7a;
+  --color-peach-soft: #3a2a1f;
+  --color-lavender: #b39ce8;
+  --color-lavender-soft: #2b2440;
+  --color-red: #e8827e;
+  --color-red-soft: #3a2323;
+  --color-sage: #7aab90;
+  --color-sage-soft: #203228;
+
+  /* Marken-Rot fürs Logo bleibt gleich */
+  --color-brand-start: #e8564d;
+  --color-brand-end: #c6362e;
+
+  /* Schatten: dunkler/kräftiger auf dunklem Grund */
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-medium: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* Sanfter Übergang beim Umschalten zwischen Hell/Dunkel */
+body,
+.app,
+.auth-screen,
+.sidebar,
+.topbar,
+.table-card,
+.notes-card,
+.board-card,
+.settings-card,
+.stat-card,
+.modal,
+.sale-item,
+.info-card,
+.staff-card {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+}
+
+/* --------------------------------------------------------------------------
    2. Reset & Basis
    -------------------------------------------------------------------------- */
 * {
@@ -567,7 +624,34 @@ h1, h2, h3 {
 }
 
 /* --------------------------------------------------------------------------
-   6d. Notizen-Karte (über der Medikamententabelle)
+   6d. Formatierungsleiste (Fett/Unterstrichen) für Text-Eingabefelder
+   -------------------------------------------------------------------------- */
+.format-toolbar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.format-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.format-btn:hover {
+  background: var(--color-mint-soft);
+  color: var(--color-text);
+}
+
+/* --------------------------------------------------------------------------
+   6e. Notizen-Karte (über der Medikamententabelle)
    -------------------------------------------------------------------------- */
 .notes-card {
   background: var(--color-surface);
@@ -744,6 +828,15 @@ h1, h2, h3 {
   font-weight: 600;
   font-size: 14px;
   color: var(--color-text);
+}
+
+.sale-item__edit-kunde-btn {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  font-size: 10px;
+  vertical-align: middle;
+  margin-left: 4px;
 }
 
 .sale-item__time {
@@ -1193,6 +1286,28 @@ h1, h2, h3 {
   color: var(--color-text-muted);
 }
 
+.icon-btn--move {
+  width: 30px;
+  height: 30px;
+  font-size: 11px;
+  color: var(--color-text-soft);
+}
+
+.icon-btn--move:hover {
+  background: var(--color-blue-soft);
+  color: #2f6fa8;
+}
+
+.icon-btn--move:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.icon-btn--move:disabled:hover {
+  background: var(--color-surface-soft);
+  color: var(--color-text-soft);
+}
+
 .med-table tfoot td {
   padding: 18px 24px 20px;
   border-top: 2px solid rgba(43, 52, 68, 0.08);
@@ -1600,7 +1715,58 @@ h1, h2, h3 {
 }
 
 /* --------------------------------------------------------------------------
-   11b. Einstellungen: Mitarbeiterverwaltung
+   11b. Einstellungen: Design-Umschalter (Hell/Dunkel)
+   -------------------------------------------------------------------------- */
+.theme-switch {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.theme-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.theme-option:hover {
+  background: var(--color-mint-soft);
+}
+
+.theme-option--active {
+  border-color: var(--color-mint);
+  color: var(--color-text);
+}
+
+.theme-option__preview {
+  display: block;
+  width: 64px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-soft);
+}
+
+.theme-option__preview--light {
+  background: linear-gradient(135deg, #fffcf6 55%, #f6efe3 55%);
+  border: 1px solid rgba(54, 45, 36, 0.1);
+}
+
+.theme-option__preview--dark {
+  background: linear-gradient(135deg, #211f26 55%, #16151a 55%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   11c. Einstellungen: Mitarbeiterverwaltung
    -------------------------------------------------------------------------- */
 .settings-card {
   background: var(--color-surface);

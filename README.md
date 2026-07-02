@@ -1,7 +1,7 @@
 # Ärztekammer
 
 Ein modernes Verwaltungsprogramm für die Ärztekammer im **RedM Roleplay**.
-Login/Registrierung + Medikamentenliste werden über **Firebase** in Echtzeit
+Zugang, Medikamentenliste, Notizen und mehr werden über **Firebase** in Echtzeit
 zwischen allen Mitarbeitern synchronisiert (z. B. Heinrich & Grete sehen
 dieselben, live aktuellen Daten – egal auf welchem PC).
 
@@ -81,7 +81,7 @@ Firebase Login funktioniert zuverlässig nur über `http(s)`, nicht beim direkte
 3. Die von GitHub angezeigte Adresse (z. B. `https://dein-name.github.io/Medical-Department/`) im Firebase-Projekt eintragen:
    **Authentication → Settings → Authorized domains → „Domain hinzufügen“** → dort die GitHub-Pages-Adresse (ohne `https://`) eintragen
 
-Danach ist die App unter der GitHub-Pages-Adresse für dich **und** Grete nutzbar – jeder registriert sich einmal mit eigener E-Mail, eigenem Passwort, Namen und Position.
+Danach ist die App unter der GitHub-Pages-Adresse für dich **und** Grete nutzbar – einfach das gemeinsame Website-Passwort eingeben und den eigenen Namen auswählen (siehe „Zugangspasswort & PIN ändern" unten).
 
 > **Lokal testen ohne GitHub Pages:** In VS Code die Erweiterung „Live Server" installieren und `index.html` per Rechtsklick → „Open with Live Server" öffnen (läuft dann über `http://127.0.0.1`, funktioniert mit Firebase Login).
 
@@ -149,12 +149,11 @@ Kann danach beliebig über die Oberfläche erweitert, bearbeitet und gelöscht w
 ## 🔧 Technisches
 
 - Kein Framework, kein Build-Prozess – Vanilla HTML/CSS/JavaScript
-- **Firebase Authentication** (E-Mail/Passwort) für Login & Registrierung
-- **Cloud Firestore** als Echtzeit-Datenbank (Medikamentenliste + Mitarbeiterprofile)
+- **Firebase Anonymous Auth** im Hintergrund (unsichtbar) + gemeinsames Website-Passwort für den sichtbaren Zugang
+- **Cloud Firestore** als Echtzeit-Datenbank (Medikamente, Mitarbeiterliste, Notizen, Verkaufslog, Infos, Ankündigungen)
 - `localStorage` dient nur noch als Offline-Fallback/Zwischenspeicher
 - Code ist durchgehend kommentiert (deutsch)
 
 ## 📌 Geplante Erweiterungen
 
 - Einstellungen (z. B. Rabatte, Rollen-Rechte)
-- Bearbeiten/Entfernen von Mitarbeitern direkt in der Oberfläche
