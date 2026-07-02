@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Medical Department | Verwaltung</title>
+  <title>Ärztekammer | Verwaltung</title>
 
   <!-- Google Fonts: Outfit (Display) & Inter (Text) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,7 +13,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=5" />
+  <link rel="stylesheet" href="css/style.css?v=7" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -29,8 +29,8 @@
       <div class="auth-card__brand">
         <div class="sidebar__brand-icon">✚</div>
         <div class="sidebar__brand-text">
-          <span class="sidebar__brand-title">Medical</span>
-          <span class="sidebar__brand-subtitle">Department</span>
+          <span class="sidebar__brand-title">Ärztekammer</span>
+          <span class="sidebar__brand-subtitle">RedM</span>
         </div>
       </div>
 
@@ -91,8 +91,8 @@
       <div class="sidebar__brand">
         <div class="sidebar__brand-icon" id="easter-egg-trigger">✚</div>
         <div class="sidebar__brand-text">
-          <span class="sidebar__brand-title">Medical</span>
-          <span class="sidebar__brand-subtitle">Department</span>
+          <span class="sidebar__brand-title">Ärztekammer</span>
+          <span class="sidebar__brand-subtitle">RedM</span>
         </div>
       </div>
 
@@ -128,7 +128,7 @@
       </nav>
 
       <div class="sidebar__footer">
-        <p>Medical Department</p>
+        <p>Ärztekammer</p>
         <p class="sidebar__footer-small">RedM Verwaltungssystem</p>
       </div>
     </aside>
@@ -322,15 +322,16 @@
       <!-- VIEW: NOTIZEN                 -->
       <!-- ============================ -->
       <section class="view" id="view-notizen">
+        <div class="notes-tabs">
+          <button class="notes-tab notes-tab--active" data-kategorie="wichtig">⚠️ Wichtig</button>
+          <button class="notes-tab" data-kategorie="allgemein">📄 Allgemein</button>
+          <button class="notes-tab" data-kategorie="personal">🧑‍⚕️ Personal-Info</button>
+        </div>
+
         <div class="notes-card">
           <form class="notes-form" id="form-note">
             <div class="notes-form__main">
               <textarea id="note-input" placeholder="Notiz eintragen..." maxlength="500"></textarea>
-              <select id="note-kategorie" class="field-input notes-form__kategorie">
-                <option value="allgemein">📄 Allgemeine Info</option>
-                <option value="wichtig">⚠️ Wichtige Info</option>
-                <option value="personal">🧑‍⚕️ Personal-Info</option>
-              </select>
             </div>
             <button type="submit" class="btn btn--primary">Hinzufügen</button>
           </form>
@@ -493,12 +494,12 @@
     <div class="easter-egg-card">
       <div class="easter-egg-emoji">🤠</div>
       <h2>Yeehaw, Partner!</h2>
-      <p>Du hast das geheime Easter Egg vom Medical Department gefunden.<br />Doc Holliday wäre stolz auf dich.</p>
+      <p>Du hast das geheime Easter Egg der Ärztekammer gefunden.<br />Doc Holliday wäre stolz auf dich.</p>
       <button class="btn btn--primary" id="easter-egg-close">Zurück an die Arbeit</button>
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/firebase-config.js?v=7"></script>
+  <script src="js/app.js?v=7"></script>
 </body>
 </html>

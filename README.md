@@ -1,6 +1,6 @@
-# Medical Department
+# Ärztekammer
 
-Ein modernes Verwaltungsprogramm für das Medical Department im **RedM Roleplay**.
+Ein modernes Verwaltungsprogramm für die Ärztekammer im **RedM Roleplay**.
 Login/Registrierung + Medikamentenliste werden über **Firebase** in Echtzeit
 zwischen allen Mitarbeitern synchronisiert (z. B. Heinrich & Grete sehen
 dieselben, live aktuellen Daten – egal auf welchem PC).

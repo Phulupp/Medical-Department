@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Medical Department – Stylesheet
+   Ärztekammer – Stylesheet
    Modernes Verwaltungsprogramm-Design: heller Hintergrund, Pastelltöne,
    große runde Elemente. Reine Desktop-Ansicht (keine mobile Optimierung).
    ========================================================================== */
@@ -525,7 +525,49 @@ h1, h2, h3 {
 }
 
 /* --------------------------------------------------------------------------
-   6c. Notizen-Karte (über der Medikamententabelle)
+   6c. Notizen: Unterreiter (Wichtig / Allgemein / Personal-Info)
+   -------------------------------------------------------------------------- */
+.notes-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.notes-tab {
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.notes-tab:hover {
+  color: var(--color-text);
+}
+
+.notes-tab--active {
+  color: #ffffff;
+  box-shadow: var(--shadow-medium);
+}
+
+.notes-tab--active[data-kategorie="wichtig"] {
+  background: var(--color-red);
+}
+
+.notes-tab--active[data-kategorie="allgemein"] {
+  background: var(--color-blue);
+}
+
+.notes-tab--active[data-kategorie="personal"] {
+  background: var(--color-sage);
+}
+
+/* --------------------------------------------------------------------------
+   6d. Notizen-Karte (über der Medikamententabelle)
    -------------------------------------------------------------------------- */
 .notes-card {
   background: var(--color-surface);

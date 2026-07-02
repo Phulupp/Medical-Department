@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Medical Department – App-Logik
+   Ärztekammer – App-Logik
    Zugang: gemeinsames Website-Passwort + Namensauswahl (kein klassischer
    Account-Login). Im Hintergrund läuft trotzdem ein anonymer Firebase-Login,
    damit die Firestore-Datenbank geschützt bleibt und alle Mitarbeiter
@@ -152,7 +152,6 @@
 
     formNote: document.getElementById("form-note"),
     noteInput: document.getElementById("note-input"),
-    noteKategorie: document.getElementById("note-kategorie"),
     notesList: document.getElementById("notes-list"),
     notesEmpty: document.getElementById("notes-empty"),
 
@@ -234,7 +233,7 @@
     verkaufslog: { title: "Verkaufslog", subtitle: "Verkäufe eintragen & Historie einsehen" },
     notizen: { title: "Notizen", subtitle: "Gemeinsame Notizen des Teams" },
     infos: { title: "Infos", subtitle: "Wirkung & Einsatzgebiet der Medikamente" },
-    einstellungen: { title: "Einstellungen", subtitle: "Konfiguration des Medical Department Systems" },
+    einstellungen: { title: "Einstellungen", subtitle: "Konfiguration des Ärztekammer-Systems" },
   };
 
   /* ------------------------------------------------------------------------
@@ -882,13 +881,34 @@
   }
 
   /* ------------------------------------------------------------------------
-     10b. Notizen (über der Medikamententabelle)
+     10b. Notizen: Unterreiter (Wichtig / Allgemein / Personal-Info)
      ------------------------------------------------------------------------ */
   const NOTIZ_KATEGORIEN = {
     allgemein: { label: "Allgemeine Info", icon: "📄" },
     wichtig: { label: "Wichtige Info", icon: "⚠️" },
     personal: { label: "Personal-Info", icon: "🧑‍⚕️" },
   };
+
+  let aktiveNotizKategorie = "wichtig"; // Standard-Reiter beim Öffnen der Seite
+  let letzteNotizen = [];               // Zwischenspeicher für Reiter-Filterung ohne Neu-Laden
+
+  const notesTabButtons = document.querySelectorAll(".notes-tab");
+  notesTabButtons.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      aktiveNotizKategorie = tab.dataset.kategorie;
+      notesTabButtons.forEach((t) => t.classList.remove("notes-tab--active"));
+      tab.classList.add("notes-tab--active");
+      aktualisierePlatzhalterNotizfeld();
+      renderNotizen();
+    });
+  });
+
+  function aktualisierePlatzhalterNotizfeld() {
+    if (!el.noteInput) return;
+    const kategorieInfo = NOTIZ_KATEGORIEN[aktiveNotizKategorie];
+    el.noteInput.placeholder = `${kategorieInfo.label} eintragen...`;
+  }
+  aktualisierePlatzhalterNotizfeld();
 
   function abonniereNotizen() {
     unsubNotizen = db
@@ -909,24 +929,22 @@
               millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
             });
           });
-
-          // Wichtige Notizen zuerst, danach chronologisch (neueste zuerst)
-          notizen.sort((a, b) => {
-            const aWichtig = a.kategorie === "wichtig" ? 0 : 1;
-            const bWichtig = b.kategorie === "wichtig" ? 0 : 1;
-            if (aWichtig !== bWichtig) return aWichtig - bWichtig;
-            return b.millis - a.millis;
-          });
-
-          renderNotizen(notizen);
+          letzteNotizen = notizen;
+          renderNotizen();
         },
         (fehler) => console.error("Fehler beim Laden der Notizen:", fehler)
       );
   }
 
-  function renderNotizen(notizen) {
+  function renderNotizen() {
+    const notizen = letzteNotizen.filter((n) => n.kategorie === aktiveNotizKategorie);
+
     el.notesList.innerHTML = "";
     el.notesEmpty.hidden = notizen.length !== 0;
+    if (el.notesEmpty && notizen.length === 0) {
+      const kategorieInfo = NOTIZ_KATEGORIEN[aktiveNotizKategorie];
+      el.notesEmpty.textContent = `Noch keine „${kategorieInfo.label}"-Notizen vorhanden.`;
+    }
 
     notizen.forEach((notiz) => {
       const darfLoeschen = istAdmin() || (aktuellerNutzer && aktuellerNutzer.name === notiz.autor);
@@ -934,13 +952,11 @@
         ? `<button type="button" class="icon-btn icon-btn--delete note-item__delete" data-role="delete-notiz" data-id="${notiz.id}" title="Notiz löschen">🗑</button>`
         : "";
       const rolleText = notiz.rolle ? ` (${escapeHtml(notiz.rolle)})` : "";
-      const kategorieInfo = NOTIZ_KATEGORIEN[notiz.kategorie] || NOTIZ_KATEGORIEN.allgemein;
 
       const eintrag = document.createElement("div");
       eintrag.className = `note-item note-item--${notiz.kategorie}`;
       eintrag.innerHTML = `
         <div class="note-item__body">
-          <span class="note-item__kategorie note-item__kategorie--${notiz.kategorie}">${kategorieInfo.icon} ${escapeHtml(kategorieInfo.label)}</span>
           <div class="note-item__text">${escapeHtml(notiz.text)}</div>
           <div class="note-item__meta">— ${escapeHtml(notiz.autor)}${rolleText} · ${formatiereZeitstempel(notiz.millis)} Uhr</div>
         </div>
@@ -960,12 +976,11 @@
         text: text,
         autor: aktuellerNutzer.name,
         rolle: aktuellerNutzer.rolle,
-        kategorie: el.noteKategorie.value || "allgemein",
+        kategorie: aktiveNotizKategorie,
         zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
       })
       .then(() => {
         el.noteInput.value = "";
-        el.noteKategorie.value = "allgemein";
       })
       .catch((fehler) => {
         console.error("Notiz konnte nicht gespeichert werden:", fehler);
@@ -1895,7 +1910,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 5;
+  const APP_VERSION = 7;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
