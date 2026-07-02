@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medical Department | Verwaltung</title>
+
+  <!-- Google Fonts: Outfit (Display) & Inter (Text) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+  <!-- ============================ -->
+  <!-- LOGIN / REGISTRIERUNG        -->
+  <!-- ============================ -->
+  <div class="auth-screen" id="auth-screen">
+    <div class="auth-card">
+      <div class="auth-card__brand">
+        <div class="sidebar__brand-icon">✚</div>
+        <div class="sidebar__brand-text">
+          <span class="sidebar__brand-title">Medical</span>
+          <span class="sidebar__brand-subtitle">Department</span>
+        </div>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab auth-tab--active" data-auth-tab="login">Anmelden</button>
+        <button class="auth-tab" data-auth-tab="register">Registrieren</button>
+      </div>
+
+      <!-- Anmelde-Formular -->
+      <form class="auth-form auth-form--active" id="form-login">
+        <label class="field-label" for="login-email">E-Mail</label>
+        <input type="email" id="login-email" class="field-input" placeholder="name@department.de" required />
+
+        <label class="field-label" for="login-password">Passwort</label>
+        <input type="password" id="login-password" class="field-input" placeholder="••••••••" required />
+
+        <p class="field-error" id="login-error" hidden></p>
+
+        <button type="submit" class="btn btn--primary auth-submit">Anmelden</button>
+      </form>
+
+      <!-- Registrierungs-Formular -->
+      <form class="auth-form" id="form-register">
+        <label class="field-label" for="register-name">Vollständiger Name</label>
+        <input type="text" id="register-name" class="field-input" placeholder="z. B. Grete Hornhausen" required />
+
+        <label class="field-label" for="register-role">Position</label>
+        <select id="register-role" class="field-input">
+          <option value="Chefarzt">Chefarzt</option>
+          <option value="Stellv. Chefärztin">Stellv. Chefärztin</option>
+          <option value="Oberarzt">Oberarzt</option>
+          <option value="Assistenzarzt">Assistenzarzt</option>
+          <option value="Sanitäter">Sanitäter</option>
+        </select>
+
+        <label class="field-label" for="register-email">E-Mail</label>
+        <input type="email" id="register-email" class="field-input" placeholder="name@department.de" required />
+
+        <label class="field-label" for="register-password">Passwort</label>
+        <input type="password" id="register-password" class="field-input" placeholder="Mind. 6 Zeichen" required />
+
+        <p class="field-error" id="register-error" hidden></p>
+
+        <button type="submit" class="btn btn--primary auth-submit">Konto erstellen</button>
+      </form>
+
+      <p class="auth-hint" id="auth-config-hint" hidden>
+        ⚠️ Firebase ist noch nicht konfiguriert. Trage deine Projektdaten in
+        <code>js/firebase-config.js</code> ein, damit Login &amp; Registrierung funktionieren.
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================ -->
+  <!-- APP (erst sichtbar nach Login) -->
+  <!-- ============================ -->
+  <div class="app" id="app-root" hidden>
+    <!-- ============================ -->
+    <!-- SIDEBAR (linke Navigation)   -->
+    <!-- ============================ -->
+    <aside class="sidebar">
+      <div class="sidebar__brand">
+        <div class="sidebar__brand-icon">✚</div>
+        <div class="sidebar__brand-text">
+          <span class="sidebar__brand-title">Medical</span>
+          <span class="sidebar__brand-subtitle">Department</span>
+        </div>
+      </div>
+
+      <nav class="sidebar__nav">
+        <button class="nav__item nav__item--active" data-view="medikamente">
+          <span class="nav__icon">💊</span>
+          <span>Medikamente</span>
+        </button>
+        <button class="nav__item" data-view="mitarbeiter">
+          <span class="nav__icon">🧑‍⚕️</span>
+          <span>Mitarbeiter</span>
+        </button>
+        <button class="nav__item" data-view="einstellungen">
+          <span class="nav__icon">⚙️</span>
+          <span>Einstellungen</span>
+        </button>
+      </nav>
+
+      <div class="sidebar__footer">
+        <p>Medical Department</p>
+        <p class="sidebar__footer-small">RedM Verwaltungssystem</p>
+      </div>
+    </aside>
+
+    <!-- ============================ -->
+    <!-- HAUPTBEREICH                 -->
+    <!-- ============================ -->
+    <div class="main">
+      <!-- Topbar -->
+      <header class="topbar">
+        <div class="topbar__title">
+          <h1 id="view-title">Medikamente</h1>
+          <p id="view-subtitle">Übersicht &amp; Verwaltung des Medikamentenbestands</p>
+        </div>
+
+        <div class="topbar__user">
+          <button class="user-badge" id="user-badge-btn">
+            <div class="user-badge__avatar" id="user-avatar">?</div>
+            <div class="user-badge__info">
+              <span class="user-badge__name" id="user-name">Lädt...</span>
+              <span class="user-badge__role" id="user-role">—</span>
+            </div>
+          </button>
+          <div class="user-menu" id="user-menu">
+            <button class="user-menu__item" id="btn-logout">Abmelden</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ============================ -->
+      <!-- VIEW: MEDIKAMENTE            -->
+      <!-- ============================ -->
+      <section class="view view--active" id="view-medikamente">
+        <!-- Statistik-Karten -->
+        <div class="stats">
+          <div class="stat-card stat-card--mint">
+            <span class="stat-card__label">Verschiedene Medikamente</span>
+            <span class="stat-card__value" id="stat-count">0</span>
+          </div>
+          <div class="stat-card stat-card--blue">
+            <span class="stat-card__label">Gesamtmenge</span>
+            <span class="stat-card__value" id="stat-quantity">0</span>
+          </div>
+          <div class="stat-card stat-card--peach">
+            <span class="stat-card__label">Gesamtsumme</span>
+            <span class="stat-card__value" id="stat-total">0$</span>
+          </div>
+        </div>
+
+        <!-- Werkzeugleiste: Suche + Hinzufügen -->
+        <div class="toolbar">
+          <div class="search-field">
+            <span class="search-field__icon">🔍</span>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Medikament suchen..."
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="toolbar__buttons">
+            <button class="btn btn--ghost" id="btn-toggle-info">
+              <span class="btn__icon">ⓘ</span>
+              Medikamenten-Infos
+            </button>
+            <button class="btn btn--primary" id="btn-add-medikament">
+              <span class="btn__icon">＋</span>
+              Medikament hinzufügen
+            </button>
+          </div>
+        </div>
+
+        <!-- Info-Panel: Wirkung/Beschreibung der Medikamente (ein-/ausklappbar) -->
+        <div class="info-panel" id="info-panel" hidden>
+          <div class="info-panel__header">
+            <h3>Medikamenten-Informationen</h3>
+            <p>Wirkung und Einsatzgebiet der einzelnen Medikamente</p>
+          </div>
+          <div class="info-panel__grid" id="info-panel-grid">
+            <!-- wird per JavaScript befüllt -->
+          </div>
+        </div>
+
+        <!-- Medikamententabelle -->
+        <div class="table-card">
+          <table class="med-table">
+            <thead>
+              <tr>
+                <th>Medikament</th>
+                <th>Preis (Stück)</th>
+                <th>Menge</th>
+                <th>Zwischensumme</th>
+                <th class="med-table__actions-col">Aktionen</th>
+              </tr>
+            </thead>
+            <tbody id="med-table-body">
+              <!-- wird per JavaScript befüllt -->
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="med-table__total-label">Gesamtsumme</td>
+                <td class="med-table__total-value" id="table-total">0$</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <p class="empty-state" id="empty-state" hidden>
+            Keine Medikamente gefunden. Passe deine Suche an oder füge ein neues Medikament hinzu.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============================ -->
+      <!-- VIEW: MITARBEITER (Platzhalter) -->
+      <!-- ============================ -->
+      <section class="view" id="view-mitarbeiter">
+        <div class="staff-grid" id="staff-grid">
+          <!-- wird per JavaScript aus Firestore befüllt -->
+        </div>
+
+        <div class="placeholder-card placeholder-card--compact">
+          <div class="placeholder-card__icon">🧑‍⚕️</div>
+          <h2>Weitere Funktionen folgen</h2>
+          <p>Das Bearbeiten und Entfernen von Mitarbeitern wird in einem zukünftigen Update verfügbar sein. Neue Mitarbeiter können sich aktuell selbst über „Registrieren“ auf der Login-Seite anmelden.</p>
+        </div>
+      </section>
+
+      <!-- ============================ -->
+      <!-- VIEW: EINSTELLUNGEN (Platzhalter) -->
+      <!-- ============================ -->
+      <section class="view" id="view-einstellungen">
+        <div class="placeholder-card">
+          <div class="placeholder-card__icon">⚙️</div>
+          <h2>Einstellungen</h2>
+          <p>Dieser Bereich befindet sich aktuell in Entwicklung und wird in einem zukünftigen Update verfügbar sein.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============================ -->
+  <!-- MODAL: Medikament hinzufügen -->
+  <!-- ============================ -->
+  <div class="modal-overlay" id="modal-add">
+    <div class="modal">
+      <div class="modal__header">
+        <h3>Neues Medikament</h3>
+        <button class="modal__close" data-close-modal="modal-add">✕</button>
+      </div>
+      <div class="modal__body">
+        <label class="field-label" for="input-med-name">Name des Medikaments</label>
+        <input type="text" id="input-med-name" class="field-input" placeholder="z. B. Bandage" />
+
+        <label class="field-label" for="input-med-price">Preis pro Stück ($)</label>
+        <input type="number" id="input-med-price" class="field-input" placeholder="z. B. 2" min="0" step="1" />
+
+        <label class="field-label" for="input-med-beschreibung">Beschreibung (optional)</label>
+        <textarea id="input-med-beschreibung" class="field-input field-textarea" placeholder="z. B. Wirkung oder Einsatzgebiet..." rows="2"></textarea>
+
+        <p class="field-error" id="add-error" hidden></p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" data-close-modal="modal-add">Abbrechen</button>
+        <button class="btn btn--primary" id="btn-confirm-add">Hinzufügen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ -->
+  <!-- MODAL: Preis bearbeiten      -->
+  <!-- ============================ -->
+  <div class="modal-overlay" id="modal-edit-price">
+    <div class="modal">
+      <div class="modal__header">
+        <h3>Preis bearbeiten</h3>
+        <button class="modal__close" data-close-modal="modal-edit-price">✕</button>
+      </div>
+      <div class="modal__body">
+        <p class="modal__hint" id="edit-price-name"></p>
+        <label class="field-label" for="input-edit-price">Neuer Preis pro Stück ($)</label>
+        <input type="number" id="input-edit-price" class="field-input" min="0" step="1" />
+        <p class="field-error" id="edit-error" hidden></p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" data-close-modal="modal-edit-price">Abbrechen</button>
+        <button class="btn btn--primary" id="btn-confirm-edit">Speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ -->
+  <!-- MODAL: Löschen bestätigen    -->
+  <!-- ============================ -->
+  <div class="modal-overlay" id="modal-delete">
+    <div class="modal modal--small">
+      <div class="modal__header">
+        <h3>Medikament löschen</h3>
+        <button class="modal__close" data-close-modal="modal-delete">✕</button>
+      </div>
+      <div class="modal__body">
+        <p id="delete-text">Möchtest du dieses Medikament wirklich löschen?</p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" data-close-modal="modal-delete">Abbrechen</button>
+        <button class="btn btn--danger" id="btn-confirm-delete">Löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast-Benachrichtigung -->
+  <div class="toast" id="toast"></div>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

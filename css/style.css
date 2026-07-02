@@ -1,0 +1,998 @@
+/* ==========================================================================
+   Medical Department – Stylesheet
+   Modernes Verwaltungsprogramm-Design: heller Hintergrund, Pastelltöne,
+   große runde Elemente. Reine Desktop-Ansicht (keine mobile Optimierung).
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Design-Tokens (Farben, Radien, Schatten, Abstände)
+   -------------------------------------------------------------------------- */
+:root {
+  /* Grundfarben */
+  --color-bg: #f4f7fb;              /* Heller App-Hintergrund */
+  --color-surface: #ffffff;         /* Karten / Sidebar / Modal */
+  --color-surface-soft: #f8fafd;    /* Leicht abgesetzte Fläche innerhalb Karten */
+
+  /* Textfarben */
+  --color-text: #2b3444;            /* Haupttext, dunkles Blaugrau */
+  --color-text-muted: #8b94a7;      /* Sekundärtext */
+  --color-text-soft: #b3bac8;       /* Platzhalter / dezente Hinweise */
+
+  /* Pastell-Akzente */
+  --color-mint: #7fd8c4;            /* Primärakzent – Minze */
+  --color-mint-soft: #e3f8f2;
+  --color-blue: #8ec6f5;            /* Sekundärakzent – Pastellblau */
+  --color-blue-soft: #e4f1fd;
+  --color-peach: #ffb38a;           /* Akzent – Pfirsich */
+  --color-peach-soft: #ffede2;
+  --color-lavender: #b9a9f0;        /* Akzent – Lavendel */
+  --color-lavender-soft: #eee8fd;
+  --color-red: #ef8a8a;             /* Warn-/Löschfarbe, gedämpft */
+  --color-red-soft: #fbe6e6;
+
+  /* Radien: große, runde Elemente */
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
+  --radius-pill: 999px;
+
+  /* Schatten */
+  --shadow-soft: 0 8px 24px rgba(43, 52, 68, 0.06);
+  --shadow-medium: 0 16px 40px rgba(43, 52, 68, 0.10);
+  --shadow-modal: 0 24px 60px rgba(43, 52, 68, 0.22);
+
+  /* Layout */
+  --sidebar-width: 264px;
+  --topbar-height: 92px;
+
+  /* Schrift */
+  --font-display: "Outfit", "Segoe UI", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   2. Reset & Basis
+   -------------------------------------------------------------------------- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-width: 1180px; /* Reines Desktop-Programm, keine mobile Ansicht nötig */
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input {
+  font-family: inherit;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+/* --------------------------------------------------------------------------
+   3. App-Grundgerüst
+   -------------------------------------------------------------------------- */
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* --------------------------------------------------------------------------
+   4. Sidebar
+   -------------------------------------------------------------------------- */
+.sidebar {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  background: var(--color-surface);
+  border-right: 1px solid rgba(43, 52, 68, 0.05);
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 10px 32px;
+}
+
+.sidebar__brand-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, var(--color-mint), var(--color-blue));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: var(--shadow-soft);
+}
+
+.sidebar__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.sidebar__brand-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--color-text);
+}
+
+.sidebar__brand-subtitle {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.nav__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  transition: background 0.18s ease, color 0.18s ease, transform 0.12s ease;
+  text-align: left;
+}
+
+.nav__item:hover {
+  background: var(--color-mint-soft);
+  color: var(--color-text);
+}
+
+.nav__item--active {
+  background: linear-gradient(135deg, var(--color-mint-soft), var(--color-blue-soft));
+  color: var(--color-text);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(127, 216, 196, 0.4);
+}
+
+.nav__icon {
+  font-size: 17px;
+  width: 22px;
+  text-align: center;
+}
+
+.sidebar__footer {
+  padding: 16px 12px 4px;
+  border-top: 1px solid rgba(43, 52, 68, 0.06);
+  color: var(--color-text-soft);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.sidebar__footer-small {
+  color: var(--color-text-soft);
+}
+
+/* --------------------------------------------------------------------------
+   5. Hauptbereich & Topbar
+   -------------------------------------------------------------------------- */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+}
+
+.topbar__title h1 {
+  font-size: 24px;
+  margin-bottom: 2px;
+}
+
+.topbar__title p {
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+}
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-surface);
+  padding: 8px 18px 8px 8px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-soft);
+}
+
+.user-badge__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--color-lavender), var(--color-blue));
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.user-badge__info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.user-badge__name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.user-badge__role {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   6. Views
+   -------------------------------------------------------------------------- */
+.view {
+  display: none;
+  padding: 0 40px 48px;
+  flex: 1;
+}
+
+.view--active {
+  display: block;
+}
+
+/* Statistik-Karten */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  border-radius: var(--radius-lg);
+  padding: 22px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow-soft);
+}
+
+.stat-card--mint   { background: linear-gradient(135deg, var(--color-mint-soft), #ffffff); }
+.stat-card--blue   { background: linear-gradient(135deg, var(--color-blue-soft), #ffffff); }
+.stat-card--peach  { background: linear-gradient(135deg, var(--color-peach-soft), #ffffff); }
+
+.stat-card__label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.stat-card__value {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Werkzeugleiste */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-surface);
+  border-radius: var(--radius-pill);
+  padding: 12px 20px;
+  box-shadow: var(--shadow-soft);
+  width: 340px;
+}
+
+.search-field__icon {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.toolbar__buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-field input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  width: 100%;
+  color: var(--color-text);
+}
+
+.search-field input::placeholder {
+  color: var(--color-text-soft);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn--primary {
+  background: linear-gradient(135deg, var(--color-mint), #63c9b3);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(127, 216, 196, 0.45);
+}
+
+.btn--primary:hover {
+  box-shadow: 0 12px 28px rgba(127, 216, 196, 0.6);
+}
+
+.btn--ghost {
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+}
+
+.btn--ghost:hover {
+  background: #eef1f6;
+  color: var(--color-text);
+}
+
+.btn--ghost-active {
+  background: var(--color-lavender-soft);
+  color: #7a5fc9;
+}
+
+.btn--danger {
+  background: linear-gradient(135deg, var(--color-red), #e26b6b);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(239, 138, 138, 0.4);
+}
+
+.btn__icon {
+  font-size: 15px;
+}
+
+/* --------------------------------------------------------------------------
+   6b. Info-Panel: Wirkung / Beschreibung der Medikamente
+   -------------------------------------------------------------------------- */
+.info-panel {
+  background: linear-gradient(135deg, var(--color-lavender-soft), #ffffff);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 24px 28px 20px;
+  margin-bottom: 20px;
+}
+
+.info-panel__header {
+  margin-bottom: 16px;
+}
+
+.info-panel__header h3 {
+  font-size: 16px;
+  margin-bottom: 3px;
+}
+
+.info-panel__header p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.info-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.info-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: 0 4px 14px rgba(43, 52, 68, 0.05);
+}
+
+.info-card__name {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text);
+  margin-bottom: 5px;
+}
+
+.info-card__text {
+  display: block;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.info-card__hint {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #7a5fc9;
+  background: var(--color-lavender-soft);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+}
+
+/* --------------------------------------------------------------------------
+   7. Medikamententabelle
+   -------------------------------------------------------------------------- */
+.table-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 8px 8px 4px;
+  box-shadow: var(--shadow-medium);
+  overflow: hidden;
+}
+
+.med-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.med-table thead th {
+  text-align: left;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  padding: 18px 24px 14px;
+}
+
+.med-table__actions-col {
+  text-align: right !important;
+}
+
+.med-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.med-table tbody tr:hover {
+  background: var(--color-surface-soft);
+}
+
+.med-table tbody td {
+  padding: 14px 24px;
+  font-size: 14.5px;
+  border-top: 1px solid rgba(43, 52, 68, 0.05);
+}
+
+.med-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+}
+
+.med-name__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-mint);
+  flex-shrink: 0;
+}
+
+.med-price {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.qty-input {
+  width: 76px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid #e7ebf2;
+  background: var(--color-surface-soft);
+  font-size: 14px;
+  color: var(--color-text);
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+
+.qty-input:focus {
+  outline: none;
+  border-color: var(--color-mint);
+}
+
+.subtotal {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  background: var(--color-surface-soft);
+  color: var(--color-text-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.icon-btn--edit:hover {
+  background: var(--color-blue-soft);
+  color: #2f6fa8;
+}
+
+.icon-btn--delete:hover {
+  background: var(--color-red-soft);
+  color: #c94f4f;
+}
+
+.med-table tfoot td {
+  padding: 18px 24px 20px;
+  border-top: 2px solid rgba(43, 52, 68, 0.08);
+}
+
+.med-table__total-label {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.med-table__total-value {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  color: #2f9c82;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px 32px;
+  color: var(--color-text-soft);
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   8. Mitarbeiter-Karten & Platzhalter-Ansichten
+   -------------------------------------------------------------------------- */
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.staff-card {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 22px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.staff-card__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.staff-card__avatar--mint {
+  background: linear-gradient(145deg, var(--color-mint), var(--color-blue));
+}
+
+.staff-card__avatar--lavender {
+  background: linear-gradient(145deg, var(--color-lavender), var(--color-peach));
+}
+
+.staff-card__info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.staff-card__name {
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--color-text);
+}
+
+.staff-card__role {
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+
+.staff-card__badge {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #2f9c82;
+  background: var(--color-mint-soft);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+
+.placeholder-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 80px 40px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.placeholder-card--compact {
+  padding: 44px 40px;
+}
+
+.placeholder-card__icon {
+  font-size: 44px;
+  margin-bottom: 18px;
+}
+
+.placeholder-card h2 {
+  margin-bottom: 10px;
+  color: var(--color-text);
+}
+
+.placeholder-card p {
+  max-width: 420px;
+  margin: 0 auto;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+/* --------------------------------------------------------------------------
+   11b. Login- / Registrierungs-Bildschirm
+   -------------------------------------------------------------------------- */
+.auth-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-mint-soft), var(--color-blue-soft) 60%, var(--color-lavender-soft));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.auth-card {
+  width: 400px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  padding: 32px 32px 28px;
+}
+
+.auth-card__brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.auth-tabs {
+  display: flex;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  margin-bottom: 22px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.auth-tab--active {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-soft);
+}
+
+.auth-form {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auth-form--active {
+  display: flex;
+}
+
+.auth-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.auth-hint {
+  margin-top: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b06a2b;
+  background: var(--color-peach-soft);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+}
+
+.auth-hint code {
+  font-size: 11.5px;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+/* --------------------------------------------------------------------------
+   11c. Benutzer-Menü (Abmelden)
+   -------------------------------------------------------------------------- */
+.topbar__user {
+  position: relative;
+}
+
+.user-badge {
+  border: none;
+}
+
+.user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-medium);
+  padding: 6px;
+  min-width: 160px;
+  display: none;
+  z-index: 50;
+}
+
+.user-menu--visible {
+  display: block;
+}
+
+.user-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  color: var(--color-text);
+  transition: background 0.15s ease;
+}
+
+.user-menu__item:hover {
+  background: var(--color-red-soft);
+  color: #c94f4f;
+}
+
+/* --------------------------------------------------------------------------
+   12. Modale Dialogfenster (ersetzen native prompt()/confirm())
+   -------------------------------------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 38, 51, 0.38);
+  backdrop-filter: blur(3px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.modal-overlay--visible {
+  display: flex;
+  opacity: 1;
+}
+
+.modal {
+  width: 420px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  padding: 28px;
+  transform: translateY(8px) scale(0.98);
+  transition: transform 0.18s ease;
+}
+
+.modal-overlay--visible .modal {
+  transform: translateY(0) scale(1);
+}
+
+.modal--small {
+  width: 380px;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.modal__header h3 {
+  font-size: 18px;
+}
+
+.modal__close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  background: var(--color-surface-soft);
+  font-size: 13px;
+}
+
+.modal__close:hover {
+  background: var(--color-red-soft);
+  color: #c94f4f;
+}
+
+.modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal__hint {
+  color: var(--color-text-muted);
+  font-size: 13.5px;
+  margin-bottom: 6px;
+}
+
+.field-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-top: 12px;
+}
+
+.field-input {
+  border: 1.5px solid #e7ebf2;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 14.5px;
+  color: var(--color-text);
+  transition: border-color 0.15s ease;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: var(--color-mint);
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 54px;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.field-error {
+  color: #c94f4f;
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* --------------------------------------------------------------------------
+   10. Toast-Benachrichtigung
+   -------------------------------------------------------------------------- */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--color-text);
+  color: #ffffff;
+  padding: 14px 24px;
+  border-radius: var(--radius-pill);
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow-medium);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 200;
+}
+
+.toast--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
