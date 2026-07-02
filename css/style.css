@@ -480,6 +480,15 @@ h1, h2, h3 {
   font-size: 12px;
 }
 
+.info-card__edit {
+  position: absolute;
+  top: 10px;
+  right: 42px;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+
 .info-card__name {
   display: block;
   font-weight: 600;
@@ -758,6 +767,72 @@ h1, h2, h3 {
 
 .sale-form__submit {
   margin-top: 6px;
+}
+
+.sale-cart-add {
+  margin-bottom: 16px;
+}
+
+.sale-cart-add__row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.sale-cart-add__row select {
+  flex: 2;
+}
+
+.sale-cart-add__row input {
+  flex: 0 0 90px;
+}
+
+.sale-cart-add__row .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.sale-cart {
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.sale-cart__empty {
+  font-size: 13px;
+  color: var(--color-text-soft);
+  text-align: center;
+  padding: 6px 0;
+}
+
+.sale-cart-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(43, 52, 68, 0.06);
+  font-size: 13.5px;
+}
+
+.sale-cart-item:last-child {
+  border-bottom: none;
+}
+
+.sale-cart-item__remove {
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+}
+
+.sale-cart__total {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 2px solid rgba(43, 52, 68, 0.08);
+  text-align: right;
+  font-weight: 700;
+  font-size: 14px;
+  color: #2f9c82;
 }
 
 /* --------------------------------------------------------------------------
@@ -1533,4 +1608,79 @@ h1, h2, h3 {
 .toast--visible {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* --------------------------------------------------------------------------
+   11. Geheimes Easter Egg
+   -------------------------------------------------------------------------- */
+.easter-egg-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 38, 51, 0.55);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+  overflow: hidden;
+}
+
+.easter-egg-overlay--visible {
+  display: flex;
+}
+
+.easter-egg-card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  padding: 40px 44px;
+  text-align: center;
+  max-width: 380px;
+  position: relative;
+  z-index: 2;
+  animation: easterEggPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes easterEggPop {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.easter-egg-emoji {
+  font-size: 52px;
+  margin-bottom: 12px;
+  animation: easterEggBounce 1.2s ease-in-out infinite;
+}
+
+@keyframes easterEggBounce {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-10px) rotate(4deg); }
+}
+
+.easter-egg-card h2 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.easter-egg-card p {
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  margin-bottom: 22px;
+}
+
+.easter-egg-confetti {
+  position: absolute;
+  top: -40px;
+  font-size: 22px;
+  animation: easterEggFall linear forwards;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes easterEggFall {
+  to {
+    transform: translateY(110vh) rotate(360deg);
+    opacity: 0.3;
+  }
 }

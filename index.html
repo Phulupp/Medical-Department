@@ -83,7 +83,7 @@
     <!-- ============================ -->
     <aside class="sidebar">
       <div class="sidebar__brand">
-        <div class="sidebar__brand-icon">✚</div>
+        <div class="sidebar__brand-icon" id="easter-egg-trigger">✚</div>
         <div class="sidebar__brand-text">
           <span class="sidebar__brand-title">Medical</span>
           <span class="sidebar__brand-subtitle">Department</span>
@@ -95,13 +95,13 @@
           <span class="nav__icon">📌</span>
           <span>Start</span>
         </button>
+        <button class="nav__item" data-view="infos">
+          <span class="nav__icon">ℹ️</span>
+          <span>Infos</span>
+        </button>
         <button class="nav__item" data-view="medikamente">
           <span class="nav__icon">💊</span>
           <span>Medikamente</span>
-        </button>
-        <button class="nav__item" data-view="mitarbeiter">
-          <span class="nav__icon">🧑‍⚕️</span>
-          <span>Mitarbeiter</span>
         </button>
         <button class="nav__item" data-view="verkaufslog">
           <span class="nav__icon">🧾</span>
@@ -111,9 +111,9 @@
           <span class="nav__icon">📝</span>
           <span>Notizen</span>
         </button>
-        <button class="nav__item" data-view="infos">
-          <span class="nav__icon">ℹ️</span>
-          <span>Infos</span>
+        <button class="nav__item" data-view="mitarbeiter">
+          <span class="nav__icon">🧑‍⚕️</span>
+          <span>Mitarbeiter</span>
         </button>
         <button class="nav__item" data-view="einstellungen">
           <span class="nav__icon">⚙️</span>
@@ -268,18 +268,6 @@
                 <label class="field-label" for="sale-kunde">Kunde (Vor- &amp; Nachname)</label>
                 <input type="text" id="sale-kunde" class="field-input" placeholder="z. B. John Marston" required />
               </div>
-              <div class="sale-form__field">
-                <label class="field-label" for="sale-medikament">Medikament</label>
-                <select id="sale-medikament" class="field-input" required>
-                  <option value="">Bitte auswählen...</option>
-                </select>
-              </div>
-            </div>
-            <div class="sale-form__row">
-              <div class="sale-form__field sale-form__field--small">
-                <label class="field-label" for="sale-menge">Menge</label>
-                <input type="number" id="sale-menge" class="field-input" min="1" step="1" value="1" required />
-              </div>
               <div class="sale-form__field sale-form__field--small">
                 <label class="field-label" for="sale-datum">Datum</label>
                 <input type="date" id="sale-datum" class="field-input" required />
@@ -289,6 +277,24 @@
                 <p class="sale-form__verkaeufer" id="sale-form-verkaeufer">—</p>
               </div>
             </div>
+
+            <div class="sale-cart-add">
+              <label class="field-label" for="sale-medikament">Artikel zum Verkauf hinzufügen</label>
+              <div class="sale-cart-add__row">
+                <select id="sale-medikament" class="field-input">
+                  <option value="">Medikament auswählen...</option>
+                </select>
+                <input type="number" id="sale-menge" class="field-input" min="1" step="1" value="1" />
+                <button type="button" class="btn btn--ghost" id="btn-add-to-cart">+ Zum Verkauf hinzufügen</button>
+              </div>
+            </div>
+
+            <div class="sale-cart" id="sale-cart">
+              <p class="sale-cart__empty" id="sale-cart-empty">Noch keine Artikel hinzugefügt.</p>
+              <div id="sale-cart-items"></div>
+              <div class="sale-cart__total" id="sale-cart-total" hidden>Zwischensumme: <span id="sale-cart-total-value">0$</span></div>
+            </div>
+
             <p class="field-error" id="sale-entry-error" hidden></p>
             <button type="submit" class="btn btn--checkout sale-form__submit">Verkauf eintragen</button>
           </form>
@@ -322,12 +328,14 @@
       <section class="view" id="view-infos">
         <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
         <div class="notes-card" id="infos-admin-form" hidden>
-          <h3>ℹ️ Neuen Info-Eintrag hinzufügen</h3>
+          <h3 id="info-form-title">ℹ️ Neuen Info-Eintrag hinzufügen</h3>
           <form class="settings-form" id="form-add-info" style="flex-wrap: wrap;">
+            <input type="hidden" id="info-editing-id" value="" />
             <input type="text" id="info-titel-input" class="field-input" placeholder="Titel, z. B. Medikamentenname" required style="flex: 1 1 220px;" />
             <input type="text" id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required style="flex: 2 1 300px;" />
             <input type="text" id="info-hinweis-input" class="field-input" placeholder="Zusatz-Hinweis (optional)" style="flex: 1 1 200px;" />
-            <button type="submit" class="btn btn--primary">Hinzufügen</button>
+            <button type="submit" class="btn btn--primary" id="info-form-submit">Hinzufügen</button>
+            <button type="button" class="btn btn--ghost" id="info-form-cancel" hidden>Abbrechen</button>
           </form>
         </div>
 
@@ -460,6 +468,16 @@
 
   <!-- Toast-Benachrichtigung -->
   <div class="toast" id="toast"></div>
+
+  <!-- Geheimes Easter Egg: 7x auf das Logo klicken -->
+  <div class="easter-egg-overlay" id="easter-egg-overlay">
+    <div class="easter-egg-card">
+      <div class="easter-egg-emoji">🤠</div>
+      <h2>Yeehaw, Partner!</h2>
+      <p>Du hast das geheime Easter Egg vom Medical Department gefunden.<br />Doc Holliday wäre stolz auf dich.</p>
+      <button class="btn btn--primary" id="easter-egg-close">Zurück an die Arbeit</button>
+    </div>
+  </div>
 
   <script src="js/firebase-config.js"></script>
   <script src="js/app.js"></script>

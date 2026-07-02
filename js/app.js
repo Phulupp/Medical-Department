@@ -28,8 +28,8 @@
   // angelegt). "geschuetzt: true" bedeutet: Für die Anmeldung mit diesem
   // Namen ist der ADMIN_PIN nötig.
   const DEFAULT_MITARBEITER = [
-    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt", geschuetzt: true },
-    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefärztin", geschuetzt: true },
+    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt", geschuetzt: true, avatar: "🫏" },
+    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefärztin", geschuetzt: true, avatar: "🦦" },
   ];
 
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
@@ -165,9 +165,18 @@
     saleDatum: document.getElementById("sale-datum"),
     saleFormVerkaeufer: document.getElementById("sale-form-verkaeufer"),
     saleEntryError: document.getElementById("sale-entry-error"),
+    btnAddToCart: document.getElementById("btn-add-to-cart"),
+    saleCartEmpty: document.getElementById("sale-cart-empty"),
+    saleCartItems: document.getElementById("sale-cart-items"),
+    saleCartTotal: document.getElementById("sale-cart-total"),
+    saleCartTotalValue: document.getElementById("sale-cart-total-value"),
 
     infosAdminForm: document.getElementById("infos-admin-form"),
     formAddInfo: document.getElementById("form-add-info"),
+    infoEditingId: document.getElementById("info-editing-id"),
+    infoFormTitle: document.getElementById("info-form-title"),
+    infoFormSubmit: document.getElementById("info-form-submit"),
+    infoFormCancel: document.getElementById("info-form-cancel"),
     infoTitelInput: document.getElementById("info-titel-input"),
     infoTextInput: document.getElementById("info-text-input"),
     infoHinweisInput: document.getElementById("info-hinweis-input"),
@@ -294,6 +303,13 @@
 
   function initialenVon(name) {
     return (name || "?").trim().charAt(0).toUpperCase();
+  }
+
+  // Gibt das lustige Emoji-Avatar zurück, falls in der Mitarbeiterliste
+  // eines hinterlegt ist (Inside-Joke), sonst den Anfangsbuchstaben.
+  function avatarVon(name) {
+    const eintrag = mitarbeiterListe.find((m) => m.name.toLowerCase() === (name || "").toLowerCase());
+    return eintrag && eintrag.avatar ? eintrag.avatar : initialenVon(name);
   }
 
   function rangVon(rolle) {
@@ -502,7 +518,7 @@
 
   function renderBenutzerBadge() {
     if (!aktuellerNutzer) return;
-    el.userAvatar.textContent = initialenVon(aktuellerNutzer.name);
+    el.userAvatar.textContent = avatarVon(aktuellerNutzer.name);
     el.userName.textContent = aktuellerNutzer.name;
     el.userRole.textContent = aktuellerNutzer.rolle;
   }
@@ -624,9 +640,6 @@
       (fehler) => console.error("Fehler beim Laden der Online-Liste:", fehler)
     );
 
-    // Alle 10s neu berechnen, damit Leute, die den Tab einfach geschlossen
-    // haben (ohne beforeunload), nach der Schwellenzeit automatisch als
-    // offline verschwinden.
     onlineRecomputeTimer = setInterval(renderOnlineListe, 10 * 1000);
   }
 
@@ -675,6 +688,8 @@
      ------------------------------------------------------------------------ */
   function renderMitarbeiterListe() {
     if (!el.staffGrid) return;
+    renderBenutzerBadge(); // Badge-Avatar aktualisieren, sobald die Liste geladen ist
+
     const online = ermittleOnlineListe();
     const onlineNamen = new Set(online.map((p) => p.name.toLowerCase()));
     const farben = ["mint", "lavender", "blue", "peach"];
@@ -715,7 +730,7 @@
         card.className = `staff-card${istOberste ? " staff-card--lead" : ""}`;
         card.innerHTML = `
           ${istOberste ? '<span class="staff-card__crown">👑</span>' : ""}
-          <div class="staff-card__avatar staff-card__avatar--${farbe}">${escapeHtml(initialenVon(person.name))}</div>
+          <div class="staff-card__avatar staff-card__avatar--${farbe}">${person.avatar ? person.avatar : escapeHtml(initialenVon(person.name))}</div>
           <div class="staff-card__info">
             <span class="staff-card__name">${escapeHtml(person.name)}${person.geschuetzt ? " 🔒" : ""}</span>
             <span class="staff-card__role">${escapeHtml(person.rolle)} · ${istOnline ? "🟢 Online" : "⚪ Offline"}</span>
@@ -920,27 +935,83 @@
   });
 
   /* ------------------------------------------------------------------------
-     10c. Verkaufslog: Formular-Eintrag, Sammel-Checkout + Log anzeigen
+     10c. Verkaufslog: Warenkorb-Formular (mehrere Artikel pro Verkauf),
+          Sammel-Checkout + Log anzeigen
      ------------------------------------------------------------------------ */
+  let verkaufsWarenkorb = []; // [{ name, menge, preis }]
+
+  function renderWarenkorb() {
+    el.saleCartItems.innerHTML = "";
+    el.saleCartEmpty.hidden = verkaufsWarenkorb.length !== 0;
+    el.saleCartTotal.hidden = verkaufsWarenkorb.length === 0;
+
+    let summe = 0;
+    verkaufsWarenkorb.forEach((item, index) => {
+      const zwischensumme = item.menge * item.preis;
+      summe += zwischensumme;
+
+      const zeile = document.createElement("div");
+      zeile.className = "sale-cart-item";
+      zeile.innerHTML = `
+        <span>${escapeHtml(item.name)} × ${item.menge} = ${formatiereGeld(zwischensumme)}</span>
+        <button type="button" class="icon-btn icon-btn--delete sale-cart-item__remove" data-index="${index}" title="Entfernen">✕</button>
+      `;
+      el.saleCartItems.appendChild(zeile);
+    });
+
+    el.saleCartTotalValue.textContent = formatiereGeld(summe);
+  }
+
+  if (el.btnAddToCart) {
+    el.btnAddToCart.addEventListener("click", () => {
+      el.saleEntryError.hidden = true;
+
+      const medName = el.saleMedikament.value;
+      const menge = parseInt(el.saleMenge.value, 10);
+
+      if (!medName) return zeigeFeldFehler(el.saleEntryError, "Bitte ein Medikament auswählen.");
+      if (isNaN(menge) || menge < 1) return zeigeFeldFehler(el.saleEntryError, "Bitte eine gültige Menge (mind. 1) eingeben.");
+
+      const med = medikamente.find((m) => m.name === medName);
+      if (!med) return zeigeFeldFehler(el.saleEntryError, "Dieses Medikament existiert nicht mehr.");
+
+      const bestehend = verkaufsWarenkorb.find((i) => i.name === med.name);
+      if (bestehend) {
+        bestehend.menge += menge;
+      } else {
+        verkaufsWarenkorb.push({ name: med.name, menge: menge, preis: Number(med.preis) });
+      }
+
+      renderWarenkorb();
+      el.saleMedikament.value = "";
+      el.saleMenge.value = "1";
+    });
+  }
+
+  if (el.saleCartItems) {
+    el.saleCartItems.addEventListener("click", (event) => {
+      const btn = event.target.closest(".sale-cart-item__remove");
+      if (!btn) return;
+      verkaufsWarenkorb.splice(Number(btn.dataset.index), 1);
+      renderWarenkorb();
+    });
+  }
+
   if (el.formSaleEntry) {
     el.formSaleEntry.addEventListener("submit", (event) => {
       event.preventDefault();
       el.saleEntryError.hidden = true;
 
       const kunde = el.saleKunde.value.trim();
-      const medName = el.saleMedikament.value;
-      const menge = parseInt(el.saleMenge.value, 10);
       const datum = el.saleDatum.value;
 
       if (!kunde) return zeigeFeldFehler(el.saleEntryError, "Bitte Vor- und Nachname des Kunden eingeben.");
-      if (!medName) return zeigeFeldFehler(el.saleEntryError, "Bitte ein Medikament auswählen.");
-      if (isNaN(menge) || menge < 1) return zeigeFeldFehler(el.saleEntryError, "Bitte eine gültige Menge (mind. 1) eingeben.");
       if (!datum) return zeigeFeldFehler(el.saleEntryError, "Bitte ein Datum wählen.");
+      if (verkaufsWarenkorb.length === 0) {
+        return zeigeFeldFehler(el.saleEntryError, "Bitte mindestens einen Artikel zum Verkauf hinzufügen.");
+      }
 
-      const med = medikamente.find((m) => m.name === medName);
-      if (!med) return zeigeFeldFehler(el.saleEntryError, "Dieses Medikament existiert nicht mehr.");
-
-      const gesamtsumme = menge * Number(med.preis);
+      const gesamtsumme = verkaufsWarenkorb.reduce((summe, i) => summe + i.menge * i.preis, 0);
 
       db.collection(VERKAUFSLOG_COLLECTION)
         .add({
@@ -948,14 +1019,14 @@
           rolle: aktuellerNutzer ? aktuellerNutzer.rolle : "",
           kunde: kunde,
           datum: datum,
-          items: [{ name: med.name, menge: menge, preis: Number(med.preis) }],
+          items: verkaufsWarenkorb.map((i) => ({ ...i })),
           gesamtsumme: gesamtsumme,
           zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
         })
         .then(() => {
           el.saleKunde.value = "";
-          el.saleMedikament.value = "";
-          el.saleMenge.value = "1";
+          verkaufsWarenkorb = [];
+          renderWarenkorb();
           zeigeToast(`Verkauf an „${kunde}“ über ${formatiereGeld(gesamtsumme)} eingetragen.`);
         })
         .catch((fehler) => {
@@ -1162,17 +1233,30 @@
     infosListe.forEach((info) => {
       const card = document.createElement("div");
       card.className = "info-card";
-      const loeschButton = istAdmin()
-        ? `<button type="button" class="icon-btn icon-btn--delete info-card__delete" data-role="delete-info" data-id="${info.id}" title="Eintrag löschen">🗑</button>`
+      const aktionsButtons = istAdmin()
+        ? `
+          <button type="button" class="icon-btn icon-btn--edit info-card__edit" data-role="edit-info" data-id="${info.id}" title="Eintrag bearbeiten">✎</button>
+          <button type="button" class="icon-btn icon-btn--delete info-card__delete" data-role="delete-info" data-id="${info.id}" title="Eintrag löschen">🗑</button>
+        `
         : "";
       card.innerHTML = `
-        ${loeschButton}
+        ${aktionsButtons}
         <span class="info-card__name">${escapeHtml(info.titel)}</span>
         <span class="info-card__text">${escapeHtml(info.text)}</span>
         ${info.hinweis ? `<span class="info-card__hint">${escapeHtml(info.hinweis)}</span>` : ""}
       `;
       el.infosGrid.appendChild(card);
     });
+  }
+
+  function setzeInfoFormularZurueck() {
+    el.infoEditingId.value = "";
+    el.infoTitelInput.value = "";
+    el.infoTextInput.value = "";
+    el.infoHinweisInput.value = "";
+    el.infoFormTitle.textContent = "ℹ️ Neuen Info-Eintrag hinzufügen";
+    el.infoFormSubmit.textContent = "Hinzufügen";
+    el.infoFormCancel.hidden = true;
   }
 
   if (el.formAddInfo) {
@@ -1185,24 +1269,57 @@
       const hinweis = el.infoHinweisInput.value.trim();
       if (!titel || !text) return;
 
-      infosListe.push({ id: erzeugeId(titel), titel, text, hinweis: hinweis || undefined });
-      speichereInfos();
-      el.infoTitelInput.value = "";
-      el.infoTextInput.value = "";
-      el.infoHinweisInput.value = "";
-      zeigeToast(`„${titel}“ wurde zu den Infos hinzugefügt.`);
+      const bearbeiteId = el.infoEditingId.value;
+
+      if (bearbeiteId) {
+        const info = infosListe.find((i) => i.id === bearbeiteId);
+        if (info) {
+          info.titel = titel;
+          info.text = text;
+          info.hinweis = hinweis || undefined;
+        }
+        speichereInfos();
+        zeigeToast(`„${titel}“ wurde aktualisiert.`);
+      } else {
+        infosListe.push({ id: erzeugeId(titel), titel, text, hinweis: hinweis || undefined });
+        speichereInfos();
+        zeigeToast(`„${titel}“ wurde zu den Infos hinzugefügt.`);
+      }
+
+      setzeInfoFormularZurueck();
     });
+  }
+
+  if (el.infoFormCancel) {
+    el.infoFormCancel.addEventListener("click", setzeInfoFormularZurueck);
   }
 
   if (el.infosGrid) {
     el.infosGrid.addEventListener("click", (event) => {
-      const btn = event.target.closest('[data-role="delete-info"]');
-      if (!btn || !istAdmin()) return;
+      const deleteBtn = event.target.closest('[data-role="delete-info"]');
+      if (deleteBtn && istAdmin()) {
+        const info = infosListe.find((i) => i.id === deleteBtn.dataset.id);
+        infosListe = infosListe.filter((i) => i.id !== deleteBtn.dataset.id);
+        speichereInfos();
+        if (info) zeigeToast(`„${info.titel}“ wurde entfernt.`);
+        return;
+      }
 
-      const info = infosListe.find((i) => i.id === btn.dataset.id);
-      infosListe = infosListe.filter((i) => i.id !== btn.dataset.id);
-      speichereInfos();
-      if (info) zeigeToast(`„${info.titel}“ wurde entfernt.`);
+      const editBtn = event.target.closest('[data-role="edit-info"]');
+      if (editBtn && istAdmin()) {
+        const info = infosListe.find((i) => i.id === editBtn.dataset.id);
+        if (!info) return;
+
+        el.infoEditingId.value = info.id;
+        el.infoTitelInput.value = info.titel;
+        el.infoTextInput.value = info.text;
+        el.infoHinweisInput.value = info.hinweis || "";
+        el.infoFormTitle.textContent = `✎ „${info.titel}“ bearbeiten`;
+        el.infoFormSubmit.textContent = "Speichern";
+        el.infoFormCancel.hidden = false;
+        el.infoTitelInput.focus();
+        el.infosAdminForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
   }
 
@@ -1492,7 +1609,61 @@
   });
 
   /* ------------------------------------------------------------------------
-     21. Start
+     21. Geheimes Easter Egg (7x auf das Logo klicken)
+     ------------------------------------------------------------------------ */
+  (function initEasterEgg() {
+    const trigger = document.getElementById("easter-egg-trigger");
+    const overlay = document.getElementById("easter-egg-overlay");
+    const closeBtn = document.getElementById("easter-egg-close");
+    if (!trigger || !overlay) return;
+
+    const KLICKS_NOETIG = 7;
+    const RESET_ZEIT_MS = 1500;
+    let klicks = 0;
+    let resetTimer = null;
+    const KONFETTI_EMOJIS = ["🤠", "🐎", "💰", "🌵", "⭐", "🔫"];
+
+    trigger.addEventListener("click", () => {
+      klicks += 1;
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => (klicks = 0), RESET_ZEIT_MS);
+
+      if (klicks >= KLICKS_NOETIG) {
+        klicks = 0;
+        zeigeEasterEgg();
+      }
+    });
+
+    function zeigeEasterEgg() {
+      overlay.classList.add("easter-egg-overlay--visible");
+      erzeugeKonfetti();
+    }
+
+    function verstecke() {
+      overlay.classList.remove("easter-egg-overlay--visible");
+      overlay.querySelectorAll(".easter-egg-confetti").forEach((el) => el.remove());
+    }
+
+    function erzeugeKonfetti() {
+      for (let i = 0; i < 26; i++) {
+        const stueck = document.createElement("span");
+        stueck.className = "easter-egg-confetti";
+        stueck.textContent = KONFETTI_EMOJIS[Math.floor(Math.random() * KONFETTI_EMOJIS.length)];
+        stueck.style.left = `${Math.random() * 100}%`;
+        stueck.style.animationDuration = `${2 + Math.random() * 1.5}s`;
+        stueck.style.animationDelay = `${Math.random() * 0.6}s`;
+        overlay.appendChild(stueck);
+      }
+    }
+
+    closeBtn.addEventListener("click", verstecke);
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) verstecke();
+    });
+  })();
+
+  /* ------------------------------------------------------------------------
+     22. Start
      ------------------------------------------------------------------------ */
   if (istFirebaseKonfiguriert()) {
     pruefeGespeichertenZugang();
