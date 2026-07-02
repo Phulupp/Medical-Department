@@ -57,6 +57,11 @@
           <input type="text" id="gate-name-custom" class="field-input" placeholder="z. B. Grete" />
         </div>
 
+        <div id="gate-pin-wrapper" hidden>
+          <label class="field-label" for="gate-pin">Dieser Name ist geschützt – PIN eingeben</label>
+          <input type="password" id="gate-pin" class="field-input" placeholder="PIN" inputmode="numeric" autocomplete="off" />
+        </div>
+
         <p class="field-error" id="gate-name-error" hidden></p>
 
         <button type="submit" class="btn btn--primary auth-submit">Betreten</button>
@@ -93,6 +98,10 @@
         <button class="nav__item" data-view="mitarbeiter">
           <span class="nav__icon">🧑‍⚕️</span>
           <span>Mitarbeiter</span>
+        </button>
+        <button class="nav__item" data-view="verkaufslog">
+          <span class="nav__icon">🧾</span>
+          <span>Verkaufslog</span>
         </button>
         <button class="nav__item" data-view="einstellungen">
           <span class="nav__icon">⚙️</span>
@@ -179,6 +188,10 @@
               <span class="btn__icon">ⓘ</span>
               Medikamenten-Infos
             </button>
+            <button class="btn btn--checkout" id="btn-checkout">
+              <span class="btn__icon">🧾</span>
+              Verkauf abschließen
+            </button>
             <button class="btn btn--primary" id="btn-add-medikament">
               <span class="btn__icon">＋</span>
               Medikament hinzufügen
@@ -193,6 +206,20 @@
             <p>Wirkung und Einsatzgebiet der einzelnen Medikamente</p>
           </div>
           <div class="info-panel__grid" id="info-panel-grid">
+            <!-- wird per JavaScript befüllt -->
+          </div>
+        </div>
+
+        <!-- Notizen-Karte -->
+        <div class="notes-card">
+          <div class="notes-card__header">
+            <h3>📝 Notizen</h3>
+          </div>
+          <form class="notes-form" id="form-note">
+            <textarea id="note-input" placeholder="Notiz eintragen..." maxlength="500"></textarea>
+            <button type="submit" class="btn btn--primary">Hinzufügen</button>
+          </form>
+          <div class="notes-list" id="notes-list">
             <!-- wird per JavaScript befüllt -->
           </div>
         </div>
@@ -232,24 +259,59 @@
       <!-- ============================ -->
       <section class="view" id="view-mitarbeiter">
         <div class="staff-grid" id="staff-grid">
-          <!-- wird per JavaScript aus Firestore befüllt -->
+          <!-- wird per JavaScript befüllt -->
         </div>
 
         <div class="placeholder-card placeholder-card--compact">
           <div class="placeholder-card__icon">🧑‍⚕️</div>
           <h2>Weitere Funktionen folgen</h2>
-          <p>Das Bearbeiten und Entfernen von Mitarbeitern wird in einem zukünftigen Update verfügbar sein. Neue Mitarbeiter können sich aktuell selbst über „Registrieren“ auf der Login-Seite anmelden.</p>
+          <p>Das Bearbeiten und Entfernen von Mitarbeitern wird in einem zukünftigen Update verfügbar sein. Neue Kollegen können sich aktuell über „Andere Person..." bei der Namensauswahl anmelden.</p>
         </div>
       </section>
 
       <!-- ============================ -->
-      <!-- VIEW: EINSTELLUNGEN (Platzhalter) -->
+      <!-- VIEW: VERKAUFSLOG             -->
+      <!-- ============================ -->
+      <section class="view" id="view-verkaufslog">
+        <div id="sales-log-list">
+          <!-- wird per JavaScript befüllt -->
+        </div>
+        <p class="empty-state" id="sales-log-empty" hidden>Noch keine abgeschlossenen Verkäufe. Klick in der Medikamenten-Ansicht auf „Verkauf abschließen", sobald Mengen eingetragen sind.</p>
+      </section>
+
+      <!-- ============================ -->
+      <!-- VIEW: EINSTELLUNGEN            -->
       <!-- ============================ -->
       <section class="view" id="view-einstellungen">
-        <div class="placeholder-card">
+        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
+        <div id="einstellungen-admin" hidden>
+          <div class="settings-card">
+            <h3>🧑‍⚕️ Mitarbeiter verwalten</h3>
+            <p class="settings-card__hint">Neu eingetragene Mitarbeiter erscheinen danach in der Namensauswahl beim Betreten der Seite und in der Mitarbeiter-Ansicht.</p>
+
+            <form class="settings-form" id="form-add-mitarbeiter">
+              <input type="text" id="mitarbeiter-name-input" class="field-input" placeholder="Name, z. B. Tom Berger" required />
+              <select id="mitarbeiter-rolle-input" class="field-input">
+                <option value="Oberarzt">Oberarzt</option>
+                <option value="Assistenzarzt">Assistenzarzt</option>
+                <option value="Sanitäter">Sanitäter</option>
+                <option value="Chefarzt">Chefarzt</option>
+                <option value="Stellv. Chefärztin">Stellv. Chefärztin</option>
+              </select>
+              <button type="submit" class="btn btn--primary">Hinzufügen</button>
+            </form>
+
+            <div class="settings-list" id="mitarbeiter-verwaltung-liste">
+              <!-- wird per JavaScript befüllt -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Für alle anderen: Platzhalter -->
+        <div id="einstellungen-locked" class="placeholder-card" hidden>
           <div class="placeholder-card__icon">⚙️</div>
           <h2>Einstellungen</h2>
-          <p>Dieser Bereich befindet sich aktuell in Entwicklung und wird in einem zukünftigen Update verfügbar sein.</p>
+          <p>Die Mitarbeiterverwaltung ist nur für Chefarzt und Stellv. Chefärztin sichtbar. Weitere Einstellungen folgen in einem zukünftigen Update.</p>
         </div>
       </section>
     </div>

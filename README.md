@@ -80,28 +80,36 @@ Danach ist die App unter der GitHub-Pages-Adresse für dich **und** Grete nutzba
 
 > **Lokal testen ohne GitHub Pages:** In VS Code die Erweiterung „Live Server" installieren und `index.html` per Rechtsklick → „Open with Live Server" öffnen (läuft dann über `http://127.0.0.1`, funktioniert mit Firebase Login).
 
-## 🔑 Zugangspasswort ändern
+## 🔑 Zugangspasswort & PIN ändern
 
-Das gemeinsame Website-Passwort steht in `js/app.js` ganz oben:
-
-```js
-const SITE_PASSWORD = "Otter1311";
-```
-
-Einfach den Wert ändern, Datei speichern und wieder hochladen (siehe Schritt 2).
-
-## 🧑‍⚕️ Weitere Mitarbeiter hinzufügen
-
-Bekannte Namen (mit automatisch zugewiesener Position) stehen ebenfalls in `js/app.js`:
+Beide stehen in `js/app.js` ganz oben:
 
 ```js
-const STAFF_LIST = [
-  { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt" },
-  { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefärztin" },
-];
+const SITE_PASSWORD = "Otter";   // Website-Passwort (kennt das ganze Team)
+const ADMIN_PIN = "1311";        // Zusätzlicher PIN nur für geschützte Namen
 ```
 
-Neue Zeile nach demselben Muster ergänzen, dann erscheint die Person auch in der Namensauswahl beim Betreten und in der Mitarbeiter-Ansicht. Wer nicht in dieser Liste steht, kann sich trotzdem über „Andere Person..." mit freiem Namen anmelden (erscheint dann als „Mitarbeiter").
+Einfach die Werte ändern, Datei speichern und wieder hochladen (siehe Schritt 2).
+
+## 🧑‍⚕️ Mitarbeiter verwalten
+
+Es gibt zwei Wege, wie ein Name in der Namensauswahl landet:
+
+**1. Fest eingebaute, PIN-geschützte Namen** (aktuell Heinrich & Grete)
+Stehen in `js/app.js` unter `DEFAULT_MITARBEITER`. Wer diese Namen auswählt, muss zusätzlich den `ADMIN_PIN` eingeben – so kann sich niemand fälschlicherweise als Chefarzt/Stellv. Chefärztin ausgeben.
+
+**2. Über die Einstellungen hinzugefügt** (z. B. weiteres Personal)
+Chefarzt und Stellv. Chefärztin können unter **Einstellungen → Mitarbeiter verwalten** direkt in der App neue Namen + Position eintragen oder entfernen – ohne Code-Änderung, sofort für alle sichtbar. Diese Namen sind **nicht** PIN-geschützt und können von jedem mit dem Website-Passwort ausgewählt werden.
+
+Wer gar nicht in der Liste steht, kann sich weiterhin über „Andere Person..." mit freiem Namen anmelden (erscheint dann als „Mitarbeiter", ohne besondere Rechte).
+
+## 🔒 Rechte-System
+
+Nur **Chefarzt** und **Stellv. Chefärztin** dürfen:
+- Medikamente löschen
+- Die Mitarbeiterliste verwalten (Einstellungen)
+
+Alle anderen (inkl. „Andere Person") können Medikamente hinzufügen, Preise bearbeiten, Mengen eintragen, Notizen schreiben und Verkäufe abschließen – aber nicht löschen oder die Mitarbeiterliste ändern.
 
 
 ## 💊 Standard-Medikamente

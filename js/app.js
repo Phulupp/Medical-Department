@@ -14,13 +14,22 @@
      ------------------------------------------------------------------------ */
   // Gemeinsames Zugangspasswort für die Website. Zum Ändern: Wert hier
   // ersetzen und die Datei neu hochladen.
-  const SITE_PASSWORD = "Otter1311";
+  const SITE_PASSWORD = "Otter";
 
-  // Bekannte Mitarbeiter (Name -> Position). Wird für die Namensauswahl,
-  // die Mitarbeiter-Ansicht und die Anzeige im Badge verwendet.
-  const STAFF_LIST = [
-    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt" },
-    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefärztin" },
+  // PIN, der zusätzlich nötig ist, um sich als geschützter Mitarbeiter
+  // (z. B. Heinrich oder Grete) anzumelden - verhindert, dass sich andere
+  // Personen fälschlicherweise als diese Namen ausgeben.
+  const ADMIN_PIN = "1311";
+
+  // Rollen, die Medikamente löschen UND die Mitarbeiterliste verwalten dürfen
+  const ADMIN_ROLLEN = ["Chefarzt", "Stellv. Chefärztin"];
+
+  // Standard-Mitarbeiterliste (wird nur beim allerersten Start in Firestore
+  // angelegt). "geschuetzt: true" bedeutet: Für die Anmeldung mit diesem
+  // Namen ist der ADMIN_PIN nötig.
+  const DEFAULT_MITARBEITER = [
+    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt", geschuetzt: true },
+    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefärztin", geschuetzt: true },
   ];
 
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
@@ -30,9 +39,21 @@
   const GATE_ROLLE = "medicalDepartment.gate.rolle";
 
   const MEDIKAMENTE_DOC = "department/medikamente";
+  const MITARBEITER_DOC = "department/mitarbeiter";
   const PRESENCE_COLLECTION = "presence";
+  const NOTIZEN_COLLECTION = "notizen";
+  const VERKAUFSLOG_COLLECTION = "verkaufslog";
   const ONLINE_SCHWELLE_MS = 45 * 1000;   // Nach 45s ohne Update gilt jemand als offline
   const HEARTBEAT_INTERVALL_MS = 20 * 1000;
+
+  // Rangfolge für die Mitarbeiter-Hierarchie (kleinere Zahl = höher in der Hierarchie)
+  const ROLLEN_RANG = {
+    "Chefarzt": 0,
+    "Stellv. Chefärztin": 1,
+    "Oberarzt": 2,
+    "Assistenzarzt": 3,
+    "Sanitäter": 4,
+  };
 
   const DEFAULT_MEDIKAMENTE = [
     { id: "bandage", name: "Bandage", preis: 2, menge: 0, beschreibung: "Heilt nicht direkt, überbrückt aber die Zeit bei einer Schusswunde." },
@@ -56,6 +77,11 @@
   let aktuellerNutzer = null;       // { name, rolle }
   let unsubMedikamente = null;
   let unsubPresence = null;
+  let unsubNotizen = null;
+  let unsubVerkaufslog = null;
+  let unsubMitarbeiter = null;
+  let mitarbeiterListe = [];       // Dynamische, in Firestore gespeicherte Mitarbeiterliste
+  let gewaehltesMitarbeiterGeschuetzt = false;
   let speicherTimer = null;
   let heartbeatTimer = null;
   let onlineRecomputeTimer = null;
@@ -77,6 +103,8 @@
     gateNameSelect: document.getElementById("gate-name-select"),
     gateNameCustomWrapper: document.getElementById("gate-name-custom-wrapper"),
     gateNameCustom: document.getElementById("gate-name-custom"),
+    gatePinWrapper: document.getElementById("gate-pin-wrapper"),
+    gatePinInput: document.getElementById("gate-pin"),
     gateNameError: document.getElementById("gate-name-error"),
 
     authConfigHint: document.getElementById("auth-config-hint"),
@@ -94,6 +122,21 @@
     btnLogout: document.getElementById("btn-logout"),
 
     staffGrid: document.getElementById("staff-grid"),
+
+    formNote: document.getElementById("form-note"),
+    noteInput: document.getElementById("note-input"),
+    notesList: document.getElementById("notes-list"),
+
+    btnCheckout: document.getElementById("btn-checkout"),
+    salesLogList: document.getElementById("sales-log-list"),
+    salesLogEmpty: document.getElementById("sales-log-empty"),
+
+    einstellungenAdmin: document.getElementById("einstellungen-admin"),
+    einstellungenLocked: document.getElementById("einstellungen-locked"),
+    formAddMitarbeiter: document.getElementById("form-add-mitarbeiter"),
+    mitarbeiterNameInput: document.getElementById("mitarbeiter-name-input"),
+    mitarbeiterRolleInput: document.getElementById("mitarbeiter-rolle-input"),
+    mitarbeiterVerwaltungListe: document.getElementById("mitarbeiter-verwaltung-liste"),
 
     tableBody: document.getElementById("med-table-body"),
     emptyState: document.getElementById("empty-state"),
@@ -137,6 +180,7 @@
   const VIEW_META = {
     medikamente: { title: "Medikamente", subtitle: "Übersicht & Verwaltung des Medikamentenbestands" },
     mitarbeiter: { title: "Mitarbeiter", subtitle: "Verwaltung des medizinischen Personals" },
+    verkaufslog: { title: "Verkaufslog", subtitle: "Abgeschlossene Verkäufe im Überblick" },
     einstellungen: { title: "Einstellungen", subtitle: "Konfiguration des Medical Department Systems" },
   };
 
@@ -211,22 +255,25 @@
     return (name || "?").trim().charAt(0).toUpperCase();
   }
 
-  function findeRolleFuerName(name) {
-    const treffer = STAFF_LIST.find((s) => s.name.toLowerCase() === name.toLowerCase());
-    return treffer ? treffer.rolle : "Mitarbeiter";
+  function rangVon(rolle) {
+    return ROLLEN_RANG[rolle] !== undefined ? ROLLEN_RANG[rolle] : 99;
+  }
+
+  function formatiereZeitstempel(millis) {
+    if (!millis) return "gerade eben";
+    const datum = new Date(millis);
+    return datum.toLocaleString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   /* ------------------------------------------------------------------------
-     6. Zugangssperre: Passwort-Schritt
+     6. Zugangssperre: Passwort-Schritt + dynamische Namensauswahl
      ------------------------------------------------------------------------ */
-  // Namensauswahl-Dropdown mit bekannten Mitarbeitern befüllen
-  STAFF_LIST.forEach((person) => {
-    const option = document.createElement("option");
-    option.value = person.name;
-    option.textContent = `${person.name} (${person.rolle})`;
-    el.gateNameSelect.insertBefore(option, el.gateNameSelect.lastElementChild);
-  });
-
   if (istFirebaseKonfiguriert()) {
     el.formGatePassword.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -238,13 +285,18 @@
       }
 
       localStorage.setItem(GATE_PASSWORD_OK, "true");
-      zeigeGateSchritt("name");
+      vorbereitenNameSchritt();
     });
 
     el.gateNameSelect.addEventListener("change", () => {
       const istAndere = el.gateNameSelect.value === "__andere__";
       el.gateNameCustomWrapper.hidden = !istAndere;
       if (istAndere) el.gateNameCustom.focus();
+
+      const eintrag = mitarbeiterListe.find((m) => m.name === el.gateNameSelect.value);
+      gewaehltesMitarbeiterGeschuetzt = !!(eintrag && eintrag.geschuetzt);
+      el.gatePinWrapper.hidden = !gewaehltesMitarbeiterGeschuetzt;
+      if (gewaehltesMitarbeiterGeschuetzt) el.gatePinInput.focus();
     });
 
     el.formGateName.addEventListener("submit", (event) => {
@@ -267,7 +319,15 @@
         }
         rolle = "Mitarbeiter";
       } else {
-        rolle = findeRolleFuerName(name);
+        const eintrag = mitarbeiterListe.find((m) => m.name === name);
+        rolle = eintrag ? eintrag.rolle : "Mitarbeiter";
+
+        if (eintrag && eintrag.geschuetzt) {
+          if (el.gatePinInput.value !== ADMIN_PIN) {
+            zeigeFeldFehler(el.gateNameError, "Falscher PIN für diesen Namen.");
+            return;
+          }
+        }
       }
 
       localStorage.setItem(GATE_NAME, name);
@@ -283,6 +343,46 @@
     el.formGateName.classList.toggle("auth-form--active", schritt === "name");
   }
 
+  // Meldet sich (falls nötig) anonym bei Firebase an, lädt die aktuelle
+  // Mitarbeiterliste und zeigt danach erst den Namens-Schritt an. Der
+  // anonyme Login muss hier schon passieren, weil wir Firestore lesen
+  // müssen, um die Namensauswahl zu befüllen.
+  function vorbereitenNameSchritt() {
+    const weiter = () => {
+      abonniereMitarbeiterliste();
+      zeigeGateSchritt("name");
+    };
+
+    if (auth.currentUser) {
+      weiter();
+      return;
+    }
+
+    auth
+      .signInAnonymously()
+      .then(weiter)
+      .catch((fehler) => {
+        console.error("Anonymer Login fehlgeschlagen:", fehler);
+        zeigeFeldFehler(el.gatePasswordError, "Verbindung fehlgeschlagen. Bitte Internetverbindung prüfen.");
+      });
+  }
+
+  function populiereNamensDropdown() {
+    // Alle dynamisch eingefügten Optionen entfernen (behält nur den
+    // Platzhalter an erster und "Andere Person..." an letzter Stelle)
+    while (el.gateNameSelect.options.length > 2) {
+      el.gateNameSelect.remove(1);
+    }
+
+    const sortiert = [...mitarbeiterListe].sort((a, b) => rangVon(a.rolle) - rangVon(b.rolle));
+    sortiert.forEach((person) => {
+      const option = document.createElement("option");
+      option.value = person.name;
+      option.textContent = `${person.name} (${person.rolle})${person.geschuetzt ? " 🔒" : ""}`;
+      el.gateNameSelect.insertBefore(option, el.gateNameSelect.lastElementChild);
+    });
+  }
+
   // Beim Laden prüfen, ob Passwort & Name schon in diesem Browser hinterlegt
   // sind -> dann direkt durchstarten, ohne erneut zu fragen.
   function pruefeGespeichertenZugang() {
@@ -294,7 +394,7 @@
       aktuellerNutzer = { name: gespeicherterName, rolle: gespeicherteRolle || "Mitarbeiter" };
       anmeldenUndStarten();
     } else if (passwortOk) {
-      zeigeGateSchritt("name");
+      vorbereitenNameSchritt();
     } else {
       zeigeGateSchritt("password");
     }
@@ -333,6 +433,9 @@
     abonniereMedikamente();
     starteHeartbeat();
     abonnierePresence();
+    abonniereNotizen();
+    abonniereVerkaufslog();
+    abonniereMitarbeiterliste();
 
     window.addEventListener("beforeunload", entferneEigenePresence);
   }
@@ -516,23 +619,308 @@
     const onlineNamen = new Set(online.map((p) => p.name.toLowerCase()));
     const farben = ["mint", "lavender", "blue", "peach"];
 
+    if (mitarbeiterListe.length === 0) {
+      el.staffGrid.innerHTML = `<p class="empty-state">Noch keine Mitarbeiter eingetragen.</p>`;
+      return;
+    }
+
+    // Nach Rang gruppieren, damit z. B. der Chefarzt automatisch ganz oben steht
+    const gruppen = {};
+    mitarbeiterListe.forEach((person) => {
+      const rang = rangVon(person.rolle);
+      if (!gruppen[rang]) gruppen[rang] = [];
+      gruppen[rang].push(person);
+    });
+    const raenge = Object.keys(gruppen).map(Number).sort((a, b) => a - b);
+
     el.staffGrid.innerHTML = "";
 
-    STAFF_LIST.forEach((person, index) => {
-      const istOnline = onlineNamen.has(person.name.toLowerCase());
-      const istDu = aktuellerNutzer && person.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
+    raenge.forEach((rang, index) => {
+      if (index > 0) {
+        const connector = document.createElement("div");
+        connector.className = "staff-connector";
+        el.staffGrid.appendChild(connector);
+      }
 
-      const card = document.createElement("div");
-      card.className = "staff-card";
-      card.innerHTML = `
-        <div class="staff-card__avatar staff-card__avatar--${farben[index % farben.length]}">${escapeHtml(initialenVon(person.name))}</div>
-        <div class="staff-card__info">
-          <span class="staff-card__name">${escapeHtml(person.name)}</span>
-          <span class="staff-card__role">${escapeHtml(person.rolle)} · ${istOnline ? "🟢 Online" : "⚪ Offline"}</span>
-        </div>
-        ${istDu ? '<span class="staff-card__badge">Du</span>' : ""}
+      const row = document.createElement("div");
+      row.className = "staff-row";
+
+      gruppen[rang].forEach((person) => {
+        const farbe = farben[mitarbeiterListe.indexOf(person) % farben.length];
+        const istOnline = onlineNamen.has(person.name.toLowerCase());
+        const istDu = aktuellerNutzer && person.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
+        const istOberste = rang === raenge[0];
+
+        const card = document.createElement("div");
+        card.className = `staff-card${istOberste ? " staff-card--lead" : ""}`;
+        card.innerHTML = `
+          ${istOberste ? '<span class="staff-card__crown">👑</span>' : ""}
+          <div class="staff-card__avatar staff-card__avatar--${farbe}">${escapeHtml(initialenVon(person.name))}</div>
+          <div class="staff-card__info">
+            <span class="staff-card__name">${escapeHtml(person.name)}${person.geschuetzt ? " 🔒" : ""}</span>
+            <span class="staff-card__role">${escapeHtml(person.rolle)} · ${istOnline ? "🟢 Online" : "⚪ Offline"}</span>
+          </div>
+          ${istDu ? '<span class="staff-card__badge">Du</span>' : ""}
+        `;
+        row.appendChild(card);
+      });
+
+      el.staffGrid.appendChild(row);
+    });
+  }
+
+  /* ------------------------------------------------------------------------
+     10b. Firestore: Dynamische Mitarbeiterliste (Namensauswahl + Verwaltung)
+     ------------------------------------------------------------------------ */
+  function abonniereMitarbeiterliste() {
+    if (unsubMitarbeiter) return Promise.resolve(); // bereits abonniert
+
+    return new Promise((resolve) => {
+      let ersterDurchlauf = true;
+
+      unsubMitarbeiter = docRef(MITARBEITER_DOC).onSnapshot(
+        (doc) => {
+          if (doc.exists && Array.isArray(doc.data().liste)) {
+            mitarbeiterListe = doc.data().liste;
+          } else {
+            mitarbeiterListe = DEFAULT_MITARBEITER.map((m) => ({ ...m }));
+            speichereMitarbeiterliste();
+          }
+
+          populiereNamensDropdown();
+          renderMitarbeiterListe();
+          renderMitarbeiterVerwaltung();
+
+          if (ersterDurchlauf) {
+            ersterDurchlauf = false;
+            resolve();
+          }
+        },
+        (fehler) => {
+          console.error("Fehler beim Laden der Mitarbeiterliste:", fehler);
+          if (ersterDurchlauf) {
+            ersterDurchlauf = false;
+            resolve();
+          }
+        }
+      );
+    });
+  }
+
+  function speichereMitarbeiterliste() {
+    docRef(MITARBEITER_DOC)
+      .set({ liste: mitarbeiterListe, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch((fehler) => {
+        console.error("Mitarbeiterliste konnte nicht gespeichert werden:", fehler);
+        zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
+      });
+  }
+
+  function istAdmin() {
+    return aktuellerNutzer && ADMIN_ROLLEN.includes(aktuellerNutzer.rolle);
+  }
+
+  function renderMitarbeiterVerwaltung() {
+    if (!el.mitarbeiterVerwaltungListe) return;
+
+    el.einstellungenAdmin.hidden = !istAdmin();
+    el.einstellungenLocked.hidden = istAdmin();
+    if (!istAdmin()) return;
+
+    el.mitarbeiterVerwaltungListe.innerHTML = "";
+
+    if (mitarbeiterListe.length === 0) {
+      el.mitarbeiterVerwaltungListe.innerHTML = `<p class="notes-empty">Noch keine Mitarbeiter eingetragen.</p>`;
+      return;
+    }
+
+    mitarbeiterListe.forEach((person) => {
+      const zeile = document.createElement("div");
+      zeile.className = "settings-list__item";
+      zeile.innerHTML = `
+        <span>
+          <span class="settings-list__name">${escapeHtml(person.name)}</span>
+          <span class="settings-list__role">${escapeHtml(person.rolle)}</span>
+          ${person.geschuetzt ? '<span class="settings-list__protected">🔒 PIN-geschützt</span>' : ""}
+        </span>
+        <button type="button" class="icon-btn icon-btn--delete" data-role="remove-mitarbeiter" data-id="${person.id}" title="Entfernen">🗑</button>
       `;
-      el.staffGrid.appendChild(card);
+      el.mitarbeiterVerwaltungListe.appendChild(zeile);
+    });
+  }
+
+  if (el.formAddMitarbeiter) {
+    el.formAddMitarbeiter.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!istAdmin()) return;
+
+      const name = el.mitarbeiterNameInput.value.trim();
+      const rolle = el.mitarbeiterRolleInput.value;
+      if (!name) return;
+
+      if (mitarbeiterListe.some((m) => m.name.toLowerCase() === name.toLowerCase())) {
+        zeigeToast("Dieser Name ist bereits eingetragen.");
+        return;
+      }
+
+      mitarbeiterListe.push({ id: erzeugeId(name), name, rolle, geschuetzt: false });
+      speichereMitarbeiterliste();
+      el.mitarbeiterNameInput.value = "";
+      zeigeToast(`„${name}“ wurde hinzugefügt.`);
+    });
+  }
+
+  if (el.mitarbeiterVerwaltungListe) {
+    el.mitarbeiterVerwaltungListe.addEventListener("click", (event) => {
+      const btn = event.target.closest('[data-role="remove-mitarbeiter"]');
+      if (!btn || !istAdmin()) return;
+
+      const person = mitarbeiterListe.find((m) => m.id === btn.dataset.id);
+      mitarbeiterListe = mitarbeiterListe.filter((m) => m.id !== btn.dataset.id);
+      speichereMitarbeiterliste();
+      if (person) zeigeToast(`„${person.name}“ wurde entfernt.`);
+    });
+  }
+
+  /* ------------------------------------------------------------------------
+     10b. Notizen (über der Medikamententabelle)
+     ------------------------------------------------------------------------ */
+  function abonniereNotizen() {
+    unsubNotizen = db
+      .collection(NOTIZEN_COLLECTION)
+      .orderBy("zeitpunkt", "desc")
+      .limit(50)
+      .onSnapshot(
+        (snapshot) => {
+          const notizen = [];
+          snapshot.forEach((doc) => {
+            const d = doc.data();
+            notizen.push({
+              text: d.text,
+              autor: d.autor,
+              millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
+            });
+          });
+          renderNotizen(notizen);
+        },
+        (fehler) => console.error("Fehler beim Laden der Notizen:", fehler)
+      );
+  }
+
+  function renderNotizen(notizen) {
+    el.notesList.innerHTML = "";
+    if (notizen.length === 0) {
+      el.notesList.innerHTML = `<p class="notes-empty">Noch keine Notizen vorhanden.</p>`;
+      return;
+    }
+
+    notizen.forEach((notiz) => {
+      const eintrag = document.createElement("div");
+      eintrag.className = "note-item";
+      eintrag.innerHTML = `
+        <div class="note-item__text">${escapeHtml(notiz.text)}</div>
+        <div class="note-item__meta">— ${escapeHtml(notiz.autor)} · ${formatiereZeitstempel(notiz.millis)} Uhr</div>
+      `;
+      el.notesList.appendChild(eintrag);
+    });
+  }
+
+  el.formNote.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const text = el.noteInput.value.trim();
+    if (!text || !aktuellerNutzer) return;
+
+    db.collection(NOTIZEN_COLLECTION)
+      .add({
+        text: text,
+        autor: aktuellerNutzer.name,
+        zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
+      })
+      .then(() => {
+        el.noteInput.value = "";
+      })
+      .catch((fehler) => {
+        console.error("Notiz konnte nicht gespeichert werden:", fehler);
+        zeigeToast("Notiz konnte nicht gespeichert werden.");
+      });
+  });
+
+  /* ------------------------------------------------------------------------
+     10c. Verkaufslog: Verkauf abschließen + Log anzeigen
+     ------------------------------------------------------------------------ */
+  el.btnCheckout.addEventListener("click", () => {
+    const verkaufteArtikel = medikamente.filter((m) => (Number(m.menge) || 0) > 0);
+
+    if (verkaufteArtikel.length === 0) {
+      zeigeToast("Keine Mengen eingetragen – nichts zum Abschließen.");
+      return;
+    }
+
+    const gesamtsumme = verkaufteArtikel.reduce((summe, m) => summe + Number(m.menge) * Number(m.preis), 0);
+    const items = verkaufteArtikel.map((m) => ({ name: m.name, menge: Number(m.menge), preis: Number(m.preis) }));
+
+    db.collection(VERKAUFSLOG_COLLECTION)
+      .add({
+        mitarbeiter: aktuellerNutzer ? aktuellerNutzer.name : "Unbekannt",
+        rolle: aktuellerNutzer ? aktuellerNutzer.rolle : "",
+        items: items,
+        gesamtsumme: gesamtsumme,
+        zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
+      })
+      .then(() => {
+        medikamente.forEach((m) => (m.menge = 0));
+        speichereMedikamenteInFirestore();
+        render();
+        zeigeToast(`Verkauf über ${formatiereGeld(gesamtsumme)} abgeschlossen.`);
+      })
+      .catch((fehler) => {
+        console.error("Verkauf konnte nicht gespeichert werden:", fehler);
+        zeigeToast("Verkauf konnte nicht gespeichert werden.");
+      });
+  });
+
+  function abonniereVerkaufslog() {
+    unsubVerkaufslog = db
+      .collection(VERKAUFSLOG_COLLECTION)
+      .orderBy("zeitpunkt", "desc")
+      .limit(50)
+      .onSnapshot(
+        (snapshot) => {
+          const verkaeufe = [];
+          snapshot.forEach((doc) => {
+            const d = doc.data();
+            verkaeufe.push({
+              mitarbeiter: d.mitarbeiter,
+              rolle: d.rolle,
+              items: d.items || [],
+              gesamtsumme: d.gesamtsumme || 0,
+              millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
+            });
+          });
+          renderVerkaufslog(verkaeufe);
+        },
+        (fehler) => console.error("Fehler beim Laden des Verkaufslogs:", fehler)
+      );
+  }
+
+  function renderVerkaufslog(verkaeufe) {
+    el.salesLogList.innerHTML = "";
+    el.salesLogEmpty.hidden = verkaeufe.length !== 0;
+
+    verkaeufe.forEach((verkauf) => {
+      const itemsText = verkauf.items.map((i) => `${escapeHtml(i.name)} ×${i.menge} = ${formatiereGeld(i.menge * i.preis)}`).join("<br>");
+
+      const eintrag = document.createElement("div");
+      eintrag.className = "sale-item";
+      eintrag.innerHTML = `
+        <div class="sale-item__header">
+          <span class="sale-item__employee">${escapeHtml(verkauf.mitarbeiter)} <span style="color:var(--color-text-soft);font-weight:500;">(${escapeHtml(verkauf.rolle || "")})</span></span>
+          <span class="sale-item__time">${formatiereZeitstempel(verkauf.millis)} Uhr</span>
+        </div>
+        <div class="sale-item__items">${itemsText}</div>
+        <div class="sale-item__total">Gesamt: ${formatiereGeld(verkauf.gesamtsumme)}</div>
+      `;
+      el.salesLogList.appendChild(eintrag);
     });
   }
 
@@ -550,10 +938,16 @@
     el.tableBody.innerHTML = "";
     el.emptyState.hidden = liste.length !== 0;
 
+    const darfLoeschen = istAdmin();
+
     liste.forEach((med) => {
       const tr = document.createElement("tr");
       const menge = Number(med.menge) || 0;
       const zwischensumme = menge * Number(med.preis);
+
+      const loeschButton = darfLoeschen
+        ? `<button class="icon-btn icon-btn--delete" data-role="delete" data-id="${med.id}" title="Medikament löschen">🗑</button>`
+        : `<button class="icon-btn icon-btn--locked" disabled title="Nur Chefarzt & Stellv. Chefärztin dürfen löschen">🔒</button>`;
 
       tr.innerHTML = `
         <td>
@@ -570,7 +964,7 @@
         <td>
           <div class="row-actions">
             <button class="icon-btn icon-btn--edit" data-role="edit" data-id="${med.id}" title="Preis bearbeiten">✎</button>
-            <button class="icon-btn icon-btn--delete" data-role="delete" data-id="${med.id}" title="Medikament löschen">🗑</button>
+            ${loeschButton}
           </div>
         </td>
       `;
@@ -723,6 +1117,12 @@
   }
 
   el.btnConfirmDelete.addEventListener("click", () => {
+    if (!istAdmin()) {
+      zeigeToast("Nur Chefarzt & Stellv. Chefärztin dürfen löschen.");
+      schliesseModal(el.modalDelete);
+      return;
+    }
+
     const med = medikamente.find((m) => m.id === aktivesMedikamentId);
     medikamente = medikamente.filter((m) => m.id !== aktivesMedikamentId);
 
@@ -798,6 +1198,7 @@
       }
 
       if (zielView === "mitarbeiter") renderMitarbeiterListe();
+      if (zielView === "einstellungen") renderMitarbeiterVerwaltung();
     });
   });
 
