@@ -22,7 +22,7 @@
 </head>
 <body>
   <!-- ============================ -->
-  <!-- LOGIN / REGISTRIERUNG        -->
+  <!-- ZUGANGSSPERRE: Passwort + Name (kein klassischer Login) -->
   <!-- ============================ -->
   <div class="auth-screen" id="auth-screen">
     <div class="auth-card">
@@ -34,52 +34,37 @@
         </div>
       </div>
 
-      <div class="auth-tabs">
-        <button class="auth-tab auth-tab--active" data-auth-tab="login">Anmelden</button>
-        <button class="auth-tab" data-auth-tab="register">Registrieren</button>
-      </div>
+      <!-- Schritt 1: Website-Passwort -->
+      <form class="auth-form auth-form--active" id="form-gate-password">
+        <label class="field-label" for="gate-password">Zugangspasswort</label>
+        <input type="password" id="gate-password" class="field-input" placeholder="Passwort eingeben..." autocomplete="off" required />
 
-      <!-- Anmelde-Formular -->
-      <form class="auth-form auth-form--active" id="form-login">
-        <label class="field-label" for="login-email">E-Mail</label>
-        <input type="email" id="login-email" class="field-input" placeholder="name@department.de" required />
+        <p class="field-error" id="gate-password-error" hidden></p>
 
-        <label class="field-label" for="login-password">Passwort</label>
-        <input type="password" id="login-password" class="field-input" placeholder="••••••••" required />
-
-        <p class="field-error" id="login-error" hidden></p>
-
-        <button type="submit" class="btn btn--primary auth-submit">Anmelden</button>
+        <button type="submit" class="btn btn--primary auth-submit">Weiter</button>
       </form>
 
-      <!-- Registrierungs-Formular -->
-      <form class="auth-form" id="form-register">
-        <label class="field-label" for="register-name">Vollständiger Name</label>
-        <input type="text" id="register-name" class="field-input" placeholder="z. B. Grete Hornhausen" required />
-
-        <label class="field-label" for="register-role">Position</label>
-        <select id="register-role" class="field-input">
-          <option value="Chefarzt">Chefarzt</option>
-          <option value="Stellv. Chefärztin">Stellv. Chefärztin</option>
-          <option value="Oberarzt">Oberarzt</option>
-          <option value="Assistenzarzt">Assistenzarzt</option>
-          <option value="Sanitäter">Sanitäter</option>
+      <!-- Schritt 2: Name auswählen -->
+      <form class="auth-form" id="form-gate-name">
+        <label class="field-label" for="gate-name-select">Wer bist du?</label>
+        <select id="gate-name-select" class="field-input">
+          <option value="">Bitte auswählen...</option>
+          <option value="__andere__">Andere Person...</option>
         </select>
 
-        <label class="field-label" for="register-email">E-Mail</label>
-        <input type="email" id="register-email" class="field-input" placeholder="name@department.de" required />
+        <div id="gate-name-custom-wrapper" hidden>
+          <label class="field-label" for="gate-name-custom">Dein Name</label>
+          <input type="text" id="gate-name-custom" class="field-input" placeholder="z. B. Grete" />
+        </div>
 
-        <label class="field-label" for="register-password">Passwort</label>
-        <input type="password" id="register-password" class="field-input" placeholder="Mind. 6 Zeichen" required />
+        <p class="field-error" id="gate-name-error" hidden></p>
 
-        <p class="field-error" id="register-error" hidden></p>
-
-        <button type="submit" class="btn btn--primary auth-submit">Konto erstellen</button>
+        <button type="submit" class="btn btn--primary auth-submit">Betreten</button>
       </form>
 
       <p class="auth-hint" id="auth-config-hint" hidden>
         ⚠️ Firebase ist noch nicht konfiguriert. Trage deine Projektdaten in
-        <code>js/firebase-config.js</code> ein, damit Login &amp; Registrierung funktionieren.
+        <code>js/firebase-config.js</code> ein, damit die Seite funktioniert.
       </p>
     </div>
   </div>
@@ -133,6 +118,17 @@
         </div>
 
         <div class="topbar__user">
+          <div class="online-widget">
+            <button class="online-widget__btn" id="online-widget-btn">
+              <span class="online-dot"></span>
+              <span id="online-count">0</span> online
+            </button>
+            <div class="online-panel" id="online-panel">
+              <p class="online-panel__title">Gerade online</p>
+              <div id="online-panel-list"></div>
+            </div>
+          </div>
+
           <button class="user-badge" id="user-badge-btn">
             <div class="user-badge__avatar" id="user-avatar">?</div>
             <div class="user-badge__info">
@@ -141,7 +137,7 @@
             </div>
           </button>
           <div class="user-menu" id="user-menu">
-            <button class="user-menu__item" id="btn-logout">Abmelden</button>
+            <button class="user-menu__item" id="btn-logout">Nutzer wechseln</button>
           </div>
         </div>
       </header>

@@ -1,9 +1,9 @@
 /* ==========================================================================
    Medical Department – App-Logik
-   Verwaltet Medikamente (hinzufügen, löschen, Preis bearbeiten, Menge),
-   berechnet automatisch die Gesamtsumme und synchronisiert alles in
-   Echtzeit über Firebase (Authentifizierung + Firestore-Datenbank), damit
-   mehrere Mitarbeiter dieselben Daten sehen.
+   Zugang: gemeinsames Website-Passwort + Namensauswahl (kein klassischer
+   Account-Login). Im Hintergrund läuft trotzdem ein anonymer Firebase-Login,
+   damit die Firestore-Datenbank geschützt bleibt und alle Mitarbeiter
+   dieselben Daten in Echtzeit sehen (Medikamente + "wer ist online").
    ========================================================================== */
 
 (function () {
@@ -12,15 +12,28 @@
   /* ------------------------------------------------------------------------
      1. Konstanten
      ------------------------------------------------------------------------ */
-  // Lokaler Zwischenspeicher-Key (nur als Offline-Fallback, solange Firebase
-  // noch nicht konfiguriert ist bzw. keine Verbindung besteht)
+  // Gemeinsames Zugangspasswort für die Website. Zum Ändern: Wert hier
+  // ersetzen und die Datei neu hochladen.
+  const SITE_PASSWORD = "Otter1311";
+
+  // Bekannte Mitarbeiter (Name -> Position). Wird für die Namensauswahl,
+  // die Mitarbeiter-Ansicht und die Anzeige im Badge verwendet.
+  const STAFF_LIST = [
+    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt" },
+    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefärztin" },
+  ];
+
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
   const STORAGE_KEY_V2 = "medicalDepartment.medikamente.v2";
+  const GATE_PASSWORD_OK = "medicalDepartment.gate.passwordOk";
+  const GATE_NAME = "medicalDepartment.gate.name";
+  const GATE_ROLLE = "medicalDepartment.gate.rolle";
 
-  const MEDIKAMENTE_DOC = "department/medikamente"; // Firestore-Pfad (Collection/Dokument)
-  const USERS_COLLECTION = "users";
+  const MEDIKAMENTE_DOC = "department/medikamente";
+  const PRESENCE_COLLECTION = "presence";
+  const ONLINE_SCHWELLE_MS = 45 * 1000;   // Nach 45s ohne Update gilt jemand als offline
+  const HEARTBEAT_INTERVALL_MS = 20 * 1000;
 
-  // Standard-Medikamentenliste (wird verwendet, wenn Firestore noch leer ist)
   const DEFAULT_MEDIKAMENTE = [
     { id: "bandage", name: "Bandage", preis: 2, menge: 0, beschreibung: "Heilt nicht direkt, überbrückt aber die Zeit bei einer Schusswunde." },
     { id: "adrenalinspritze", name: "Adrenalinspritze", preis: 3, menge: 0, beschreibung: "Heilt alles – sollte nur bei Bewusstlosigkeit oder im Notfall genutzt werden." },
@@ -35,15 +48,19 @@
   ];
 
   /* ------------------------------------------------------------------------
-     2. Anwendungsstatus (State)
+     2. Anwendungsstatus
      ------------------------------------------------------------------------ */
-  let medikamente = [];             // Aktuelle Medikamentenliste (aus Firestore)
-  let suchbegriff = "";             // Aktueller Text im Suchfeld
-  let aktivesMedikamentId = null;   // Für Bearbeiten-/Löschen-Modale gemerkte ID
-  let aktuellerNutzer = null;       // { uid, name, rolle, email }
-  let unsubMedikamente = null;      // Firestore-Listener zum Abmelden beim Logout
-  let unsubUsers = null;
-  let speicherTimer = null;         // Debounce-Timer für Firestore-Schreibvorgänge
+  let medikamente = [];
+  let suchbegriff = "";
+  let aktivesMedikamentId = null;
+  let aktuellerNutzer = null;       // { name, rolle }
+  let unsubMedikamente = null;
+  let unsubPresence = null;
+  let speicherTimer = null;
+  let heartbeatTimer = null;
+  let onlineRecomputeTimer = null;
+  let letzterPresenceSnapshot = [];  // Zwischenspeicher für periodisches Neu-Berechnen
+  let sessionId = null;              // Eindeutige ID pro Browser-Tab (für Presence-Dokument)
 
   /* ------------------------------------------------------------------------
      3. DOM-Referenzen
@@ -51,18 +68,23 @@
   const el = {
     authScreen: document.getElementById("auth-screen"),
     appRoot: document.getElementById("app-root"),
-    authTabs: document.querySelectorAll(".auth-tab"),
-    formLogin: document.getElementById("form-login"),
-    formRegister: document.getElementById("form-register"),
-    loginEmail: document.getElementById("login-email"),
-    loginPassword: document.getElementById("login-password"),
-    loginError: document.getElementById("login-error"),
-    registerName: document.getElementById("register-name"),
-    registerRole: document.getElementById("register-role"),
-    registerEmail: document.getElementById("register-email"),
-    registerPassword: document.getElementById("register-password"),
-    registerError: document.getElementById("register-error"),
+
+    formGatePassword: document.getElementById("form-gate-password"),
+    gatePasswordInput: document.getElementById("gate-password"),
+    gatePasswordError: document.getElementById("gate-password-error"),
+
+    formGateName: document.getElementById("form-gate-name"),
+    gateNameSelect: document.getElementById("gate-name-select"),
+    gateNameCustomWrapper: document.getElementById("gate-name-custom-wrapper"),
+    gateNameCustom: document.getElementById("gate-name-custom"),
+    gateNameError: document.getElementById("gate-name-error"),
+
     authConfigHint: document.getElementById("auth-config-hint"),
+
+    onlineWidgetBtn: document.getElementById("online-widget-btn"),
+    onlineCount: document.getElementById("online-count"),
+    onlinePanel: document.getElementById("online-panel"),
+    onlinePanelList: document.getElementById("online-panel-list"),
 
     userBadgeBtn: document.getElementById("user-badge-btn"),
     userAvatar: document.getElementById("user-avatar"),
@@ -131,10 +153,8 @@
   }
 
   if (!istFirebaseKonfiguriert()) {
-    // Firebase wurde noch nicht mit echten Projektdaten befüllt -> Hinweis zeigen,
-    // Formulare deaktivieren, damit es keine unklaren Fehler gibt.
     el.authConfigHint.hidden = false;
-    [el.formLogin, el.formRegister].forEach((form) => {
+    [el.formGatePassword, el.formGateName].forEach((form) => {
       form.querySelectorAll("input, select, button").forEach((feld) => (feld.disabled = true));
     });
   }
@@ -149,6 +169,11 @@
       .replace(/[^a-z0-9äöüß\s-]/gi, "")
       .replace(/\s+/g, "-");
     return `${basis}-${Math.random().toString(36).slice(2, 7)}`;
+  }
+
+  function erzeugeSessionId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   }
 
   function formatiereGeld(betrag) {
@@ -186,89 +211,137 @@
     return (name || "?").trim().charAt(0).toUpperCase();
   }
 
-  /* ------------------------------------------------------------------------
-     6. Authentifizierung: Tabs, Login, Registrierung, Logout
-     ------------------------------------------------------------------------ */
-  el.authTabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      const ziel = tab.dataset.authTab;
-      el.authTabs.forEach((t) => t.classList.remove("auth-tab--active"));
-      tab.classList.add("auth-tab--active");
+  function findeRolleFuerName(name) {
+    const treffer = STAFF_LIST.find((s) => s.name.toLowerCase() === name.toLowerCase());
+    return treffer ? treffer.rolle : "Mitarbeiter";
+  }
 
-      el.formLogin.classList.toggle("auth-form--active", ziel === "login");
-      el.formRegister.classList.toggle("auth-form--active", ziel === "register");
-    });
+  /* ------------------------------------------------------------------------
+     6. Zugangssperre: Passwort-Schritt
+     ------------------------------------------------------------------------ */
+  // Namensauswahl-Dropdown mit bekannten Mitarbeitern befüllen
+  STAFF_LIST.forEach((person) => {
+    const option = document.createElement("option");
+    option.value = person.name;
+    option.textContent = `${person.name} (${person.rolle})`;
+    el.gateNameSelect.insertBefore(option, el.gateNameSelect.lastElementChild);
   });
 
   if (istFirebaseKonfiguriert()) {
-    el.formLogin.addEventListener("submit", (event) => {
+    el.formGatePassword.addEventListener("submit", (event) => {
       event.preventDefault();
-      el.loginError.hidden = true;
+      el.gatePasswordError.hidden = true;
 
-      auth
-        .signInWithEmailAndPassword(el.loginEmail.value.trim(), el.loginPassword.value)
-        .catch((fehler) => {
-          zeigeFeldFehler(el.loginError, uebersetzeAuthFehler(fehler));
-        });
+      if (el.gatePasswordInput.value !== SITE_PASSWORD) {
+        zeigeFeldFehler(el.gatePasswordError, "Falsches Passwort. Bitte versuch es erneut.");
+        return;
+      }
+
+      localStorage.setItem(GATE_PASSWORD_OK, "true");
+      zeigeGateSchritt("name");
     });
 
-    el.formRegister.addEventListener("submit", (event) => {
-      event.preventDefault();
-      el.registerError.hidden = true;
+    el.gateNameSelect.addEventListener("change", () => {
+      const istAndere = el.gateNameSelect.value === "__andere__";
+      el.gateNameCustomWrapper.hidden = !istAndere;
+      if (istAndere) el.gateNameCustom.focus();
+    });
 
-      const name = el.registerName.value.trim();
-      const rolle = el.registerRole.value;
-      const email = el.registerEmail.value.trim();
-      const passwort = el.registerPassword.value;
+    el.formGateName.addEventListener("submit", (event) => {
+      event.preventDefault();
+      el.gateNameError.hidden = true;
+
+      let name = el.gateNameSelect.value;
+      let rolle;
 
       if (!name) {
-        zeigeFeldFehler(el.registerError, "Bitte gib deinen vollständigen Namen ein.");
-        return;
-      }
-      if (passwort.length < 6) {
-        zeigeFeldFehler(el.registerError, "Das Passwort muss mindestens 6 Zeichen lang sein.");
+        zeigeFeldFehler(el.gateNameError, "Bitte wähle aus, wer du bist.");
         return;
       }
 
-      auth
-        .createUserWithEmailAndPassword(email, passwort)
-        .then((zugangsdaten) =>
-          zugangsdaten.user
-            .updateProfile({ displayName: name })
-            .then(() =>
-              db.collection(USERS_COLLECTION).doc(zugangsdaten.user.uid).set({
-                name: name,
-                rolle: rolle,
-                email: email,
-                erstelltAm: firebase.firestore.FieldValue.serverTimestamp(),
-              })
-            )
-        )
-        .catch((fehler) => {
-          zeigeFeldFehler(el.registerError, uebersetzeAuthFehler(fehler));
-        });
-    });
-
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        anwendungStarten(user);
+      if (name === "__andere__") {
+        name = el.gateNameCustom.value.trim();
+        if (!name) {
+          zeigeFeldFehler(el.gateNameError, "Bitte gib deinen Namen ein.");
+          return;
+        }
+        rolle = "Mitarbeiter";
       } else {
-        anwendungBeenden();
+        rolle = findeRolleFuerName(name);
       }
+
+      localStorage.setItem(GATE_NAME, name);
+      localStorage.setItem(GATE_ROLLE, rolle);
+
+      aktuellerNutzer = { name, rolle };
+      anmeldenUndStarten();
     });
   }
 
-  function uebersetzeAuthFehler(fehler) {
-    const codes = {
-      "auth/email-already-in-use": "Diese E-Mail-Adresse wird bereits verwendet.",
-      "auth/invalid-email": "Bitte gib eine gültige E-Mail-Adresse ein.",
-      "auth/weak-password": "Das Passwort ist zu schwach (mind. 6 Zeichen).",
-      "auth/user-not-found": "Kein Konto mit dieser E-Mail-Adresse gefunden.",
-      "auth/wrong-password": "Falsches Passwort.",
-      "auth/invalid-credential": "E-Mail-Adresse oder Passwort ist falsch.",
-      "auth/too-many-requests": "Zu viele Versuche. Bitte warte kurz und versuche es erneut.",
-    };
-    return codes[fehler.code] || "Etwas ist schiefgelaufen. Bitte versuche es erneut.";
+  function zeigeGateSchritt(schritt) {
+    el.formGatePassword.classList.toggle("auth-form--active", schritt === "password");
+    el.formGateName.classList.toggle("auth-form--active", schritt === "name");
+  }
+
+  // Beim Laden prüfen, ob Passwort & Name schon in diesem Browser hinterlegt
+  // sind -> dann direkt durchstarten, ohne erneut zu fragen.
+  function pruefeGespeichertenZugang() {
+    const passwortOk = localStorage.getItem(GATE_PASSWORD_OK) === "true";
+    const gespeicherterName = localStorage.getItem(GATE_NAME);
+    const gespeicherteRolle = localStorage.getItem(GATE_ROLLE);
+
+    if (passwortOk && gespeicherterName) {
+      aktuellerNutzer = { name: gespeicherterName, rolle: gespeicherteRolle || "Mitarbeiter" };
+      anmeldenUndStarten();
+    } else if (passwortOk) {
+      zeigeGateSchritt("name");
+    } else {
+      zeigeGateSchritt("password");
+    }
+  }
+
+  /* ------------------------------------------------------------------------
+     7. Anonymer Firebase-Login im Hintergrund
+     ------------------------------------------------------------------------ */
+  function anmeldenUndStarten() {
+    if (!istFirebaseKonfiguriert()) return;
+
+    if (auth.currentUser) {
+      appStarten();
+      return;
+    }
+
+    auth
+      .signInAnonymously()
+      .then(() => appStarten())
+      .catch((fehler) => {
+        console.error("Anonymer Login fehlgeschlagen:", fehler);
+        zeigeFeldFehler(el.gateNameError, "Verbindung fehlgeschlagen. Bitte Internetverbindung prüfen und erneut versuchen.");
+      });
+  }
+
+  function appStarten() {
+    el.authScreen.hidden = true;
+    el.appRoot.hidden = false;
+
+    renderBenutzerBadge();
+    renderMitarbeiterListe();
+
+    sessionId = sessionStorage.getItem("medicalDepartment.sessionId") || erzeugeSessionId();
+    sessionStorage.setItem("medicalDepartment.sessionId", sessionId);
+
+    abonniereMedikamente();
+    starteHeartbeat();
+    abonnierePresence();
+
+    window.addEventListener("beforeunload", entferneEigenePresence);
+  }
+
+  function renderBenutzerBadge() {
+    if (!aktuellerNutzer) return;
+    el.userAvatar.textContent = initialenVon(aktuellerNutzer.name);
+    el.userName.textContent = aktuellerNutzer.name;
+    el.userRole.textContent = aktuellerNutzer.rolle;
   }
 
   el.userBadgeBtn.addEventListener("click", () => {
@@ -279,59 +352,22 @@
     if (!el.userMenu.contains(event.target) && event.target !== el.userBadgeBtn) {
       el.userMenu.classList.remove("user-menu--visible");
     }
+    if (!el.onlinePanel.contains(event.target) && event.target !== el.onlineWidgetBtn) {
+      el.onlinePanel.classList.remove("online-panel--visible");
+    }
   });
 
   el.btnLogout.addEventListener("click", () => {
-    auth.signOut();
+    entferneEigenePresence();
+    localStorage.removeItem(GATE_NAME);
+    localStorage.removeItem(GATE_ROLLE);
+    // Passwort bleibt bewusst gespeichert, damit man nicht bei jedem
+    // Nutzerwechsel erneut das Website-Passwort eintippen muss.
+    window.location.reload();
   });
 
   /* ------------------------------------------------------------------------
-     7. App starten / beenden (abhängig vom Login-Status)
-     ------------------------------------------------------------------------ */
-  function anwendungStarten(user) {
-    el.authScreen.hidden = true;
-    el.appRoot.hidden = false;
-
-    // Benutzerprofil (Name + Rolle) aus Firestore laden
-    db.collection(USERS_COLLECTION)
-      .doc(user.uid)
-      .get()
-      .then((doc) => {
-        const profil = doc.exists ? doc.data() : { name: user.displayName || user.email, rolle: "Mitarbeiter" };
-        aktuellerNutzer = { uid: user.uid, name: profil.name, rolle: profil.rolle, email: user.email };
-        renderBenutzerBadge();
-      });
-
-    abonniereMedikamente();
-    abonniereMitarbeiter();
-  }
-
-  function anwendungBeenden() {
-    el.authScreen.hidden = false;
-    el.appRoot.hidden = true;
-
-    if (unsubMedikamente) unsubMedikamente();
-    if (unsubUsers) unsubUsers();
-    unsubMedikamente = null;
-    unsubUsers = null;
-    aktuellerNutzer = null;
-    medikamente = [];
-
-    el.formLogin.reset();
-    el.formRegister.reset();
-    el.loginError.hidden = true;
-    el.registerError.hidden = true;
-  }
-
-  function renderBenutzerBadge() {
-    if (!aktuellerNutzer) return;
-    el.userAvatar.textContent = initialenVon(aktuellerNutzer.name);
-    el.userName.textContent = aktuellerNutzer.name;
-    el.userRole.textContent = aktuellerNutzer.rolle;
-  }
-
-  /* ------------------------------------------------------------------------
-     8. Firestore: Medikamente laden & speichern (Echtzeit-Synchronisierung)
+     8. Firestore: Medikamente laden & speichern
      ------------------------------------------------------------------------ */
   function docRef(pfad) {
     const teile = pfad.split("/");
@@ -344,8 +380,6 @@
         if (doc.exists && Array.isArray(doc.data().liste)) {
           medikamente = doc.data().liste;
         } else {
-          // Dokument existiert noch nicht -> mit Standardliste (bzw. alten
-          // lokalen Daten, falls vorhanden) initial befüllen
           medikamente = ladeLokaleFallbackDaten();
           speichereMedikamenteInFirestore();
         }
@@ -368,9 +402,6 @@
     return DEFAULT_MEDIKAMENTE.map((m) => ({ ...m }));
   }
 
-  // Schreibt die aktuelle Medikamentenliste (debounced) nach Firestore,
-  // damit z. B. beim Tippen im Mengenfeld nicht bei jedem Tastendruck
-  // ein Schreibvorgang ausgelöst wird.
   function speichereMedikamenteDebounced() {
     clearTimeout(speicherTimer);
     speicherTimer = setTimeout(speichereMedikamenteInFirestore, 350);
@@ -384,7 +415,6 @@
         zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
       });
 
-    // Zusätzlich lokal zwischenspeichern (Offline-Komfort)
     try {
       localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(medikamente));
     } catch (fehler) {
@@ -393,38 +423,112 @@
   }
 
   /* ------------------------------------------------------------------------
-     9. Firestore: Mitarbeiterliste (Ansicht "Mitarbeiter")
+     9. Presence: "Wer ist online"
      ------------------------------------------------------------------------ */
-  function abonniereMitarbeiter() {
-    unsubUsers = db.collection(USERS_COLLECTION).onSnapshot(
-      (snapshot) => {
-        const mitarbeiter = [];
-        snapshot.forEach((doc) => mitarbeiter.push({ uid: doc.id, ...doc.data() }));
-        renderMitarbeiter(mitarbeiter);
-      },
-      (fehler) => console.error("Fehler beim Laden der Mitarbeiterliste:", fehler)
-    );
+  function starteHeartbeat() {
+    aktualisierePresence();
+    heartbeatTimer = setInterval(aktualisierePresence, HEARTBEAT_INTERVALL_MS);
   }
 
-  function renderMitarbeiter(mitarbeiter) {
-    el.staffGrid.innerHTML = "";
+  function aktualisierePresence() {
+    if (!aktuellerNutzer || !sessionId) return;
+    db.collection(PRESENCE_COLLECTION)
+      .doc(sessionId)
+      .set({
+        name: aktuellerNutzer.name,
+        rolle: aktuellerNutzer.rolle,
+        aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp(),
+      })
+      .catch((fehler) => console.warn("Presence-Update fehlgeschlagen:", fehler));
+  }
 
-    if (mitarbeiter.length === 0) {
-      el.staffGrid.innerHTML = `<p class="empty-state">Noch keine Mitarbeiter registriert.</p>`;
+  function entferneEigenePresence() {
+    if (!sessionId || !db) return;
+    db.collection(PRESENCE_COLLECTION).doc(sessionId).delete().catch(() => {});
+  }
+
+  function abonnierePresence() {
+    unsubPresence = db.collection(PRESENCE_COLLECTION).onSnapshot(
+      (snapshot) => {
+        letzterPresenceSnapshot = [];
+        snapshot.forEach((doc) => {
+          const daten = doc.data();
+          const zeitpunkt = daten.aktualisiertAm && daten.aktualisiertAm.toMillis ? daten.aktualisiertAm.toMillis() : 0;
+          letzterPresenceSnapshot.push({ name: daten.name, rolle: daten.rolle, aktualisiertAm: zeitpunkt });
+        });
+        renderOnlineListe();
+      },
+      (fehler) => console.error("Fehler beim Laden der Online-Liste:", fehler)
+    );
+
+    // Alle 10s neu berechnen, damit Leute, die den Tab einfach geschlossen
+    // haben (ohne beforeunload), nach der Schwellenzeit automatisch als
+    // offline verschwinden.
+    onlineRecomputeTimer = setInterval(renderOnlineListe, 10 * 1000);
+  }
+
+  function ermittleOnlineListe() {
+    const jetzt = Date.now();
+    const gesehen = new Set();
+    const online = [];
+
+    letzterPresenceSnapshot.forEach((eintrag) => {
+      if (jetzt - eintrag.aktualisiertAm > ONLINE_SCHWELLE_MS) return; // veraltet -> offline
+      const key = eintrag.name.toLowerCase();
+      if (gesehen.has(key)) return; // gleiche Person nicht doppelt zählen (z. B. 2 Tabs)
+      gesehen.add(key);
+      online.push(eintrag);
+    });
+
+    return online;
+  }
+
+  function renderOnlineListe() {
+    const online = ermittleOnlineListe();
+    el.onlineCount.textContent = online.length;
+
+    el.onlinePanelList.innerHTML = "";
+    if (online.length === 0) {
+      el.onlinePanelList.innerHTML = `<p class="online-panel__empty">Niemand ist gerade online.</p>`;
       return;
     }
 
+    online.forEach((person) => {
+      const zeile = document.createElement("div");
+      zeile.className = "online-panel__person";
+      zeile.innerHTML = `<span class="online-dot"></span> ${escapeHtml(person.name)}`;
+      el.onlinePanelList.appendChild(zeile);
+    });
+
+    renderMitarbeiterListe();
+  }
+
+  el.onlineWidgetBtn.addEventListener("click", () => {
+    el.onlinePanel.classList.toggle("online-panel--visible");
+  });
+
+  /* ------------------------------------------------------------------------
+     10. Mitarbeiter-Ansicht (bekannte Liste + Online-Status)
+     ------------------------------------------------------------------------ */
+  function renderMitarbeiterListe() {
+    if (!el.staffGrid) return;
+    const online = ermittleOnlineListe();
+    const onlineNamen = new Set(online.map((p) => p.name.toLowerCase()));
     const farben = ["mint", "lavender", "blue", "peach"];
 
-    mitarbeiter.forEach((person, index) => {
-      const istDu = aktuellerNutzer && person.uid === aktuellerNutzer.uid;
+    el.staffGrid.innerHTML = "";
+
+    STAFF_LIST.forEach((person, index) => {
+      const istOnline = onlineNamen.has(person.name.toLowerCase());
+      const istDu = aktuellerNutzer && person.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
+
       const card = document.createElement("div");
       card.className = "staff-card";
       card.innerHTML = `
         <div class="staff-card__avatar staff-card__avatar--${farben[index % farben.length]}">${escapeHtml(initialenVon(person.name))}</div>
         <div class="staff-card__info">
-          <span class="staff-card__name">${escapeHtml(person.name || "Unbekannt")}</span>
-          <span class="staff-card__role">${escapeHtml(person.rolle || "Mitarbeiter")}</span>
+          <span class="staff-card__name">${escapeHtml(person.name)}</span>
+          <span class="staff-card__role">${escapeHtml(person.rolle)} · ${istOnline ? "🟢 Online" : "⚪ Offline"}</span>
         </div>
         ${istDu ? '<span class="staff-card__badge">Du</span>' : ""}
       `;
@@ -433,7 +537,7 @@
   }
 
   /* ------------------------------------------------------------------------
-     10. Rendering: Tabelle, Statistik-Karten, Info-Panel
+     11. Rendering: Tabelle, Statistik-Karten, Info-Panel
      ------------------------------------------------------------------------ */
   function render() {
     renderTabelle();
@@ -501,7 +605,7 @@
   }
 
   /* ------------------------------------------------------------------------
-     11. Modal-Steuerung
+     12. Modal-Steuerung
      ------------------------------------------------------------------------ */
   function oeffneModal(modalElement) {
     modalElement.classList.add("modal-overlay--visible");
@@ -529,7 +633,7 @@
   });
 
   /* ------------------------------------------------------------------------
-     12. Info-Panel ein-/ausblenden
+     13. Info-Panel ein-/ausblenden
      ------------------------------------------------------------------------ */
   el.btnToggleInfo.addEventListener("click", () => {
     const istSichtbar = !el.infoPanel.hidden;
@@ -538,7 +642,7 @@
   });
 
   /* ------------------------------------------------------------------------
-     13. Medikament hinzufügen
+     14. Medikament hinzufügen
      ------------------------------------------------------------------------ */
   el.btnAddMedikament.addEventListener("click", () => {
     el.inputMedName.value = "";
@@ -574,7 +678,7 @@
   });
 
   /* ------------------------------------------------------------------------
-     14. Preis bearbeiten
+     15. Preis bearbeiten
      ------------------------------------------------------------------------ */
   function oeffnePreisBearbeitenModal(id) {
     const med = medikamente.find((m) => m.id === id);
@@ -607,7 +711,7 @@
   });
 
   /* ------------------------------------------------------------------------
-     15. Medikament löschen
+     16. Medikament löschen
      ------------------------------------------------------------------------ */
   function oeffneLoeschenModal(id) {
     const med = medikamente.find((m) => m.id === id);
@@ -631,7 +735,7 @@
   });
 
   /* ------------------------------------------------------------------------
-     16. Tabellen-Events: Menge ändern, Bearbeiten- & Löschen-Buttons
+     17. Tabellen-Events: Menge ändern, Bearbeiten- & Löschen-Buttons
      ------------------------------------------------------------------------ */
   el.tableBody.addEventListener("input", (event) => {
     const target = event.target;
@@ -667,7 +771,7 @@
   });
 
   /* ------------------------------------------------------------------------
-     17. Suchfeld
+     18. Suchfeld
      ------------------------------------------------------------------------ */
   el.searchInput.addEventListener("input", (event) => {
     suchbegriff = event.target.value;
@@ -675,7 +779,7 @@
   });
 
   /* ------------------------------------------------------------------------
-     18. Sidebar-Navigation (Ansichten wechseln)
+     19. Sidebar-Navigation
      ------------------------------------------------------------------------ */
   el.navItems.forEach((item) => {
     item.addEventListener("click", () => {
@@ -692,11 +796,13 @@
         el.viewTitle.textContent = meta.title;
         el.viewSubtitle.textContent = meta.subtitle;
       }
+
+      if (zielView === "mitarbeiter") renderMitarbeiterListe();
     });
   });
 
   /* ------------------------------------------------------------------------
-     19. Enter-Taste in Eingabefeldern bestätigt den jeweiligen Dialog
+     20. Enter-Taste bestätigt Dialoge
      ------------------------------------------------------------------------ */
   [el.inputMedName, el.inputMedPrice].forEach((input) => {
     input.addEventListener("keydown", (event) => {
@@ -706,4 +812,11 @@
   el.inputEditPrice.addEventListener("keydown", (event) => {
     if (event.key === "Enter") el.btnConfirmEdit.click();
   });
+
+  /* ------------------------------------------------------------------------
+     21. Start
+     ------------------------------------------------------------------------ */
+  if (istFirebaseKonfiguriert()) {
+    pruefeGespeichertenZugang();
+  }
 })();

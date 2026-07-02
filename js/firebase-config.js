@@ -1,18 +1,14 @@
 /* ==========================================================================
    Firebase-Konfiguration
    ==========================================================================
-   HIER TRÄGST DU DEINE EIGENEN FIREBASE-DATEN EIN.
+   Deine Projektdaten sind hier bereits eingetragen.
 
-   So findest du sie:
-   1. console.firebase.google.com -> dein Projekt öffnen
-   2. Zahnrad (oben links) -> "Projekteinstellungen"
-   3. Runterscrollen zu "Meine Apps" -> deine Web-App auswählen
-   4. Dort steht ein Block wie unten - einfach die Werte hier reinkopieren.
-
-   WICHTIG: Diese Werte sind KEINE Geheimnisse, die man verstecken müsste -
-   sie sagen dem Browser nur, mit welchem Firebase-Projekt er sich verbinden
-   soll. Der eigentliche Schutz eurer Daten passiert über die Firestore-
-   Sicherheitsregeln (siehe README.md).
+   WICHTIG: Im Firebase-Projekt muss unter "Sicherheit -> Authentication ->
+   Sign-in method" der Anbieter "Anonym" (Anonymous) aktiviert sein - NICHT
+   E-Mail/Passwort. Die App nutzt einen unsichtbaren anonymen Login im
+   Hintergrund, damit die Firestore-Datenbank geschützt bleibt, während der
+   sichtbare Zugang über das gemeinsame Website-Passwort läuft (siehe
+   js/app.js, Konstante SITE_PASSWORD).
    ========================================================================== */
 
 const firebaseConfig = {
