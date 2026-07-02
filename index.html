@@ -312,7 +312,14 @@
       <section class="view" id="view-notizen">
         <div class="notes-card">
           <form class="notes-form" id="form-note">
-            <textarea id="note-input" placeholder="Notiz eintragen..." maxlength="500"></textarea>
+            <div class="notes-form__main">
+              <textarea id="note-input" placeholder="Notiz eintragen..." maxlength="500"></textarea>
+              <select id="note-kategorie" class="field-input notes-form__kategorie">
+                <option value="allgemein">📄 Allgemeine Info</option>
+                <option value="wichtig">⚠️ Wichtige Info</option>
+                <option value="personal">🧑‍⚕️ Personal-Info</option>
+              </select>
+            </div>
             <button type="submit" class="btn btn--primary">Hinzufügen</button>
           </form>
         </div>

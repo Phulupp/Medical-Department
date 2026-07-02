@@ -8,28 +8,32 @@
    1. Design-Tokens (Farben, Radien, Schatten, Abstände)
    -------------------------------------------------------------------------- */
 :root {
-  /* Grundfarben */
-  --color-bg: #eef1f5;               /* Heller App-Hintergrund, leicht gräulich */
-  --color-surface: #f7f8fa;          /* Karten / Sidebar / Modal – sanftes Hellgrau statt reinem Weiß */
-  --color-surface-soft: #eef0f4;     /* Leicht abgesetzte Fläche innerhalb Karten */
-  --color-surface-raised: #ffffff;   /* Reines Weiß nur für kleine, hervorgehobene Elemente */
+  /* Grundfarben – warmer, cremiger Grundton statt kühlem Grau/Weiß */
+  --color-bg: #f6efe3;               /* Warmer, cremiger App-Hintergrund */
+  --color-surface: #fffcf6;          /* Karten / Sidebar / Modal – warmes Off-White statt reinem Weiß */
+  --color-surface-soft: #f3e9d8;     /* Warme, leicht abgesetzte Fläche innerhalb Karten */
+  --color-surface-raised: #ffffff;   /* Reines Weiß nur für kleine, hervorgehobene Elemente (Inputs) */
 
   /* Textfarben */
-  --color-text: #2b3444;            /* Haupttext, dunkles Blaugrau */
-  --color-text-muted: #8b94a7;      /* Sekundärtext */
-  --color-text-soft: #b3bac8;       /* Platzhalter / dezente Hinweise */
+  --color-text: #362d24;            /* Haupttext, warmes Dunkelbraun */
+  --color-text-muted: #8c7d6b;      /* Sekundärtext */
+  --color-text-soft: #bcaf9c;       /* Platzhalter / dezente Hinweise */
 
   /* Pastell-Akzente */
-  --color-mint: #7fd8c4;            /* Primärakzent – Minze */
-  --color-mint-soft: #e3f8f2;
-  --color-blue: #8ec6f5;            /* Sekundärakzent – Pastellblau */
-  --color-blue-soft: #e4f1fd;
-  --color-peach: #ffb38a;           /* Akzent – Pfirsich */
-  --color-peach-soft: #ffede2;
-  --color-lavender: #b9a9f0;        /* Akzent – Lavendel */
-  --color-lavender-soft: #eee8fd;
-  --color-red: #ef8a8a;             /* Warn-/Löschfarbe, gedämpft */
-  --color-red-soft: #fbe6e6;
+  --color-mint: #6fcdb8;            /* Primärakzent – Minze */
+  --color-mint-soft: #e1f5ee;
+  --color-blue: #85bdf2;            /* Sekundärakzent – Pastellblau */
+  --color-blue-soft: #e6f0fc;
+  --color-peach: #ffab7a;           /* Akzent – Pfirsich */
+  --color-peach-soft: #ffe9db;
+  --color-lavender: #b39ce8;        /* Akzent – Lavendel */
+  --color-lavender-soft: #ece3fb;
+  --color-red: #e8827e;             /* Warn-/Löschfarbe, gedämpft */
+  --color-red-soft: #fce3e1;
+
+  /* Marken-Rot fürs Logo (Medical Cross) */
+  --color-brand-start: #e8564d;
+  --color-brand-end: #c6362e;
 
   /* Radien: große, runde Elemente */
   --radius-sm: 12px;
@@ -38,9 +42,9 @@
   --radius-pill: 999px;
 
   /* Schatten */
-  --shadow-soft: 0 8px 24px rgba(43, 52, 68, 0.06);
-  --shadow-medium: 0 16px 40px rgba(43, 52, 68, 0.10);
-  --shadow-modal: 0 24px 60px rgba(43, 52, 68, 0.22);
+  --shadow-soft: 0 8px 24px rgba(54, 45, 36, 0.07);
+  --shadow-medium: 0 16px 40px rgba(54, 45, 36, 0.12);
+  --shadow-modal: 0 24px 60px rgba(54, 45, 36, 0.24);
 
   /* Layout */
   --sidebar-width: 264px;
@@ -131,14 +135,14 @@ h1, h2, h3 {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-md);
-  background: linear-gradient(145deg, var(--color-mint), var(--color-blue));
+  background: linear-gradient(145deg, var(--color-brand-start), var(--color-brand-end));
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   font-size: 20px;
   font-weight: 700;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 8px 20px rgba(198, 54, 46, 0.35);
 }
 
 .sidebar__brand-text {
@@ -540,8 +544,14 @@ h1, h2, h3 {
 
 .notes-form {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-bottom: 16px;
+}
+
+.notes-form__main {
+  display: flex;
+  gap: 10px;
 }
 
 .notes-form textarea {
@@ -561,6 +571,10 @@ h1, h2, h3 {
 .notes-form textarea:focus {
   outline: none;
   border-color: var(--color-mint);
+}
+
+.notes-form__kategorie {
+  flex: 0 0 190px;
 }
 
 .notes-form button {
@@ -590,10 +604,51 @@ h1, h2, h3 {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  border-left: 4px solid transparent;
+}
+
+.note-item--wichtig {
+  border-left-color: var(--color-red);
+  background: linear-gradient(135deg, var(--color-red-soft), var(--color-surface) 55%);
+  box-shadow: var(--shadow-medium);
+}
+
+.note-item--personal {
+  border-left-color: var(--color-lavender);
+}
+
+.note-item--allgemein {
+  border-left-color: var(--color-blue);
 }
 
 .note-item__body {
   flex: 1;
+}
+
+.note-item__kategorie {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  margin-bottom: 7px;
+}
+
+.note-item__kategorie--allgemein {
+  background: var(--color-blue-soft);
+  color: #2f6fa8;
+}
+
+.note-item__kategorie--wichtig {
+  background: var(--color-red);
+  color: #ffffff;
+}
+
+.note-item__kategorie--personal {
+  background: var(--color-lavender-soft);
+  color: #6a4fc9;
 }
 
 .note-item__text {

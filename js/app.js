@@ -152,6 +152,7 @@
 
     formNote: document.getElementById("form-note"),
     noteInput: document.getElementById("note-input"),
+    noteKategorie: document.getElementById("note-kategorie"),
     notesList: document.getElementById("notes-list"),
     notesEmpty: document.getElementById("notes-empty"),
 
@@ -757,6 +758,7 @@
         (doc) => {
           if (doc.exists && Array.isArray(doc.data().liste)) {
             mitarbeiterListe = doc.data().liste;
+            migriereFehlendeMitarbeiterFelder();
           } else {
             mitarbeiterListe = DEFAULT_MITARBEITER.map((m) => ({ ...m }));
             speichereMitarbeiterliste();
@@ -780,6 +782,26 @@
         }
       );
     });
+  }
+
+  // Ergänzt fehlende Felder (z. B. "avatar") bei bereits vorher in Firestore
+  // angelegten Standard-Mitarbeitern, ohne eigene Änderungen (z. B. eine
+  // geänderte Rolle) zu überschreiben. Speichert nur, wenn sich wirklich
+  // etwas geändert hat.
+  function migriereFehlendeMitarbeiterFelder() {
+    let geaendert = false;
+
+    mitarbeiterListe.forEach((person) => {
+      const standard = DEFAULT_MITARBEITER.find((d) => d.id === person.id);
+      if (!standard) return;
+
+      if (standard.avatar && !person.avatar) {
+        person.avatar = standard.avatar;
+        geaendert = true;
+      }
+    });
+
+    if (geaendert) speichereMitarbeiterliste();
   }
 
   function speichereMitarbeiterliste() {
@@ -860,6 +882,12 @@
   /* ------------------------------------------------------------------------
      10b. Notizen (über der Medikamententabelle)
      ------------------------------------------------------------------------ */
+  const NOTIZ_KATEGORIEN = {
+    allgemein: { label: "Allgemeine Info", icon: "📄" },
+    wichtig: { label: "Wichtige Info", icon: "⚠️" },
+    personal: { label: "Personal-Info", icon: "🧑‍⚕️" },
+  };
+
   function abonniereNotizen() {
     unsubNotizen = db
       .collection(NOTIZEN_COLLECTION)
@@ -874,9 +902,20 @@
               id: doc.id,
               text: d.text,
               autor: d.autor,
+              rolle: d.rolle || "",
+              kategorie: d.kategorie && NOTIZ_KATEGORIEN[d.kategorie] ? d.kategorie : "allgemein",
               millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
             });
           });
+
+          // Wichtige Notizen zuerst, danach chronologisch (neueste zuerst)
+          notizen.sort((a, b) => {
+            const aWichtig = a.kategorie === "wichtig" ? 0 : 1;
+            const bWichtig = b.kategorie === "wichtig" ? 0 : 1;
+            if (aWichtig !== bWichtig) return aWichtig - bWichtig;
+            return b.millis - a.millis;
+          });
+
           renderNotizen(notizen);
         },
         (fehler) => console.error("Fehler beim Laden der Notizen:", fehler)
@@ -892,13 +931,16 @@
       const loeschButton = darfLoeschen
         ? `<button type="button" class="icon-btn icon-btn--delete note-item__delete" data-role="delete-notiz" data-id="${notiz.id}" title="Notiz löschen">🗑</button>`
         : "";
+      const rolleText = notiz.rolle ? ` (${escapeHtml(notiz.rolle)})` : "";
+      const kategorieInfo = NOTIZ_KATEGORIEN[notiz.kategorie] || NOTIZ_KATEGORIEN.allgemein;
 
       const eintrag = document.createElement("div");
-      eintrag.className = "note-item";
+      eintrag.className = `note-item note-item--${notiz.kategorie}`;
       eintrag.innerHTML = `
         <div class="note-item__body">
+          <span class="note-item__kategorie note-item__kategorie--${notiz.kategorie}">${kategorieInfo.icon} ${escapeHtml(kategorieInfo.label)}</span>
           <div class="note-item__text">${escapeHtml(notiz.text)}</div>
-          <div class="note-item__meta">— ${escapeHtml(notiz.autor)} · ${formatiereZeitstempel(notiz.millis)} Uhr</div>
+          <div class="note-item__meta">— ${escapeHtml(notiz.autor)}${rolleText} · ${formatiereZeitstempel(notiz.millis)} Uhr</div>
         </div>
         ${loeschButton}
       `;
@@ -915,10 +957,13 @@
       .add({
         text: text,
         autor: aktuellerNutzer.name,
+        rolle: aktuellerNutzer.rolle,
+        kategorie: el.noteKategorie.value || "allgemein",
         zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
       })
       .then(() => {
         el.noteInput.value = "";
+        el.noteKategorie.value = "allgemein";
       })
       .catch((fehler) => {
         console.error("Notiz konnte nicht gespeichert werden:", fehler);
