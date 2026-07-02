@@ -13,7 +13,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=3" />
+  <link rel="stylesheet" href="css/style.css?v=5" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -306,10 +306,16 @@
           </form>
         </div>
 
+        <div class="sale-log-search">
+          <span class="search-field__icon">🔍</span>
+          <input type="text" id="sales-log-search" placeholder="Nach Kunde, Verkäufer oder Medikament suchen..." autocomplete="off" />
+        </div>
+
         <div id="sales-log-list">
           <!-- wird per JavaScript befüllt -->
         </div>
         <p class="empty-state" id="sales-log-empty" hidden>Noch keine Verkäufe eingetragen.</p>
+        <p class="empty-state" id="sales-log-no-results" hidden>Keine Verkäufe gefunden, die zu deiner Suche passen.</p>
       </section>
 
       <!-- ============================ -->
@@ -492,7 +498,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/firebase-config.js?v=5"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>

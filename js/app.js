@@ -159,6 +159,8 @@
     btnCheckout: document.getElementById("btn-checkout"),
     salesLogList: document.getElementById("sales-log-list"),
     salesLogEmpty: document.getElementById("sales-log-empty"),
+    salesLogNoResults: document.getElementById("sales-log-no-results"),
+    salesLogSearch: document.getElementById("sales-log-search"),
     formSaleEntry: document.getElementById("form-sale-entry"),
     saleKunde: document.getElementById("sale-kunde"),
     saleMedikament: document.getElementById("sale-medikament"),
@@ -1115,6 +1117,10 @@
       });
   });
 
+  let letzteVerkaeufe = [];       // Zwischenspeicher für Client-seitige Suche
+  let verkaufslogSuche = "";
+  let aufgeklappteTage = null;    // Set der aufgeklappten Datums-Gruppen (null = noch nicht initialisiert)
+
   function abonniereVerkaufslog() {
     unsubVerkaufslog = db
       .collection(VERKAUFSLOG_COLLECTION)
@@ -1126,6 +1132,7 @@
           snapshot.forEach((doc) => {
             const d = doc.data();
             verkaeufe.push({
+              id: doc.id,
               mitarbeiter: d.mitarbeiter,
               rolle: d.rolle,
               kunde: d.kunde || null,
@@ -1135,36 +1142,210 @@
               millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
             });
           });
-          renderVerkaufslog(verkaeufe);
+          letzteVerkaeufe = verkaeufe;
+          renderVerkaufslog();
         },
         (fehler) => console.error("Fehler beim Laden des Verkaufslogs:", fehler)
       );
   }
 
-  function renderVerkaufslog(verkaeufe) {
-    el.salesLogList.innerHTML = "";
-    el.salesLogEmpty.hidden = verkaeufe.length !== 0;
-
-    verkaeufe.forEach((verkauf) => {
-      const itemsText = verkauf.items.map((i) => `${escapeHtml(i.name)} ×${i.menge} = ${formatiereGeld(i.menge * i.preis)}`).join("<br>");
-      const datumText = verkauf.datum ? formatiereDatum(verkauf.datum) : formatiereZeitstempel(verkauf.millis);
-
-      const eintrag = document.createElement("div");
-      eintrag.className = "sale-item";
-      eintrag.innerHTML = `
-        <div class="sale-item__header">
-          <span class="sale-item__employee">
-            ${verkauf.kunde ? `${escapeHtml(verkauf.kunde)} <span style="color:var(--color-text-soft);font-weight:500;">— verkauft von ${escapeHtml(verkauf.mitarbeiter)}</span>` : escapeHtml(verkauf.mitarbeiter)}
-            <span style="color:var(--color-text-soft);font-weight:500;"> (${escapeHtml(verkauf.rolle || "")})</span>
-          </span>
-          <span class="sale-item__time">${datumText}</span>
-        </div>
-        <div class="sale-item__items">${itemsText}</div>
-        <div class="sale-item__total">Gesamt: ${formatiereGeld(verkauf.gesamtsumme)}</div>
-      `;
-      el.salesLogList.appendChild(eintrag);
+  if (el.salesLogSearch) {
+    el.salesLogSearch.addEventListener("input", (event) => {
+      verkaufslogSuche = event.target.value;
+      renderVerkaufslog();
     });
   }
+
+  function gruppenSchluesselVon(verkauf) {
+    // Nutzt das gewählte Datum, falls vorhanden, sonst den Erstellungs-Zeitpunkt
+    if (verkauf.datum) return verkauf.datum; // Format YYYY-MM-DD, sortiert gut
+    const d = new Date(verkauf.millis);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function renderVerkaufslog() {
+    el.salesLogList.innerHTML = "";
+    el.salesLogEmpty.hidden = letzteVerkaeufe.length !== 0;
+
+    // Suche anwenden: Kunde, Verkäufer oder Medikamentenname
+    const begriff = verkaufslogSuche.trim().toLowerCase();
+    const gefiltert = !begriff
+      ? letzteVerkaeufe
+      : letzteVerkaeufe.filter((v) => {
+          const kundeTreffer = v.kunde && v.kunde.toLowerCase().includes(begriff);
+          const mitarbeiterTreffer = v.mitarbeiter && v.mitarbeiter.toLowerCase().includes(begriff);
+          const itemTreffer = v.items.some((i) => i.name.toLowerCase().includes(begriff));
+          return kundeTreffer || mitarbeiterTreffer || itemTreffer;
+        });
+
+    el.salesLogNoResults.hidden = !(begriff && gefiltert.length === 0);
+    if (gefiltert.length === 0) return;
+
+    // Nach Datum gruppieren (neueste Gruppe zuerst, da letzteVerkaeufe schon
+    // absteigend sortiert aus Firestore kommt)
+    const gruppen = new Map();
+    gefiltert.forEach((verkauf) => {
+      const key = gruppenSchluesselVon(verkauf);
+      if (!gruppen.has(key)) gruppen.set(key, []);
+      gruppen.get(key).push(verkauf);
+    });
+
+    // Beim allerersten Rendern: nur die neueste Gruppe aufgeklappt starten
+    if (aufgeklappteTage === null) {
+      aufgeklappteTage = new Set();
+      const ersterKey = gruppen.keys().next().value;
+      if (ersterKey) aufgeklappteTage.add(ersterKey);
+    }
+    // Während einer aktiven Suche: alle Treffer-Gruppen automatisch aufklappen
+    if (begriff) gruppen.forEach((_, key) => aufgeklappteTage.add(key));
+
+    const medikamentOptionen = medikamente
+      .map((m) => `<option value="${escapeHtml(m.name)}">${escapeHtml(m.name)} (${formatiereGeld(m.preis)})</option>`)
+      .join("");
+
+    gruppen.forEach((verkaeufeDesTages, key) => {
+      const tagesSumme = verkaeufeDesTages.reduce((s, v) => s + v.gesamtsumme, 0);
+      const istAufgeklappt = aufgeklappteTage.has(key);
+
+      const gruppenElement = document.createElement("div");
+      gruppenElement.className = `sale-log-group${istAufgeklappt ? "" : " sale-log-group--collapsed"}`;
+      gruppenElement.dataset.groupKey = key;
+
+      const header = document.createElement("button");
+      header.type = "button";
+      header.className = "sale-log-group__header";
+      header.dataset.role = "toggle-group";
+      header.innerHTML = `
+        <span><span class="sale-log-group__chevron">▾</span>${escapeHtml(formatiereDatum(key))}</span>
+        <span class="sale-log-group__meta">${verkaeufeDesTages.length} Verkauf/Verkäufe · ${formatiereGeld(tagesSumme)}</span>
+      `;
+      gruppenElement.appendChild(header);
+
+      const itemsWrapper = document.createElement("div");
+      itemsWrapper.className = "sale-log-group__items";
+
+      verkaeufeDesTages.forEach((verkauf) => {
+        const itemsText = verkauf.items.map((i) => `${escapeHtml(i.name)} ×${i.menge} = ${formatiereGeld(i.menge * i.preis)}`).join("<br>");
+        const zeitText = formatiereZeitstempel(verkauf.millis);
+        const darfLoeschen = istAdmin();
+
+        const eintrag = document.createElement("div");
+        eintrag.className = "sale-item";
+        eintrag.dataset.id = verkauf.id;
+        eintrag.innerHTML = `
+          <div class="sale-item__header">
+            <span class="sale-item__employee">
+              ${verkauf.kunde ? `${escapeHtml(verkauf.kunde)} <span style="color:var(--color-text-soft);font-weight:500;">— verkauft von ${escapeHtml(verkauf.mitarbeiter)}</span>` : escapeHtml(verkauf.mitarbeiter)}
+              <span style="color:var(--color-text-soft);font-weight:500;"> (${escapeHtml(verkauf.rolle || "")})</span>
+            </span>
+            <span class="sale-item__time">${zeitText}</span>
+          </div>
+          <div class="sale-item__items">${itemsText}</div>
+          <div class="sale-item__footer">
+            <div class="sale-item__total">Gesamt: ${formatiereGeld(verkauf.gesamtsumme)}</div>
+            <div class="sale-item__actions">
+              <button type="button" class="btn btn--ghost sale-item__add-btn" data-role="toggle-add-item" data-id="${verkauf.id}">+ Artikel hinzufügen</button>
+              ${darfLoeschen ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-verkauf" data-id="${verkauf.id}" title="Verkauf löschen">🗑</button>` : ""}
+            </div>
+          </div>
+          <div class="sale-item__add-form" id="add-form-${verkauf.id}" hidden>
+            <select class="field-input" data-role="add-item-select">
+              <option value="">Medikament auswählen...</option>
+              ${medikamentOptionen}
+            </select>
+            <input type="number" class="field-input" min="1" step="1" value="1" data-role="add-item-menge" />
+            <button type="button" class="btn btn--primary" data-role="confirm-add-item" data-id="${verkauf.id}">Hinzufügen</button>
+          </div>
+        `;
+        itemsWrapper.appendChild(eintrag);
+      });
+
+      gruppenElement.appendChild(itemsWrapper);
+      el.salesLogList.appendChild(gruppenElement);
+    });
+  }
+
+  // Datums-Gruppen auf-/zuklappen
+  el.salesLogList.addEventListener("click", (event) => {
+    const header = event.target.closest('[data-role="toggle-group"]');
+    if (!header) return;
+    const gruppenElement = header.closest(".sale-log-group");
+    const key = gruppenElement.dataset.groupKey;
+
+    if (aufgeklappteTage.has(key)) {
+      aufgeklappteTage.delete(key);
+    } else {
+      aufgeklappteTage.add(key);
+    }
+    gruppenElement.classList.toggle("sale-log-group--collapsed");
+  });
+
+  // Klicks innerhalb des Verkaufslogs: Löschen, Mini-Formular ein-/ausblenden, bestätigen
+  el.salesLogList.addEventListener("click", (event) => {
+    const deleteBtn = event.target.closest('[data-role="delete-verkauf"]');
+    if (deleteBtn) {
+      if (!istAdmin()) return;
+      db.collection(VERKAUFSLOG_COLLECTION)
+        .doc(deleteBtn.dataset.id)
+        .delete()
+        .then(() => zeigeToast("Verkauf gelöscht."))
+        .catch(() => zeigeToast("Verkauf konnte nicht gelöscht werden."));
+      return;
+    }
+
+    const toggleBtn = event.target.closest('[data-role="toggle-add-item"]');
+    if (toggleBtn) {
+      const form = document.getElementById(`add-form-${toggleBtn.dataset.id}`);
+      if (form) form.hidden = !form.hidden;
+      return;
+    }
+
+    const confirmBtn = event.target.closest('[data-role="confirm-add-item"]');
+    if (confirmBtn) {
+      const verkaufId = confirmBtn.dataset.id;
+      const zeile = confirmBtn.closest(".sale-item__add-form");
+      const select = zeile.querySelector('[data-role="add-item-select"]');
+      const mengeInput = zeile.querySelector('[data-role="add-item-menge"]');
+
+      const medName = select.value;
+      const menge = parseInt(mengeInput.value, 10);
+
+      if (!medName) return zeigeToast("Bitte ein Medikament auswählen.");
+      if (isNaN(menge) || menge < 1) return zeigeToast("Bitte eine gültige Menge eingeben.");
+
+      const med = medikamente.find((m) => m.name === medName);
+      if (!med) return zeigeToast("Dieses Medikament existiert nicht mehr.");
+
+      const docRefVerkauf = db.collection(VERKAUFSLOG_COLLECTION).doc(verkaufId);
+      docRefVerkauf
+        .get()
+        .then((doc) => {
+          if (!doc.exists) return;
+          const daten = doc.data();
+          const items = daten.items || [];
+
+          const bestehend = items.find((i) => i.name === med.name);
+          if (bestehend) {
+            bestehend.menge += menge;
+          } else {
+            items.push({ name: med.name, menge: menge, preis: Number(med.preis) });
+          }
+
+          const neueSumme = items.reduce((summe, i) => summe + i.menge * i.preis, 0);
+
+          return docRefVerkauf.update({ items: items, gesamtsumme: neueSumme });
+        })
+        .then(() => {
+          select.value = "";
+          mengeInput.value = "1";
+          zeigeToast(`${med.name} wurde ergänzt.`);
+        })
+        .catch((fehler) => {
+          console.error("Artikel konnte nicht ergänzt werden:", fehler);
+          zeigeToast("Artikel konnte nicht ergänzt werden.");
+        });
+    }
+  });
 
   /* ------------------------------------------------------------------------
      11. Rendering: Tabelle, Statistik-Karten, Info-Panel
@@ -1714,7 +1895,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 3;
+  const APP_VERSION = 5;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

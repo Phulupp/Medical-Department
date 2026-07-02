@@ -31,6 +31,10 @@
   --color-red: #e8827e;             /* Warn-/Löschfarbe, gedämpft */
   --color-red-soft: #fce3e1;
 
+  /* Gedecktes Salbei-Grün (z. B. für "Personal-Info") - dunkler/gedeckter als das helle Mint */
+  --color-sage: #5f8f74;
+  --color-sage-soft: #dde9e0;
+
   /* Marken-Rot fürs Logo (Medical Cross) */
   --color-brand-start: #e8564d;
   --color-brand-end: #c6362e;
@@ -614,7 +618,7 @@ h1, h2, h3 {
 }
 
 .note-item--personal {
-  border-left-color: var(--color-lavender);
+  border-left-color: var(--color-sage);
 }
 
 .note-item--allgemein {
@@ -647,8 +651,8 @@ h1, h2, h3 {
 }
 
 .note-item__kategorie--personal {
-  background: var(--color-lavender-soft);
-  color: #6a4fc9;
+  background: var(--color-sage-soft);
+  color: #35543f;
 }
 
 .note-item__text {
@@ -717,6 +721,113 @@ h1, h2, h3 {
   font-weight: 700;
   font-size: 15px;
   color: #2f9c82;
+}
+
+.sale-item__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sale-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sale-item__add-btn {
+  font-size: 12.5px;
+  padding: 8px 14px;
+}
+
+.sale-item__add-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(54, 45, 36, 0.08);
+}
+
+.sale-item__add-form select {
+  flex: 2;
+}
+
+.sale-item__add-form input {
+  flex: 0 0 80px;
+}
+
+.sale-item__add-form button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.sale-log-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-surface);
+  border-radius: var(--radius-pill);
+  padding: 12px 20px;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 18px;
+}
+
+.sale-log-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  width: 100%;
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.sale-log-search input::placeholder {
+  color: var(--color-text-soft);
+}
+
+.sale-log-group {
+  margin-bottom: 16px;
+}
+
+.sale-log-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  margin-bottom: 10px;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--color-text);
+}
+
+.sale-log-group__header:hover {
+  background: var(--color-mint-soft);
+}
+
+.sale-log-group__meta {
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-size: 12.5px;
+}
+
+.sale-log-group__chevron {
+  transition: transform 0.2s ease;
+  color: var(--color-text-muted);
+  margin-right: 8px;
+}
+
+.sale-log-group--collapsed .sale-log-group__chevron {
+  transform: rotate(-90deg);
+}
+
+.sale-log-group--collapsed .sale-log-group__items {
+  display: none;
 }
 
 /* --------------------------------------------------------------------------
