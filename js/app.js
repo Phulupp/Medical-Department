@@ -1708,7 +1708,55 @@
   })();
 
   /* ------------------------------------------------------------------------
-     22. Start
+     22. Automatische Update-Prüfung
+     ------------------------------------------------------------------------ */
+  // Diese Zahl MUSS bei jedem Update von index.html/css/js erhöht werden -
+  // zusammen mit dem Wert in version.json. So merkt die App automatisch,
+  // wenn eine neuere Version online verfügbar ist (auch wenn jemand
+  // tagelang eingeloggt in einem offenen Tab bleibt).
+  const APP_VERSION = 3;
+  const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
+
+  (function initUpdateChecker() {
+    const banner = document.getElementById("update-banner");
+    const btn = document.getElementById("update-banner-btn");
+    if (!banner || !btn) return;
+
+    let bereitsErkannt = false;
+
+    function pruefeAufUpdate() {
+      if (bereitsErkannt) return;
+
+      fetch(`version.json?t=${Date.now()}`, { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((daten) => {
+          if (daten && typeof daten.version === "number" && daten.version > APP_VERSION) {
+            bereitsErkannt = true;
+            banner.hidden = false;
+          }
+        })
+        .catch(() => {
+          /* Kein Internet o.ä. - einfach beim nächsten Intervall erneut versuchen */
+        });
+    }
+
+    btn.addEventListener("click", () => window.location.reload());
+
+    // Direkt beim Laden einmal prüfen (mit kleiner Verzögerung) und danach
+    // regelmäßig im Hintergrund weiterprüfen, auch während man eingeloggt
+    // auf der Login- oder App-Seite bleibt.
+    setTimeout(pruefeAufUpdate, 5000);
+    setInterval(pruefeAufUpdate, UPDATE_CHECK_INTERVALL_MS);
+
+    // Wenn der Tab nach längerer Zeit wieder in den Vordergrund geholt wird
+    // (z. B. am nächsten Abend), sofort erneut prüfen.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") pruefeAufUpdate();
+    });
+  })();
+
+  /* ------------------------------------------------------------------------
+     23. Start
      ------------------------------------------------------------------------ */
   if (istFirebaseKonfiguriert()) {
     pruefeGespeichertenZugang();

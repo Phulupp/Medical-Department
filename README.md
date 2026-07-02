@@ -85,6 +85,16 @@ Danach ist die App unter der GitHub-Pages-Adresse für dich **und** Grete nutzba
 
 > **Lokal testen ohne GitHub Pages:** In VS Code die Erweiterung „Live Server" installieren und `index.html` per Rechtsklick → „Open with Live Server" öffnen (läuft dann über `http://127.0.0.1`, funktioniert mit Firebase Login).
 
+## 🔄 Automatische Update-Erkennung
+
+Die App prüft alle paar Minuten automatisch (und sofort wenn der Tab wieder aktiv wird), ob eine neuere Version online ist. Falls ja, erscheint oben ein Banner „Eine neue Version ist verfügbar" mit einem Button zum Neuladen. So bleibt niemand aus Versehen tagelang auf einer veralteten Version hängen, selbst wenn der Tab nie geschlossen wird.
+
+**Wichtig bei jedem zukünftigen Update:** Zwei Werte müssen zusammen erhöht werden, sonst greift weder die Update-Erkennung noch das Cache-Busting:
+
+1. In `version.json`: `"version"` um 1 erhöhen
+2. In `js/app.js`: Konstante `APP_VERSION` auf denselben Wert setzen
+3. In `index.html`: die `?v=` Anhänge bei `style.css`, `firebase-config.js` und `app.js` ebenfalls auf denselben Wert setzen
+
 ## 🔑 Zugangspasswort & PIN ändern
 
 Beide stehen in `js/app.js` ganz oben:
