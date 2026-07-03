@@ -58,11 +58,20 @@
     { id: "grete", name: "Grete Hornhausen", rolle: "Facharzt", geschuetzt: true, avatar: "🦦" },
   ];
 
-  // Standard-Mitarbeiter-/Stationsliste (reines Organisations-Tool für die
-  // Mitarbeiter-Seite - hat NICHTS mit dem Login zu tun).
-  const DEFAULT_MITARBEITER = [
-    { id: "chris-moon", name: "Chris Moon", rolle: "Ärztliche Direktion", station: "direktion" },
-  ];
+  // Standard-Mitarbeiter-/Stationsliste: FESTE Anzahl Plätze je Station
+  // (reines Organisations-Tool für die Mitarbeiter-Seite - hat NICHTS mit
+  // dem Login zu tun). Leere Plätze haben name: "".
+  function erzeugeLeereStation(anzahl) {
+    const plaetze = [];
+    for (let i = 0; i < anzahl; i++) plaetze.push({ name: "", rolle: "Anwärter" });
+    return plaetze;
+  }
+
+  const DEFAULT_STATIONEN = {
+    direktion: [{ name: "Chris Moon", rolle: "Ärztliche Direktion" }],
+    blackwater: erzeugeLeereStation(6),
+    rhodes: erzeugeLeereStation(6),
+  };
 
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
   const STORAGE_KEY_V2 = "medicalDepartment.medikamente.v2";
@@ -125,7 +134,7 @@
   let unsubLoginMitarbeiter = null;
   let unsubInfos = null;
   let unsubAnkuendigungen = null;
-  let mitarbeiterListe = [];       // Stations-/Organisations-Liste (Mitarbeiter-Seite)
+  let stationenDaten = { direktion: [], blackwater: [], rhodes: [] }; // Feste Plätze je Station
   let loginMitarbeiterListe = [];  // Eigene, unabhängige Liste NUR fürs Login-Dropdown
   let infosListe = [];             // Dynamische Infos-Seite
   let gewaehltesMitarbeiterGeschuetzt = false;
@@ -219,12 +228,6 @@
     loginGeschuetztInput: document.getElementById("login-geschuetzt-input"),
     loginVerwaltungListe: document.getElementById("login-verwaltung-liste"),
 
-    formAddMitarbeiter: document.getElementById("form-add-mitarbeiter"),
-    mitarbeiterNameInput: document.getElementById("mitarbeiter-name-input"),
-    mitarbeiterStationInput: document.getElementById("mitarbeiter-station-input"),
-    mitarbeiterRolleInput: document.getElementById("mitarbeiter-rolle-input"),
-    mitarbeiterVerwaltungListe: document.getElementById("mitarbeiter-verwaltung-liste"),
-
     tableBody: document.getElementById("med-table-body"),
     emptyState: document.getElementById("empty-state"),
     searchInput: document.getElementById("search-input"),
@@ -254,7 +257,7 @@
 
     toast: document.getElementById("toast"),
 
-    navItems: document.querySelectorAll(".nav__item"),
+    navItems: document.querySelectorAll(".nav__item:not(.nav__item--parent)"),
     views: document.querySelectorAll(".view"),
     viewTitle: document.getElementById("view-title"),
     viewSubtitle: document.getElementById("view-subtitle"),
@@ -767,50 +770,113 @@
     if (!el.staffGrid) return;
     renderBenutzerBadge(); // Badge-Avatar aktualisieren, sobald die Liste geladen ist
 
-    function personKarte(person) {
-      if (!person) return `<div class="station-slot station-slot--frei">— Platz frei —</div>`;
+    const admin = istAdmin();
 
-      const istDu = aktuellerNutzer && person.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
+    // Eine einzelne Zeile: bei Admins direkt editierbar (Name-Feld + Rang-
+    // Dropdown), bei allen anderen nur lesbar.
+    function slotZeile(stationKey, index, slot) {
+      const istDirektion = stationKey === "direktion";
+      const istDu = aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
+      const duBadge = istDu ? '<span class="staff-card__badge" style="position:static;margin-left:8px;">Du</span>' : "";
+
+      if (!admin) {
+        // Reine Lese-Ansicht
+        if (!slot.name) return `<div class="station-slot station-slot--frei">— Platz frei —</div>`;
+        return `
+          <div class="station-slot">
+            <span class="station-slot__name">${escapeHtml(slot.name)}${duBadge}</span>
+            <span class="station-slot__meta">
+              <span class="station-slot__rolle">${escapeHtml(slot.rolle)}</span>
+            </span>
+          </div>
+        `;
+      }
+
+      // Editierbare Admin-Ansicht
+      const rolleFeld = istDirektion
+        ? `<span class="station-slot__rolle">Ärztliche Direktion</span>`
+        : `<select class="field-input station-slot__rolle-select" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
+            ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${r}</option>`).join("")}
+          </select>`;
 
       return `
-        <div class="station-slot">
-          <span class="station-slot__name">${escapeHtml(person.name)}${istDu ? '<span class="staff-card__badge" style="position:static;margin-left:8px;">Du</span>' : ""}</span>
-          <span class="station-slot__meta">
-            <span class="station-slot__rolle">${escapeHtml(person.rolle)}</span>
-          </span>
+        <div class="station-slot station-slot--edit">
+          <input
+            type="text"
+            class="field-input station-slot__name-input"
+            placeholder="Name eintragen..."
+            value="${escapeHtml(slot.name)}"
+            data-role="slot-name"
+            data-station="${stationKey}"
+            data-index="${index}"
+          />
+          ${rolleFeld}
         </div>
       `;
     }
 
-    // Direktion (max. 1 Person, oben zentriert)
-    const direktion = mitarbeiterListe.find((p) => p.station === "direktion");
-
-    // Stationen mit ihren Mitgliedern (max. 6 je Station, restliche Plätze
-    // werden als "frei" angezeigt)
     function stationsBlock(stationKey) {
       const info = STATIONEN[stationKey];
-      const mitglieder = mitarbeiterListe.filter((p) => p.station === stationKey);
-      const plaetze = [];
-      for (let i = 0; i < info.max; i++) {
-        plaetze.push(personKarte(mitglieder[i] || null));
-      }
+      const plaetze = stationenDaten[stationKey] || [];
+      const zeilen = plaetze.map((slot, index) => slotZeile(stationKey, index, slot)).join("");
       return `
         <div class="station-card station-card--${info.farbe}">
           <h3 class="station-card__title">${stationKey === "rhodes" ? "🟢" : "🔴"} ${escapeHtml(info.label)}</h3>
-          <div class="station-card__slots">${plaetze.join("")}</div>
+          <div class="station-card__slots">${zeilen}</div>
         </div>
       `;
     }
 
+    const direktionSlot = (stationenDaten.direktion && stationenDaten.direktion[0]) || { name: "", rolle: "Ärztliche Direktion" };
+
     el.staffGrid.innerHTML = `
-      <div class="direction-card">
-        ${direktion ? personKarte(direktion) : `<div class="station-slot station-slot--frei">— Ärztliche Direktion noch nicht besetzt —</div>`}
-      </div>
+      <div class="direction-card">${slotZeile("direktion", 0, direktionSlot)}</div>
       <div class="stations-row">
         ${stationsBlock("blackwater")}
         ${stationsBlock("rhodes")}
       </div>
     `;
+  }
+
+  // Änderungen an Name-Feldern/Rang-Dropdowns direkt in der Mitarbeiter-Tabelle
+  if (document.body) {
+    document.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!el.staffGrid || !el.staffGrid.contains(target)) return;
+      if (target.dataset.role !== "slot-rolle") return;
+      aktualisiereSlot(target.dataset.station, Number(target.dataset.index), { rolle: target.value });
+    });
+
+    // Name-Feld: erst beim Verlassen des Feldes speichern (nicht bei jedem Tastendruck)
+    document.addEventListener(
+      "blur",
+      (event) => {
+        const target = event.target;
+        if (!el.staffGrid || !el.staffGrid.contains(target)) return;
+        if (target.dataset.role !== "slot-name") return;
+        aktualisiereSlot(target.dataset.station, Number(target.dataset.index), { name: target.value.trim() });
+      },
+      true
+    );
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      const target = event.target;
+      if (!el.staffGrid || !el.staffGrid.contains(target)) return;
+      if (target.dataset.role === "slot-name") target.blur();
+    });
+  }
+
+  function aktualisiereSlot(station, index, aenderung) {
+    if (!istAdmin()) {
+      zeigeToast("Nur Chefarzt, Stellv. Chefarzt & Ärztliche Direktion dürfen die Mitarbeiter-Liste bearbeiten.");
+      renderMitarbeiterListe(); // Eingabe zurücksetzen
+      return;
+    }
+    if (!stationenDaten[station] || !stationenDaten[station][index]) return;
+
+    Object.assign(stationenDaten[station][index], aenderung);
+    speichereMitarbeiterliste();
   }
 
   /* ------------------------------------------------------------------------
@@ -825,16 +891,18 @@
 
       unsubMitarbeiter = docRef(MITARBEITER_DOC).onSnapshot(
         (doc) => {
-          if (doc.exists && Array.isArray(doc.data().liste)) {
-            mitarbeiterListe = doc.data().liste;
-            migriereFehlendeMitarbeiterFelder();
+          if (doc.exists && doc.data().stationen) {
+            stationenDaten = doc.data().stationen;
+            normalisiereStationenDaten();
+          } else if (doc.exists && Array.isArray(doc.data().liste)) {
+            // Migration von der alten, flachen Liste (vor den festen Plätzen)
+            migriereAlteFlacheListe(doc.data().liste);
           } else {
-            mitarbeiterListe = DEFAULT_MITARBEITER.map((m) => ({ ...m }));
+            stationenDaten = JSON.parse(JSON.stringify(DEFAULT_STATIONEN));
             speichereMitarbeiterliste();
           }
 
           renderMitarbeiterListe();
-          renderMitarbeiterVerwaltung();
 
           if (ersterDurchlauf) {
             ersterDurchlauf = false;
@@ -852,20 +920,43 @@
     });
   }
 
-  // Erkennt alte Mitarbeiterlisten (vor dem Stations-System, ohne "station"-
-  // Feld) und ersetzt sie einmalig durch die neue Struktur. Bereits im neuen
-  // Format gespeicherte Mitarbeiter bleiben unangetastet.
-  function migriereFehlendeMitarbeiterFelder() {
-    const istAltesFormat = mitarbeiterListe.some((person) => !person.station);
-    if (!istAltesFormat) return;
+  // Stellt sicher, dass jede Station exakt die richtige Anzahl Plätze hat
+  // (falls sich STATIONEN.max mal ändert oder Daten unvollständig sind).
+  function normalisiereStationenDaten() {
+    Object.keys(STATIONEN).forEach((key) => {
+      const max = STATIONEN[key].max;
+      if (!Array.isArray(stationenDaten[key])) stationenDaten[key] = [];
+      while (stationenDaten[key].length < max) stationenDaten[key].push({ name: "", rolle: "Anwärter" });
+      if (stationenDaten[key].length > max) stationenDaten[key] = stationenDaten[key].slice(0, max);
+    });
+  }
 
-    mitarbeiterListe = DEFAULT_MITARBEITER.map((m) => ({ ...m }));
+  // Wandelt eine alte, flache Mitarbeiterliste (Version mit "liste: [...]"
+  // und einem "station"-Feld pro Person) einmalig in die neuen, festen
+  // Plätze um - bestehende Einträge bleiben dabei erhalten.
+  function migriereAlteFlacheListe(alteListe) {
+    stationenDaten = JSON.parse(JSON.stringify(DEFAULT_STATIONEN));
+
+    const direktionsPerson = alteListe.find((p) => p.station === "direktion");
+    if (direktionsPerson) {
+      stationenDaten.direktion[0] = { name: direktionsPerson.name, rolle: "Ärztliche Direktion" };
+    }
+
+    ["blackwater", "rhodes"].forEach((stationKey) => {
+      const mitglieder = alteListe.filter((p) => p.station === stationKey);
+      mitglieder.forEach((person, index) => {
+        if (index < stationenDaten[stationKey].length) {
+          stationenDaten[stationKey][index] = { name: person.name, rolle: person.rolle };
+        }
+      });
+    });
+
     speichereMitarbeiterliste();
   }
 
   function speichereMitarbeiterliste() {
     docRef(MITARBEITER_DOC)
-      .set({ liste: mitarbeiterListe, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
+      .set({ stationen: stationenDaten, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
       .catch((fehler) => {
         console.error("Mitarbeiterliste konnte nicht gespeichert werden:", fehler);
         zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
@@ -928,6 +1019,9 @@
      ------------------------------------------------------------------------ */
   function renderLoginVerwaltung() {
     if (!el.loginVerwaltungListe) return;
+
+    el.einstellungenAdmin.hidden = !istAdmin();
+    el.einstellungenLocked.hidden = istAdmin();
     if (!istAdmin()) return;
 
     el.loginVerwaltungListe.innerHTML = "";
@@ -988,162 +1082,67 @@
   }
 
   /* ------------------------------------------------------------------------
-     10e. Einstellungen: Mitarbeiter-/Stationsliste-Verwaltung
-     ------------------------------------------------------------------------ */
-  function renderMitarbeiterVerwaltung() {
-    if (!el.mitarbeiterVerwaltungListe) return;
-
-    el.einstellungenAdmin.hidden = !istAdmin();
-    el.einstellungenLocked.hidden = istAdmin();
-    if (!istAdmin()) return;
-
-    el.mitarbeiterVerwaltungListe.innerHTML = "";
-
-    if (mitarbeiterListe.length === 0) {
-      el.mitarbeiterVerwaltungListe.innerHTML = `<p class="notes-empty">Noch keine Mitarbeiter eingetragen.</p>`;
-      return;
-    }
-
-    mitarbeiterListe.forEach((person) => {
-      const stationInfo = STATIONEN[person.station];
-      const stationLabel = stationInfo ? stationInfo.label : "—";
-
-      // Verschieben nur innerhalb derselben Station sinnvoll
-      const stationsMitglieder = mitarbeiterListe.filter((m) => m.station === person.station);
-      const localIndex = stationsMitglieder.findIndex((m) => m.id === person.id);
-      const istErste = localIndex === 0;
-      const istLetzte = localIndex === stationsMitglieder.length - 1;
-      const kannVerschieben = stationsMitglieder.length > 1;
-
-      const zeile = document.createElement("div");
-      zeile.className = "settings-list__item";
-      zeile.innerHTML = `
-        <span>
-          <span class="settings-list__name">${escapeHtml(person.name)}</span>
-          <span class="settings-list__role">${escapeHtml(person.rolle)} · ${escapeHtml(stationLabel)}</span>
-        </span>
-        <div class="row-actions">
-          ${
-            kannVerschieben
-              ? `<button class="icon-btn icon-btn--move" data-role="move-mitarbeiter-up" data-id="${person.id}" title="Nach oben verschieben" ${istErste ? "disabled" : ""}>▲</button>
-                 <button class="icon-btn icon-btn--move" data-role="move-mitarbeiter-down" data-id="${person.id}" title="Nach unten verschieben" ${istLetzte ? "disabled" : ""}>▼</button>`
-              : ""
-          }
-          <button type="button" class="icon-btn icon-btn--delete" data-role="remove-mitarbeiter" data-id="${person.id}" title="Entfernen">🗑</button>
-        </div>
-      `;
-      el.mitarbeiterVerwaltungListe.appendChild(zeile);
-    });
-  }
-
-  // Bei Auswahl "Ärztliche Direktion" als Station macht die Rang-Auswahl
-  // keinen Sinn - ausblenden und Rolle automatisch setzen.
-  if (el.mitarbeiterStationInput) {
-    el.mitarbeiterStationInput.addEventListener("change", () => {
-      const istDirektion = el.mitarbeiterStationInput.value === "direktion";
-      el.mitarbeiterRolleInput.hidden = istDirektion;
-    });
-  }
-
-  if (el.formAddMitarbeiter) {
-    el.formAddMitarbeiter.addEventListener("submit", (event) => {
-      event.preventDefault();
-      if (!istAdmin()) return;
-
-      const name = el.mitarbeiterNameInput.value.trim();
-      const station = el.mitarbeiterStationInput.value;
-      const rolle = station === "direktion" ? "Ärztliche Direktion" : el.mitarbeiterRolleInput.value;
-      if (!name) return;
-
-      if (mitarbeiterListe.some((m) => m.name.toLowerCase() === name.toLowerCase())) {
-        zeigeToast("Dieser Name ist bereits eingetragen.");
-        return;
-      }
-
-      const belegtePlaetze = mitarbeiterListe.filter((m) => m.station === station).length;
-      const maxPlaetze = STATIONEN[station].max;
-      if (belegtePlaetze >= maxPlaetze) {
-        zeigeToast(`${STATIONEN[station].label} ist bereits voll besetzt (${maxPlaetze}/${maxPlaetze}).`);
-        return;
-      }
-
-      mitarbeiterListe.push({ id: erzeugeId(name), name, rolle, station });
-      speichereMitarbeiterliste();
-      el.mitarbeiterNameInput.value = "";
-      zeigeToast(`„${name}“ wurde bei ${STATIONEN[station].label} hinzugefügt.`);
-    });
-  }
-
-  // Verschiebt einen Mitarbeiter innerhalb seiner Station um eine Position
-  // nach oben/unten (bestimmt die Anzeige-Reihenfolge auf der Mitarbeiter-Seite).
-  function verschiebeMitarbeiter(id, richtung) {
-    if (!istAdmin()) {
-      zeigeToast("Nur Chefarzt, Stellv. Chefarzt & Ärztliche Direktion dürfen die Reihenfolge ändern.");
-      return;
-    }
-
-    const person = mitarbeiterListe.find((m) => m.id === id);
-    if (!person) return;
-
-    const stationsMitglieder = mitarbeiterListe.filter((m) => m.station === person.station);
-    const localIndex = stationsMitglieder.findIndex((m) => m.id === id);
-    const zielLocalIndex = richtung === "up" ? localIndex - 1 : localIndex + 1;
-    if (zielLocalIndex < 0 || zielLocalIndex >= stationsMitglieder.length) return;
-
-    const zielPerson = stationsMitglieder[zielLocalIndex];
-    const globalIndexA = mitarbeiterListe.findIndex((m) => m.id === person.id);
-    const globalIndexB = mitarbeiterListe.findIndex((m) => m.id === zielPerson.id);
-    [mitarbeiterListe[globalIndexA], mitarbeiterListe[globalIndexB]] = [mitarbeiterListe[globalIndexB], mitarbeiterListe[globalIndexA]];
-
-    speichereMitarbeiterliste();
-    renderMitarbeiterListe();
-    renderMitarbeiterVerwaltung();
-  }
-
-  if (el.mitarbeiterVerwaltungListe) {
-    el.mitarbeiterVerwaltungListe.addEventListener("click", (event) => {
-      const removeBtn = event.target.closest('[data-role="remove-mitarbeiter"]');
-      if (removeBtn) {
-        if (!istAdmin()) return;
-        const person = mitarbeiterListe.find((m) => m.id === removeBtn.dataset.id);
-        mitarbeiterListe = mitarbeiterListe.filter((m) => m.id !== removeBtn.dataset.id);
-        speichereMitarbeiterliste();
-        renderMitarbeiterListe();
-        if (person) zeigeToast(`„${person.name}“ wurde entfernt.`);
-        return;
-      }
-
-      const upBtn = event.target.closest('[data-role="move-mitarbeiter-up"]');
-      if (upBtn) return verschiebeMitarbeiter(upBtn.dataset.id, "up");
-
-      const downBtn = event.target.closest('[data-role="move-mitarbeiter-down"]');
-      if (downBtn) return verschiebeMitarbeiter(downBtn.dataset.id, "down");
-    });
-  }
-
-  /* ------------------------------------------------------------------------
-     10b. Notizen: Unterreiter (Wichtig / Allgemein / Personal-Info)
+     10b. Notizen: Sidebar-Untermenü (Allgemein / Personal / Herstellung)
      ------------------------------------------------------------------------ */
   const NOTIZ_KATEGORIEN = {
-    allgemein: { label: "Allgemeine Info", icon: "📄" },
-    wichtig: { label: "Wichtige Info", icon: "⚠️" },
-    personal: { label: "Personal-Info", icon: "🧑‍⚕️" },
+    allgemein: { label: "Allgemeine Infos", icon: "📄" },
+    personal: { label: "Personal", icon: "🧑‍⚕️" },
+    herstellung: { label: "Herstellung", icon: "🧪" },
   };
 
-  let aktiveNotizKategorie = "wichtig"; // Standard-Reiter beim Öffnen der Seite
-  let letzteNotizen = [];               // Zwischenspeicher für Reiter-Filterung ohne Neu-Laden
+  let aktiveNotizKategorie = "allgemein"; // Standard-Kategorie beim Öffnen der Seite
+  let letzteNotizen = [];                 // Zwischenspeicher für Kategorie-Filterung ohne Neu-Laden
   let notizenSuche = "";
 
-  const notesTabButtons = document.querySelectorAll(".notes-tab");
-  notesTabButtons.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      aktiveNotizKategorie = tab.dataset.kategorie;
-      notesTabButtons.forEach((t) => t.classList.remove("notes-tab--active"));
-      tab.classList.add("notes-tab--active");
-      aktualisierePlatzhalterNotizfeld();
-      renderNotizen();
+  const navNotizenToggle = document.getElementById("nav-notizen-toggle");
+  const navNotizenSubmenu = document.getElementById("nav-notizen-submenu");
+  const navNotizenGroup = navNotizenToggle ? navNotizenToggle.closest(".nav__group") : null;
+  const navSubitems = document.querySelectorAll(".nav__subitem");
+
+  if (navNotizenToggle) {
+    navNotizenToggle.addEventListener("click", () => {
+      const istOffen = navNotizenGroup.classList.contains("nav__group--open");
+
+      if (!istOffen) {
+        navNotizenGroup.classList.add("nav__group--open");
+      } else if (el.viewTitle && document.getElementById("view-notizen").classList.contains("view--active")) {
+        // Schon offen und schon auf der Notizen-Seite -> beim erneuten Klick zuklappen
+        navNotizenGroup.classList.remove("nav__group--open");
+      }
+
+      wechsleZuNotizenAnsicht(aktiveNotizKategorie);
+    });
+  }
+
+  navSubitems.forEach((item) => {
+    item.addEventListener("click", (event) => {
+      event.stopPropagation();
+      wechsleZuNotizenAnsicht(item.dataset.kategorie);
     });
   });
+
+  function wechsleZuNotizenAnsicht(kategorie) {
+    aktiveNotizKategorie = kategorie;
+
+    // Sidebar: "Notizen" + passenden Unterpunkt aktiv markieren, alle
+    // anderen Hauptpunkte deaktivieren
+    el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
+    navNotizenToggle.classList.add("nav__item--active");
+    navNotizenGroup.classList.add("nav__group--open");
+    navSubitems.forEach((i) => i.classList.toggle("nav__subitem--active", i.dataset.kategorie === kategorie));
+
+    // Hauptansicht wechseln
+    el.views.forEach((view) => view.classList.remove("view--active"));
+    document.getElementById("view-notizen").classList.add("view--active");
+
+    const kategorieInfo = NOTIZ_KATEGORIEN[kategorie];
+    el.viewTitle.textContent = `Notizen · ${kategorieInfo.label}`;
+    el.viewSubtitle.textContent = "Gemeinsame Notizen des Teams";
+
+    aktualisiereKategorieBadge();
+    aktualisierePlatzhalterNotizfeld();
+    renderNotizen();
+  }
 
   const notesSearchInput = document.getElementById("notes-search");
   if (notesSearchInput) {
@@ -1151,6 +1150,14 @@
       notizenSuche = event.target.value;
       renderNotizen();
     });
+  }
+
+  function aktualisiereKategorieBadge() {
+    const badge = document.getElementById("notes-kategorie-badge");
+    if (!badge) return;
+    const kategorieInfo = NOTIZ_KATEGORIEN[aktiveNotizKategorie];
+    badge.className = `notes-kategorie-badge notes-kategorie-badge--${aktiveNotizKategorie}`;
+    badge.textContent = `${kategorieInfo.icon} ${kategorieInfo.label}`;
   }
 
   function aktualisierePlatzhalterNotizfeld() {
@@ -1170,12 +1177,15 @@
           const notizen = [];
           snapshot.forEach((doc) => {
             const d = doc.data();
+            // Alte "wichtig"-Notizen (aus der Zeit vor dieser Umstellung)
+            // werden automatisch als "Allgemeine Infos" behandelt.
+            const kategorie = d.kategorie && NOTIZ_KATEGORIEN[d.kategorie] ? d.kategorie : "allgemein";
             notizen.push({
               id: doc.id,
               text: d.text,
               autor: d.autor,
               rolle: d.rolle || "",
-              kategorie: d.kategorie && NOTIZ_KATEGORIEN[d.kategorie] ? d.kategorie : "allgemein",
+              kategorie: kategorie,
               millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
             });
           });
@@ -2193,6 +2203,13 @@
       el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
       item.classList.add("nav__item--active");
 
+      // Notizen-Untermenü schließen und dessen Aktiv-Status entfernen,
+      // wenn zu einem anderen Hauptpunkt gewechselt wird
+      if (navNotizenToggle) {
+        navNotizenToggle.classList.remove("nav__item--active");
+        navNotizenGroup.classList.remove("nav__group--open");
+      }
+
       el.views.forEach((view) => view.classList.remove("view--active"));
       document.getElementById(`view-${zielView}`).classList.add("view--active");
 
@@ -2203,7 +2220,7 @@
       }
 
       if (zielView === "mitarbeiter") renderMitarbeiterListe();
-      if (zielView === "einstellungen") renderMitarbeiterVerwaltung();
+      if (zielView === "einstellungen") renderLoginVerwaltung();
     });
   });
 
@@ -2310,7 +2327,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 21;
+  const APP_VERSION = 23;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

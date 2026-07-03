@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=21" />
+  <link rel="stylesheet" href="css/style.css?v=23" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -114,10 +114,27 @@
           <span class="nav__icon">🧾</span>
           <span>Verkaufslog</span>
         </button>
-        <button class="nav__item" data-view="notizen">
-          <span class="nav__icon">📝</span>
-          <span>Notizen</span>
-        </button>
+        <div class="nav__group">
+          <button class="nav__item nav__item--parent" id="nav-notizen-toggle" data-view="notizen">
+            <span class="nav__icon">📝</span>
+            <span>Notizen</span>
+            <span class="nav__chevron" id="nav-notizen-chevron">▾</span>
+          </button>
+          <div class="nav__submenu" id="nav-notizen-submenu">
+            <button class="nav__subitem" data-kategorie="allgemein">
+              <span class="nav__sub-dot nav__sub-dot--allgemein"></span>
+              Allgemeine Infos
+            </button>
+            <button class="nav__subitem" data-kategorie="personal">
+              <span class="nav__sub-dot nav__sub-dot--personal"></span>
+              Personal
+            </button>
+            <button class="nav__subitem" data-kategorie="herstellung">
+              <span class="nav__sub-dot nav__sub-dot--herstellung"></span>
+              Herstellung
+            </button>
+          </div>
+        </div>
         <button class="nav__item" data-view="mitarbeiter">
           <span class="nav__icon">🧑‍⚕️</span>
           <span>Mitarbeiter</span>
@@ -327,11 +344,7 @@
       <!-- VIEW: NOTIZEN                 -->
       <!-- ============================ -->
       <section class="view" id="view-notizen">
-        <div class="notes-tabs">
-          <button class="notes-tab notes-tab--active" data-kategorie="wichtig">⚠️ Wichtig</button>
-          <button class="notes-tab" data-kategorie="allgemein">📄 Allgemein</button>
-          <button class="notes-tab" data-kategorie="personal">🧑‍⚕️ Personal-Info</button>
-        </div>
+        <div class="notes-kategorie-badge" id="notes-kategorie-badge"></div>
 
         <div class="notes-card">
           <form class="notes-form" id="form-note">
@@ -396,12 +409,6 @@
         <div class="staff-grid" id="staff-grid">
           <!-- wird per JavaScript befüllt -->
         </div>
-
-        <div class="placeholder-card placeholder-card--compact">
-          <div class="placeholder-card__icon">🧑‍⚕️</div>
-          <h2>Weitere Funktionen folgen</h2>
-          <p>Das Bearbeiten und Entfernen von Mitarbeitern wird in einem zukünftigen Update verfügbar sein. Neue Kollegen können sich aktuell über „Andere Person..." bei der Namensauswahl anmelden.</p>
-        </div>
       </section>
 
       <!-- ============================ -->
@@ -428,7 +435,7 @@
         <div id="einstellungen-admin" hidden>
           <div class="settings-card">
             <h3>🔑 Login verwalten</h3>
-            <p class="settings-card__hint">Bestimmt, wer sich mit welchem Namen auf der Login-Seite anmelden kann - unabhängig von der Mitarbeiter-Liste unten. Mit PIN geschützt: Beim Anmelden ist zusätzlich der Admin-PIN nötig, damit sich niemand anders als diese Person ausgibt.</p>
+            <p class="settings-card__hint">Bestimmt, wer sich mit welchem Namen auf der Login-Seite anmelden kann. Die Mitarbeiter-Liste (Rhodes/Blackwater) wird direkt auf der Mitarbeiter-Seite bearbeitet, nicht hier. Mit PIN geschützt: Beim Anmelden ist zusätzlich der Admin-PIN nötig, damit sich niemand anders als diese Person ausgibt.</p>
 
             <form class="settings-form" id="form-add-login" style="flex-wrap: wrap;">
               <input type="text" id="login-name-input" class="field-input" placeholder="Name, z. B. Heinrich Hornhausen" required style="flex: 1 1 200px;" />
@@ -447,32 +454,6 @@
             </form>
 
             <div class="settings-list" id="login-verwaltung-liste">
-              <!-- wird per JavaScript befüllt -->
-            </div>
-          </div>
-
-          <div class="settings-card">
-            <h3>🧑‍⚕️ Mitarbeiter-Liste verwalten</h3>
-            <p class="settings-card__hint">Reines Organisations-Tool für die Mitarbeiter-Seite (wer arbeitet wo) - hat nichts mit dem Login zu tun. Ärztliche Direktion: max. 1 Person. Rhodes &amp; Blackwater: je max. 6 Plätze.</p>
-
-            <form class="settings-form" id="form-add-mitarbeiter" style="flex-wrap: wrap;">
-              <input type="text" id="mitarbeiter-name-input" class="field-input" placeholder="Name, z. B. Tom Berger" required style="flex: 1 1 200px;" />
-              <select id="mitarbeiter-station-input" class="field-input" style="flex: 0 0 180px;">
-                <option value="blackwater">🔴 Blackwater</option>
-                <option value="rhodes">🟢 Rhodes</option>
-                <option value="direktion">Ärztliche Direktion</option>
-              </select>
-              <select id="mitarbeiter-rolle-input" class="field-input" style="flex: 0 0 180px;">
-                <option value="Anwärter">Anwärter</option>
-                <option value="Assistenzarzt">Assistenzarzt</option>
-                <option value="Facharzt">Facharzt</option>
-                <option value="Stellv. Chefarzt">Stellv. Chefarzt</option>
-                <option value="Chefarzt">Chefarzt</option>
-              </select>
-              <button type="submit" class="btn btn--primary">Hinzufügen</button>
-            </form>
-
-            <div class="settings-list" id="mitarbeiter-verwaltung-liste">
               <!-- wird per JavaScript befüllt -->
             </div>
           </div>
@@ -570,7 +551,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=21"></script>
-  <script src="js/app.js?v=21"></script>
+  <script src="js/firebase-config.js?v=23"></script>
+  <script src="js/app.js?v=23"></script>
 </body>
 </html>
