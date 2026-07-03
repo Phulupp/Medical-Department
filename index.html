@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ärztekammer | Verwaltung</title>
+  <title>Ärztekammer Black Wolf | Verwaltung</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23c6362e'/%3E%3Crect x='42' y='20' width='16' height='60' rx='4' fill='white'/%3E%3Crect x='20' y='42' width='60' height='16' rx='4' fill='white'/%3E%3C/svg%3E" />
 
   <!-- Google Fonts: Outfit (Display) & Inter (Text) -->
@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=18" />
+  <link rel="stylesheet" href="css/style.css?v=21" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -31,7 +31,7 @@
         <div class="sidebar__brand-icon">✚</div>
         <div class="sidebar__brand-text">
           <span class="sidebar__brand-title">Ärztekammer</span>
-          <span class="sidebar__brand-subtitle">RedM</span>
+          <span class="sidebar__brand-subtitle">Black Wolf</span>
         </div>
       </div>
 
@@ -80,7 +80,7 @@
   <!-- ============================ -->
   <!-- Update-Banner: erscheint automatisch, wenn eine neuere Version online ist -->
   <div class="update-banner" id="update-banner" hidden>
-    <span>🔄 Eine neue Version ist verfügbar.</span>
+    <span>🔄 Eine neue Version ist verfügbar. Danach ist eine erneute Anmeldung nötig.</span>
     <button type="button" class="btn btn--primary" id="update-banner-btn">Jetzt aktualisieren</button>
   </div>
 
@@ -93,7 +93,7 @@
         <div class="sidebar__brand-icon" id="easter-egg-trigger">✚</div>
         <div class="sidebar__brand-text">
           <span class="sidebar__brand-title">Ärztekammer</span>
-          <span class="sidebar__brand-subtitle">RedM</span>
+          <span class="sidebar__brand-subtitle">Black Wolf</span>
         </div>
       </div>
 
@@ -130,7 +130,7 @@
 
       <div class="sidebar__footer">
         <p>Ärztekammer</p>
-        <p class="sidebar__footer-small">RedM Verwaltungssystem</p>
+        <p class="sidebar__footer-small">Black Wolf Verwaltungssystem</p>
       </div>
     </aside>
 
@@ -427,8 +427,33 @@
         <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
         <div id="einstellungen-admin" hidden>
           <div class="settings-card">
-            <h3>🧑‍⚕️ Mitarbeiter verwalten</h3>
-            <p class="settings-card__hint">Ärztliche Direktion: max. 1 Person. Rhodes &amp; Blackwater: je max. 6 Plätze. Neu eingetragene Mitarbeiter erscheinen danach in der Namensauswahl beim Betreten der Seite und in der Mitarbeiter-Ansicht.</p>
+            <h3>🔑 Login verwalten</h3>
+            <p class="settings-card__hint">Bestimmt, wer sich mit welchem Namen auf der Login-Seite anmelden kann - unabhängig von der Mitarbeiter-Liste unten. Mit PIN geschützt: Beim Anmelden ist zusätzlich der Admin-PIN nötig, damit sich niemand anders als diese Person ausgibt.</p>
+
+            <form class="settings-form" id="form-add-login" style="flex-wrap: wrap;">
+              <input type="text" id="login-name-input" class="field-input" placeholder="Name, z. B. Heinrich Hornhausen" required style="flex: 1 1 200px;" />
+              <select id="login-rolle-input" class="field-input" style="flex: 0 0 180px;">
+                <option value="Anwärter">Anwärter</option>
+                <option value="Assistenzarzt">Assistenzarzt</option>
+                <option value="Facharzt">Facharzt</option>
+                <option value="Stellv. Chefarzt">Stellv. Chefarzt</option>
+                <option value="Chefarzt">Chefarzt</option>
+              </select>
+              <label class="mitarbeiter-pin-toggle">
+                <input type="checkbox" id="login-geschuetzt-input" checked />
+                🔒 Mit PIN schützen
+              </label>
+              <button type="submit" class="btn btn--primary">Hinzufügen</button>
+            </form>
+
+            <div class="settings-list" id="login-verwaltung-liste">
+              <!-- wird per JavaScript befüllt -->
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <h3>🧑‍⚕️ Mitarbeiter-Liste verwalten</h3>
+            <p class="settings-card__hint">Reines Organisations-Tool für die Mitarbeiter-Seite (wer arbeitet wo) - hat nichts mit dem Login zu tun. Ärztliche Direktion: max. 1 Person. Rhodes &amp; Blackwater: je max. 6 Plätze.</p>
 
             <form class="settings-form" id="form-add-mitarbeiter" style="flex-wrap: wrap;">
               <input type="text" id="mitarbeiter-name-input" class="field-input" placeholder="Name, z. B. Tom Berger" required style="flex: 1 1 200px;" />
@@ -444,13 +469,8 @@
                 <option value="Stellv. Chefarzt">Stellv. Chefarzt</option>
                 <option value="Chefarzt">Chefarzt</option>
               </select>
-              <label class="mitarbeiter-pin-toggle">
-                <input type="checkbox" id="mitarbeiter-geschuetzt-input" />
-                🔒 Mit PIN schützen
-              </label>
               <button type="submit" class="btn btn--primary">Hinzufügen</button>
             </form>
-            <p class="settings-card__hint" style="margin-top: -6px;">Mit PIN geschützt: Beim Anmelden mit diesem Namen ist zusätzlich der Admin-PIN nötig, damit sich niemand anders als diese Person ausgeben kann.</p>
 
             <div class="settings-list" id="mitarbeiter-verwaltung-liste">
               <!-- wird per JavaScript befüllt -->
@@ -550,7 +570,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=18"></script>
-  <script src="js/app.js?v=18"></script>
+  <script src="js/firebase-config.js?v=21"></script>
+  <script src="js/app.js?v=21"></script>
 </body>
 </html>

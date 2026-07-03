@@ -35,12 +35,10 @@
   // Personen fälschlicherweise als diese Namen ausgeben.
   const ADMIN_PIN = "1311";
 
-  // Rollen, die Medikamente löschen UND die Mitarbeiterliste verwalten dürfen
+  // Rollen, die Medikamente löschen UND beide Mitarbeiter-Listen verwalten dürfen
   const ADMIN_ROLLEN = ["Ärztliche Direktion", "Chefarzt", "Stellv. Chefarzt"];
 
-  // Ränge innerhalb einer Station (Rhodes/Blackwater). Bewusst OHNE feste
-  // Rangfolge/Sortierung in der Anzeige - einfach eine freie Auswahl beim
-  // Eintragen eines Mitarbeiters.
+  // Ränge (gemeinsam genutzt für Login-Verwaltung UND Stations-Verwaltung)
   const STATIONS_RAENGE = ["Anwärter", "Assistenzarzt", "Facharzt", "Stellv. Chefarzt", "Chefarzt"];
 
   // Die beiden Stationierungen (RDR2-Roleplay: Rhodes & Blackwater) inkl.
@@ -51,12 +49,19 @@
     blackwater: { label: "Blackwater", max: 6, farbe: "red" },
   };
 
-  // Standard-Mitarbeiterliste (wird nur beim allerersten Start bzw. bei der
-  // Umstellung auf das Stations-System in Firestore angelegt).
-  // "geschuetzt: true" bedeutet: Für die Anmeldung mit diesem Namen ist der
-  // ADMIN_PIN nötig.
+  // Standard-LOGIN-Liste (komplett unabhängig von der Mitarbeiter-/Stations-
+  // Liste unten!). Bestimmt einzig und allein, wer sich beim Betreten der
+  // Seite anmelden kann. "geschuetzt: true" bedeutet: Für die Anmeldung mit
+  // diesem Namen ist der ADMIN_PIN nötig.
+  const DEFAULT_LOGIN_MITARBEITER = [
+    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Facharzt", geschuetzt: true, avatar: "🫏" },
+    { id: "grete", name: "Grete Hornhausen", rolle: "Facharzt", geschuetzt: true, avatar: "🦦" },
+  ];
+
+  // Standard-Mitarbeiter-/Stationsliste (reines Organisations-Tool für die
+  // Mitarbeiter-Seite - hat NICHTS mit dem Login zu tun).
   const DEFAULT_MITARBEITER = [
-    { id: "chris-moon", name: "Chris Moon", rolle: "Ärztliche Direktion", station: "direktion", geschuetzt: false },
+    { id: "chris-moon", name: "Chris Moon", rolle: "Ärztliche Direktion", station: "direktion" },
   ];
 
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
@@ -67,6 +72,7 @@
 
   const MEDIKAMENTE_DOC = "department/medikamente";
   const MITARBEITER_DOC = "department/mitarbeiter";
+  const LOGIN_MITARBEITER_DOC = "department/loginMitarbeiter";
   const INFOS_DOC = "department/infos";
   const PRESENCE_COLLECTION = "presence";
   const NOTIZEN_COLLECTION = "notizen";
@@ -116,9 +122,11 @@
   let unsubNotizen = null;
   let unsubVerkaufslog = null;
   let unsubMitarbeiter = null;
+  let unsubLoginMitarbeiter = null;
   let unsubInfos = null;
   let unsubAnkuendigungen = null;
-  let mitarbeiterListe = [];       // Dynamische, in Firestore gespeicherte Mitarbeiterliste
+  let mitarbeiterListe = [];       // Stations-/Organisations-Liste (Mitarbeiter-Seite)
+  let loginMitarbeiterListe = [];  // Eigene, unabhängige Liste NUR fürs Login-Dropdown
   let infosListe = [];             // Dynamische Infos-Seite
   let gewaehltesMitarbeiterGeschuetzt = false;
   let speicherTimer = null;
@@ -204,11 +212,17 @@
 
     einstellungenAdmin: document.getElementById("einstellungen-admin"),
     einstellungenLocked: document.getElementById("einstellungen-locked"),
+
+    formAddLogin: document.getElementById("form-add-login"),
+    loginNameInput: document.getElementById("login-name-input"),
+    loginRolleInput: document.getElementById("login-rolle-input"),
+    loginGeschuetztInput: document.getElementById("login-geschuetzt-input"),
+    loginVerwaltungListe: document.getElementById("login-verwaltung-liste"),
+
     formAddMitarbeiter: document.getElementById("form-add-mitarbeiter"),
     mitarbeiterNameInput: document.getElementById("mitarbeiter-name-input"),
     mitarbeiterStationInput: document.getElementById("mitarbeiter-station-input"),
     mitarbeiterRolleInput: document.getElementById("mitarbeiter-rolle-input"),
-    mitarbeiterGeschuetztInput: document.getElementById("mitarbeiter-geschuetzt-input"),
     mitarbeiterVerwaltungListe: document.getElementById("mitarbeiter-verwaltung-liste"),
 
     tableBody: document.getElementById("med-table-body"),
@@ -365,10 +379,10 @@
     return (name || "?").trim().charAt(0).toUpperCase();
   }
 
-  // Gibt das lustige Emoji-Avatar zurück, falls in der Mitarbeiterliste
-  // eines hinterlegt ist (Inside-Joke), sonst den Anfangsbuchstaben.
+  // Gibt das lustige Emoji-Avatar zurück, falls in der Login-Liste eines
+  // hinterlegt ist (Inside-Joke), sonst den Anfangsbuchstaben.
   function avatarVon(name) {
-    const eintrag = mitarbeiterListe.find((m) => m.name.toLowerCase() === (name || "").toLowerCase());
+    const eintrag = loginMitarbeiterListe.find((m) => m.name.toLowerCase() === (name || "").toLowerCase());
     return eintrag && eintrag.avatar ? eintrag.avatar : initialenVon(name);
   }
 
@@ -420,7 +434,7 @@
       el.gateNameCustomWrapper.hidden = !istAndere;
       if (istAndere) el.gateNameCustom.focus();
 
-      const eintrag = mitarbeiterListe.find((m) => m.name === el.gateNameSelect.value);
+      const eintrag = loginMitarbeiterListe.find((m) => m.name === el.gateNameSelect.value);
       gewaehltesMitarbeiterGeschuetzt = !!(eintrag && eintrag.geschuetzt);
       el.gatePinWrapper.hidden = !gewaehltesMitarbeiterGeschuetzt;
       if (gewaehltesMitarbeiterGeschuetzt) el.gatePinInput.focus();
@@ -446,7 +460,7 @@
         }
         rolle = "Mitarbeiter";
       } else {
-        const eintrag = mitarbeiterListe.find((m) => m.name === name);
+        const eintrag = loginMitarbeiterListe.find((m) => m.name === name);
         rolle = eintrag ? eintrag.rolle : "Mitarbeiter";
 
         if (eintrag && eintrag.geschuetzt) {
@@ -470,13 +484,13 @@
     el.formGateName.classList.toggle("auth-form--active", schritt === "name");
   }
 
-  // Meldet sich (falls nötig) anonym bei Firebase an, lädt die aktuelle
-  // Mitarbeiterliste und zeigt danach erst den Namens-Schritt an. Der
-  // anonyme Login muss hier schon passieren, weil wir Firestore lesen
-  // müssen, um die Namensauswahl zu befüllen.
+  // Meldet sich (falls nötig) anonym bei Firebase an, lädt die Login-Liste
+  // und zeigt danach erst den Namens-Schritt an. Der anonyme Login muss hier
+  // schon passieren, weil wir Firestore lesen müssen, um die Namensauswahl
+  // zu befüllen.
   function vorbereitenNameSchritt() {
     const weiter = () => {
-      abonniereMitarbeiterliste();
+      abonniereLoginMitarbeiterliste();
       zeigeGateSchritt("name");
     };
 
@@ -501,8 +515,7 @@
       el.gateNameSelect.remove(1);
     }
 
-    const sortiert = [...mitarbeiterListe].sort((a, b) => stationsRangFuer(a.station) - stationsRangFuer(b.station));
-    sortiert.forEach((person) => {
+    loginMitarbeiterListe.forEach((person) => {
       const option = document.createElement("option");
       option.value = person.name;
       option.textContent = `${person.name} (${person.rolle})${person.geschuetzt ? " 🔒" : ""}`;
@@ -564,6 +577,7 @@
     abonniereNotizen();
     abonniereVerkaufslog();
     abonniereMitarbeiterliste();
+    abonniereLoginMitarbeiterliste();
     abonniereInfos();
     abonniereAnkuendigungen();
 
@@ -753,21 +767,16 @@
     if (!el.staffGrid) return;
     renderBenutzerBadge(); // Badge-Avatar aktualisieren, sobald die Liste geladen ist
 
-    const online = ermittleOnlineListe();
-    const onlineNamen = new Set(online.map((p) => p.name.toLowerCase()));
-
     function personKarte(person) {
       if (!person) return `<div class="station-slot station-slot--frei">— Platz frei —</div>`;
 
-      const istOnline = onlineNamen.has(person.name.toLowerCase());
       const istDu = aktuellerNutzer && person.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
 
       return `
         <div class="station-slot">
-          <span class="station-slot__name">${escapeHtml(person.name)}${person.geschuetzt ? " 🔒" : ""}${istDu ? '<span class="staff-card__badge" style="position:static;margin-left:8px;">Du</span>' : ""}</span>
+          <span class="station-slot__name">${escapeHtml(person.name)}${istDu ? '<span class="staff-card__badge" style="position:static;margin-left:8px;">Du</span>' : ""}</span>
           <span class="station-slot__meta">
             <span class="station-slot__rolle">${escapeHtml(person.rolle)}</span>
-            <span class="station-slot__status">${istOnline ? "🟢" : "⚪"}</span>
           </span>
         </div>
       `;
@@ -805,7 +814,8 @@
   }
 
   /* ------------------------------------------------------------------------
-     10b. Firestore: Dynamische Mitarbeiterliste (Namensauswahl + Verwaltung)
+     10b. Firestore: Mitarbeiter-/Stationsliste (nur Mitarbeiter-Seite,
+          NICHTS mit dem Login zu tun)
      ------------------------------------------------------------------------ */
   function abonniereMitarbeiterliste() {
     if (unsubMitarbeiter) return Promise.resolve(); // bereits abonniert
@@ -823,7 +833,6 @@
             speichereMitarbeiterliste();
           }
 
-          populiereNamensDropdown();
           renderMitarbeiterListe();
           renderMitarbeiterVerwaltung();
 
@@ -844,8 +853,7 @@
   }
 
   // Erkennt alte Mitarbeiterlisten (vor dem Stations-System, ohne "station"-
-  // Feld) und ersetzt sie einmalig durch die neue Struktur (Chris Moon als
-  // Ärztliche Direktion, Rhodes/Blackwater erstmal leer). Bereits im neuen
+  // Feld) und ersetzt sie einmalig durch die neue Struktur. Bereits im neuen
   // Format gespeicherte Mitarbeiter bleiben unangetastet.
   function migriereFehlendeMitarbeiterFelder() {
     const istAltesFormat = mitarbeiterListe.some((person) => !person.station);
@@ -864,10 +872,124 @@
       });
   }
 
+  /* ------------------------------------------------------------------------
+     10c. Firestore: LOGIN-Liste (unabhängig von der Mitarbeiter-Seite,
+          bestimmt einzig, wer sich anmelden kann)
+     ------------------------------------------------------------------------ */
+  function abonniereLoginMitarbeiterliste() {
+    if (unsubLoginMitarbeiter) return Promise.resolve(); // bereits abonniert
+
+    return new Promise((resolve) => {
+      let ersterDurchlauf = true;
+
+      unsubLoginMitarbeiter = docRef(LOGIN_MITARBEITER_DOC).onSnapshot(
+        (doc) => {
+          if (doc.exists && Array.isArray(doc.data().liste)) {
+            loginMitarbeiterListe = doc.data().liste;
+          } else {
+            loginMitarbeiterListe = DEFAULT_LOGIN_MITARBEITER.map((m) => ({ ...m }));
+            speichereLoginMitarbeiterliste();
+          }
+
+          populiereNamensDropdown();
+          renderLoginVerwaltung();
+
+          if (ersterDurchlauf) {
+            ersterDurchlauf = false;
+            resolve();
+          }
+        },
+        (fehler) => {
+          console.error("Fehler beim Laden der Login-Liste:", fehler);
+          if (ersterDurchlauf) {
+            ersterDurchlauf = false;
+            resolve();
+          }
+        }
+      );
+    });
+  }
+
+  function speichereLoginMitarbeiterliste() {
+    docRef(LOGIN_MITARBEITER_DOC)
+      .set({ liste: loginMitarbeiterListe, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch((fehler) => {
+        console.error("Login-Liste konnte nicht gespeichert werden:", fehler);
+        zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
+      });
+  }
+
   function istAdmin() {
     return aktuellerNutzer && ADMIN_ROLLEN.includes(aktuellerNutzer.rolle);
   }
 
+  /* ------------------------------------------------------------------------
+     10d. Einstellungen: Login-Verwaltung
+     ------------------------------------------------------------------------ */
+  function renderLoginVerwaltung() {
+    if (!el.loginVerwaltungListe) return;
+    if (!istAdmin()) return;
+
+    el.loginVerwaltungListe.innerHTML = "";
+
+    if (loginMitarbeiterListe.length === 0) {
+      el.loginVerwaltungListe.innerHTML = `<p class="notes-empty">Noch keine Login-Namen eingetragen.</p>`;
+      return;
+    }
+
+    loginMitarbeiterListe.forEach((person) => {
+      const zeile = document.createElement("div");
+      zeile.className = "settings-list__item";
+      zeile.innerHTML = `
+        <span>
+          <span class="settings-list__name">${escapeHtml(person.name)}</span>
+          <span class="settings-list__role">${escapeHtml(person.rolle)}</span>
+          ${person.geschuetzt ? '<span class="settings-list__protected">🔒 PIN-geschützt</span>' : ""}
+        </span>
+        <button type="button" class="icon-btn icon-btn--delete" data-role="remove-login" data-id="${person.id}" title="Entfernen">🗑</button>
+      `;
+      el.loginVerwaltungListe.appendChild(zeile);
+    });
+  }
+
+  if (el.formAddLogin) {
+    el.formAddLogin.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!istAdmin()) return;
+
+      const name = el.loginNameInput.value.trim();
+      const rolle = el.loginRolleInput.value;
+      const geschuetzt = el.loginGeschuetztInput.checked;
+      if (!name) return;
+
+      if (loginMitarbeiterListe.some((m) => m.name.toLowerCase() === name.toLowerCase())) {
+        zeigeToast("Dieser Name steht bereits in der Login-Liste.");
+        return;
+      }
+
+      loginMitarbeiterListe.push({ id: erzeugeId(name), name, rolle, geschuetzt });
+      speichereLoginMitarbeiterliste();
+      el.loginNameInput.value = "";
+      el.loginGeschuetztInput.checked = true;
+      zeigeToast(`„${name}“ kann sich jetzt anmelden.${geschuetzt ? " (PIN-geschützt)" : ""}`);
+    });
+  }
+
+  if (el.loginVerwaltungListe) {
+    el.loginVerwaltungListe.addEventListener("click", (event) => {
+      const btn = event.target.closest('[data-role="remove-login"]');
+      if (!btn || !istAdmin()) return;
+
+      const person = loginMitarbeiterListe.find((m) => m.id === btn.dataset.id);
+      loginMitarbeiterListe = loginMitarbeiterListe.filter((m) => m.id !== btn.dataset.id);
+      speichereLoginMitarbeiterliste();
+      if (person) zeigeToast(`„${person.name}“ kann sich nicht mehr anmelden.`);
+    });
+  }
+
+  /* ------------------------------------------------------------------------
+     10e. Einstellungen: Mitarbeiter-/Stationsliste-Verwaltung
+     ------------------------------------------------------------------------ */
   function renderMitarbeiterVerwaltung() {
     if (!el.mitarbeiterVerwaltungListe) return;
 
@@ -886,15 +1008,29 @@
       const stationInfo = STATIONEN[person.station];
       const stationLabel = stationInfo ? stationInfo.label : "—";
 
+      // Verschieben nur innerhalb derselben Station sinnvoll
+      const stationsMitglieder = mitarbeiterListe.filter((m) => m.station === person.station);
+      const localIndex = stationsMitglieder.findIndex((m) => m.id === person.id);
+      const istErste = localIndex === 0;
+      const istLetzte = localIndex === stationsMitglieder.length - 1;
+      const kannVerschieben = stationsMitglieder.length > 1;
+
       const zeile = document.createElement("div");
       zeile.className = "settings-list__item";
       zeile.innerHTML = `
         <span>
           <span class="settings-list__name">${escapeHtml(person.name)}</span>
           <span class="settings-list__role">${escapeHtml(person.rolle)} · ${escapeHtml(stationLabel)}</span>
-          ${person.geschuetzt ? '<span class="settings-list__protected">🔒 PIN-geschützt</span>' : ""}
         </span>
-        <button type="button" class="icon-btn icon-btn--delete" data-role="remove-mitarbeiter" data-id="${person.id}" title="Entfernen">🗑</button>
+        <div class="row-actions">
+          ${
+            kannVerschieben
+              ? `<button class="icon-btn icon-btn--move" data-role="move-mitarbeiter-up" data-id="${person.id}" title="Nach oben verschieben" ${istErste ? "disabled" : ""}>▲</button>
+                 <button class="icon-btn icon-btn--move" data-role="move-mitarbeiter-down" data-id="${person.id}" title="Nach unten verschieben" ${istLetzte ? "disabled" : ""}>▼</button>`
+              : ""
+          }
+          <button type="button" class="icon-btn icon-btn--delete" data-role="remove-mitarbeiter" data-id="${person.id}" title="Entfernen">🗑</button>
+        </div>
       `;
       el.mitarbeiterVerwaltungListe.appendChild(zeile);
     });
@@ -931,25 +1067,57 @@
         return;
       }
 
-      const geschuetzt = el.mitarbeiterGeschuetztInput ? el.mitarbeiterGeschuetztInput.checked : false;
-
-      mitarbeiterListe.push({ id: erzeugeId(name), name, rolle, station, geschuetzt });
+      mitarbeiterListe.push({ id: erzeugeId(name), name, rolle, station });
       speichereMitarbeiterliste();
       el.mitarbeiterNameInput.value = "";
-      if (el.mitarbeiterGeschuetztInput) el.mitarbeiterGeschuetztInput.checked = false;
-      zeigeToast(`„${name}“ wurde bei ${STATIONEN[station].label} hinzugefügt.${geschuetzt ? " (PIN-geschützt)" : ""}`);
+      zeigeToast(`„${name}“ wurde bei ${STATIONEN[station].label} hinzugefügt.`);
     });
+  }
+
+  // Verschiebt einen Mitarbeiter innerhalb seiner Station um eine Position
+  // nach oben/unten (bestimmt die Anzeige-Reihenfolge auf der Mitarbeiter-Seite).
+  function verschiebeMitarbeiter(id, richtung) {
+    if (!istAdmin()) {
+      zeigeToast("Nur Chefarzt, Stellv. Chefarzt & Ärztliche Direktion dürfen die Reihenfolge ändern.");
+      return;
+    }
+
+    const person = mitarbeiterListe.find((m) => m.id === id);
+    if (!person) return;
+
+    const stationsMitglieder = mitarbeiterListe.filter((m) => m.station === person.station);
+    const localIndex = stationsMitglieder.findIndex((m) => m.id === id);
+    const zielLocalIndex = richtung === "up" ? localIndex - 1 : localIndex + 1;
+    if (zielLocalIndex < 0 || zielLocalIndex >= stationsMitglieder.length) return;
+
+    const zielPerson = stationsMitglieder[zielLocalIndex];
+    const globalIndexA = mitarbeiterListe.findIndex((m) => m.id === person.id);
+    const globalIndexB = mitarbeiterListe.findIndex((m) => m.id === zielPerson.id);
+    [mitarbeiterListe[globalIndexA], mitarbeiterListe[globalIndexB]] = [mitarbeiterListe[globalIndexB], mitarbeiterListe[globalIndexA]];
+
+    speichereMitarbeiterliste();
+    renderMitarbeiterListe();
+    renderMitarbeiterVerwaltung();
   }
 
   if (el.mitarbeiterVerwaltungListe) {
     el.mitarbeiterVerwaltungListe.addEventListener("click", (event) => {
-      const btn = event.target.closest('[data-role="remove-mitarbeiter"]');
-      if (!btn || !istAdmin()) return;
+      const removeBtn = event.target.closest('[data-role="remove-mitarbeiter"]');
+      if (removeBtn) {
+        if (!istAdmin()) return;
+        const person = mitarbeiterListe.find((m) => m.id === removeBtn.dataset.id);
+        mitarbeiterListe = mitarbeiterListe.filter((m) => m.id !== removeBtn.dataset.id);
+        speichereMitarbeiterliste();
+        renderMitarbeiterListe();
+        if (person) zeigeToast(`„${person.name}“ wurde entfernt.`);
+        return;
+      }
 
-      const person = mitarbeiterListe.find((m) => m.id === btn.dataset.id);
-      mitarbeiterListe = mitarbeiterListe.filter((m) => m.id !== btn.dataset.id);
-      speichereMitarbeiterliste();
-      if (person) zeigeToast(`„${person.name}“ wurde entfernt.`);
+      const upBtn = event.target.closest('[data-role="move-mitarbeiter-up"]');
+      if (upBtn) return verschiebeMitarbeiter(upBtn.dataset.id, "up");
+
+      const downBtn = event.target.closest('[data-role="move-mitarbeiter-down"]');
+      if (downBtn) return verschiebeMitarbeiter(downBtn.dataset.id, "down");
     });
   }
 
@@ -2142,7 +2310,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 18;
+  const APP_VERSION = 21;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
@@ -2168,7 +2336,16 @@
         });
     }
 
-    btn.addEventListener("click", () => window.location.reload());
+    btn.addEventListener("click", () => {
+      // Login-Session zurücksetzen, damit nach dem Update wirklich alles
+      // frisch geladen wird (neues Passwort, neuer Name, neuer PIN-Check).
+      // Das Website-Passwort selbst bleibt bewusst NICHT gespeichert - so
+      // greift auch ein evtl. geändertes SITE_PASSWORD sofort.
+      localStorage.removeItem(GATE_PASSWORD_OK);
+      localStorage.removeItem(GATE_NAME);
+      localStorage.removeItem(GATE_ROLLE);
+      window.location.reload();
+    });
 
     // Direkt beim Laden einmal prüfen (mit kleiner Verzögerung) und danach
     // regelmäßig im Hintergrund weiterprüfen, auch während man eingeloggt
