@@ -39,6 +39,18 @@
   --color-brand-start: #e8564d;
   --color-brand-end: #c6362e;
 
+  /* Textfarben für Akzent-Badges/Links (auf hellem soft-Hintergrund gut lesbar) */
+  --color-mint-text: #2f9c82;
+  --color-blue-text: #2f6fa8;
+  --color-lavender-text: #7a5fc9;
+  --color-sage-text: #35543f;
+  --color-red-text: #c94f4f;
+  --color-peach-text: #b06a2b;
+  --color-slate-text: #4a5568;
+
+  /* Rahmenfarbe für Eingabefelder */
+  --color-input-border: #e2e5eb;
+
   /* Radien: große, runde Elemente */
   --radius-sm: 12px;
   --radius-md: 18px;
@@ -91,6 +103,19 @@ html[data-theme="dark"] {
   /* Marken-Rot fürs Logo bleibt gleich */
   --color-brand-start: #e8564d;
   --color-brand-end: #c6362e;
+
+  /* Textfarben für Akzent-Badges/Links: im Dark Mode deutlich aufgehellt,
+     damit sie auf den dunklen "-soft"-Hintergründen lesbar bleiben */
+  --color-mint-text: #7fe0c8;
+  --color-blue-text: #8ec5f7;
+  --color-lavender-text: #c2aef5;
+  --color-sage-text: #9fd4b4;
+  --color-red-text: #f0a29e;
+  --color-peach-text: #ffbf8f;
+  --color-slate-text: #c7ccd6;
+
+  /* Rahmenfarbe für Eingabefelder: dezenter Ton passend zum dunklen Grund */
+  --color-input-border: #3d3a44;
 
   /* Schatten: dunkler/kräftiger auf dunklem Grund */
   --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.35);
@@ -318,7 +343,7 @@ h1, h2, h3 {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(145deg, var(--color-lavender), var(--color-blue));
+  background: var(--color-lavender);
   color: #ffffff;
   font-family: var(--font-display);
   font-weight: 700;
@@ -442,7 +467,7 @@ h1, h2, h3 {
   align-items: center;
   gap: 8px;
   padding: 12px 22px;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 600;
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
@@ -474,7 +499,7 @@ h1, h2, h3 {
 
 .btn--ghost-active {
   background: var(--color-lavender-soft);
-  color: #7a5fc9;
+  color: var(--color-lavender-text);
 }
 
 .btn--danger {
@@ -575,7 +600,7 @@ h1, h2, h3 {
   margin-top: 8px;
   font-size: 11.5px;
   font-weight: 600;
-  color: #7a5fc9;
+  color: var(--color-lavender-text);
   background: var(--color-lavender-soft);
   padding: 4px 10px;
   border-radius: var(--radius-pill);
@@ -687,7 +712,7 @@ h1, h2, h3 {
 .notes-form textarea {
   flex: 1;
   resize: vertical;
-  border: 1.5px solid #e2e5eb;
+  border: 1.5px solid var(--color-input-border);
   background: var(--color-surface-soft);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
@@ -769,7 +794,7 @@ h1, h2, h3 {
 
 .note-item__kategorie--allgemein {
   background: var(--color-blue-soft);
-  color: #2f6fa8;
+  color: var(--color-blue-text);
 }
 
 .note-item__kategorie--wichtig {
@@ -779,7 +804,7 @@ h1, h2, h3 {
 
 .note-item__kategorie--personal {
   background: var(--color-sage-soft);
-  color: #35543f;
+  color: var(--color-sage-text);
 }
 
 .note-item__text {
@@ -856,7 +881,7 @@ h1, h2, h3 {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 15px;
-  color: #2f9c82;
+  color: var(--color-mint-text);
 }
 
 .sale-item__footer {
@@ -1134,7 +1159,7 @@ h1, h2, h3 {
   text-align: right;
   font-weight: 700;
   font-size: 14px;
-  color: #2f9c82;
+  color: var(--color-mint-text);
 }
 
 /* --------------------------------------------------------------------------
@@ -1213,7 +1238,7 @@ h1, h2, h3 {
 
 .med-price {
   display: inline-block;
-  color: #4a5568;
+  color: var(--color-slate-text);
   font-weight: 600;
   font-size: 13px;
   background: var(--color-surface-soft);
@@ -1225,7 +1250,7 @@ h1, h2, h3 {
   width: 76px;
   padding: 9px 12px;
   border-radius: var(--radius-sm);
-  border: 1.5px solid #e2e5eb;
+  border: 1.5px solid var(--color-input-border);
   background: var(--color-surface-raised);
   font-size: 14px;
   color: var(--color-text);
@@ -1242,7 +1267,7 @@ h1, h2, h3 {
   display: inline-block;
   font-weight: 700;
   font-size: 13px;
-  color: #2f9c82;
+  color: var(--color-mint-text);
   background: var(--color-mint-soft);
   padding: 5px 12px;
   border-radius: var(--radius-pill);
@@ -1269,12 +1294,12 @@ h1, h2, h3 {
 
 .icon-btn--edit:hover {
   background: var(--color-blue-soft);
-  color: #2f6fa8;
+  color: var(--color-blue-text);
 }
 
 .icon-btn--delete:hover {
   background: var(--color-red-soft);
-  color: #c94f4f;
+  color: var(--color-red-text);
 }
 
 .icon-btn--locked {
@@ -1296,7 +1321,7 @@ h1, h2, h3 {
 
 .icon-btn--move:hover {
   background: var(--color-blue-soft);
-  color: #2f6fa8;
+  color: var(--color-blue-text);
 }
 
 .icon-btn--move:disabled {
@@ -1333,7 +1358,7 @@ h1, h2, h3 {
   font-family: var(--font-display);
   font-size: 19px;
   font-weight: 700;
-  color: #2f9c82;
+  color: var(--color-mint-text);
 }
 
 .empty-state {
@@ -1397,14 +1422,6 @@ h1, h2, h3 {
   font-size: 16px;
 }
 
-.staff-card__crown {
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 18px;
-}
-
 .staff-card__avatar {
   width: 48px;
   height: 48px;
@@ -1420,19 +1437,19 @@ h1, h2, h3 {
 }
 
 .staff-card__avatar--mint {
-  background: linear-gradient(145deg, var(--color-mint), var(--color-blue));
+  background: var(--color-mint);
 }
 
 .staff-card__avatar--lavender {
-  background: linear-gradient(145deg, var(--color-lavender), var(--color-peach));
+  background: var(--color-lavender);
 }
 
 .staff-card__avatar--blue {
-  background: linear-gradient(145deg, var(--color-blue), var(--color-lavender));
+  background: var(--color-blue);
 }
 
 .staff-card__avatar--peach {
-  background: linear-gradient(145deg, var(--color-peach), var(--color-mint));
+  background: var(--color-peach);
 }
 
 .staff-card__info {
@@ -1458,7 +1475,7 @@ h1, h2, h3 {
   right: 16px;
   font-size: 11px;
   font-weight: 700;
-  color: #2f9c82;
+  color: var(--color-mint-text);
   background: var(--color-mint-soft);
   padding: 3px 10px;
   border-radius: var(--radius-pill);
@@ -1566,18 +1583,18 @@ h1, h2, h3 {
   align-self: flex-start;
   font-size: 12.5px;
   font-weight: 600;
-  color: #4a9d8a;
+  color: var(--color-mint-text);
   margin-top: 8px;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .auth-forgot-link:hover {
-  color: #2f9c82;
+  color: var(--color-mint-text);
 }
 
 .auth-success {
-  color: #2f9c82;
+  color: var(--color-mint-text);
   background: var(--color-mint-soft);
   font-size: 12.5px;
   line-height: 1.5;
@@ -1590,7 +1607,7 @@ h1, h2, h3 {
   margin-top: 18px;
   font-size: 12px;
   line-height: 1.5;
-  color: #b06a2b;
+  color: var(--color-peach-text);
   background: var(--color-peach-soft);
   padding: 10px 14px;
   border-radius: var(--radius-sm);
@@ -1712,7 +1729,7 @@ h1, h2, h3 {
 
 .user-menu__item:hover {
   background: var(--color-red-soft);
-  color: #c94f4f;
+  color: var(--color-red-text);
 }
 
 /* --------------------------------------------------------------------------
@@ -1790,6 +1807,7 @@ h1, h2, h3 {
 
 .settings-form {
   display: flex;
+  align-items: flex-start;
   gap: 10px;
   margin-bottom: 20px;
 }
@@ -1831,7 +1849,7 @@ h1, h2, h3 {
 
 .settings-list__protected {
   font-size: 11px;
-  color: #b06a2b;
+  color: var(--color-peach-text);
   background: var(--color-peach-soft);
   padding: 2px 9px;
   border-radius: var(--radius-pill);
@@ -1902,7 +1920,7 @@ h1, h2, h3 {
 
 .modal__close:hover {
   background: var(--color-red-soft);
-  color: #c94f4f;
+  color: var(--color-red-text);
 }
 
 .modal__body {
@@ -1925,7 +1943,7 @@ h1, h2, h3 {
 }
 
 .field-input {
-  border: 1.5px solid #e7ebf2;
+  border: 1.5px solid var(--color-input-border);
   background: var(--color-surface-soft);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
@@ -1947,7 +1965,7 @@ h1, h2, h3 {
 }
 
 .field-error {
-  color: #c94f4f;
+  color: var(--color-red-text);
   font-size: 12.5px;
   margin-top: 6px;
 }

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ärztekammer | Verwaltung</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23c6362e'/%3E%3Crect x='42' y='20' width='16' height='60' rx='4' fill='white'/%3E%3Crect x='20' y='42' width='60' height='16' rx='4' fill='white'/%3E%3C/svg%3E" />
 
   <!-- Google Fonts: Outfit (Display) & Inter (Text) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -13,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=13" />
+  <link rel="stylesheet" href="css/style.css?v=15" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -344,6 +345,11 @@
             <button type="submit" class="btn btn--primary">Hinzufügen</button>
           </form>
         </div>
+        <div class="sale-log-search">
+          <span class="search-field__icon">🔍</span>
+          <input type="text" id="notes-search" placeholder="Notizen durchsuchen..." autocomplete="off" />
+        </div>
+
         <div class="notes-list notes-list--page" id="notes-list">
           <!-- wird per JavaScript befüllt -->
         </div>
@@ -357,16 +363,14 @@
         <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
         <div class="notes-card" id="infos-admin-form" hidden>
           <h3 id="info-form-title">ℹ️ Neuen Info-Eintrag hinzufügen</h3>
+          <div class="format-toolbar" data-target="info-text-input">
+            <button type="button" class="format-btn" data-format="bold" title="Fett im Beschreibungsfeld (markierten Text auswählen)"><strong>F</strong></button>
+            <button type="button" class="format-btn" data-format="underline" title="Unterstrichen im Beschreibungsfeld (markierten Text auswählen)"><u>U</u></button>
+          </div>
           <form class="settings-form" id="form-add-info" style="flex-wrap: wrap;">
             <input type="hidden" id="info-editing-id" value="" />
             <input type="text" id="info-titel-input" class="field-input" placeholder="Titel, z. B. Medikamentenname" required style="flex: 1 1 220px;" />
-            <div style="flex: 2 1 300px; display: flex; flex-direction: column; gap: 6px;">
-              <div class="format-toolbar" data-target="info-text-input" style="margin-bottom: 0;">
-                <button type="button" class="format-btn" data-format="bold" title="Fett (markierten Text auswählen)"><strong>F</strong></button>
-                <button type="button" class="format-btn" data-format="underline" title="Unterstrichen (markierten Text auswählen)"><u>U</u></button>
-              </div>
-              <input type="text" id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required />
-            </div>
+            <input type="text" id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required style="flex: 2 1 300px;" />
             <input type="text" id="info-hinweis-input" class="field-input" placeholder="Zusatz-Hinweis (optional)" style="flex: 1 1 200px;" />
             <button type="submit" class="btn btn--primary" id="info-form-submit">Hinzufügen</button>
             <button type="button" class="btn btn--ghost" id="info-form-cancel" hidden>Abbrechen</button>
@@ -529,7 +533,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=13"></script>
-  <script src="js/app.js?v=13"></script>
+  <script src="js/firebase-config.js?v=15"></script>
+  <script src="js/app.js?v=15"></script>
 </body>
 </html>

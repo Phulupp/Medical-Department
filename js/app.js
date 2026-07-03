@@ -783,7 +783,6 @@
         const card = document.createElement("div");
         card.className = `staff-card${istOberste ? " staff-card--lead" : ""}`;
         card.innerHTML = `
-          ${istOberste ? '<span class="staff-card__crown">👑</span>' : ""}
           <div class="staff-card__avatar staff-card__avatar--${farbe}">${person.avatar ? person.avatar : escapeHtml(initialenVon(person.name))}</div>
           <div class="staff-card__info">
             <span class="staff-card__name">${escapeHtml(person.name)}${person.geschuetzt ? " 🔒" : ""}</span>
@@ -943,6 +942,7 @@
 
   let aktiveNotizKategorie = "wichtig"; // Standard-Reiter beim Öffnen der Seite
   let letzteNotizen = [];               // Zwischenspeicher für Reiter-Filterung ohne Neu-Laden
+  let notizenSuche = "";
 
   const notesTabButtons = document.querySelectorAll(".notes-tab");
   notesTabButtons.forEach((tab) => {
@@ -954,6 +954,14 @@
       renderNotizen();
     });
   });
+
+  const notesSearchInput = document.getElementById("notes-search");
+  if (notesSearchInput) {
+    notesSearchInput.addEventListener("input", (event) => {
+      notizenSuche = event.target.value;
+      renderNotizen();
+    });
+  }
 
   function aktualisierePlatzhalterNotizfeld() {
     if (!el.noteInput) return;
@@ -989,13 +997,24 @@
   }
 
   function renderNotizen() {
-    const notizen = letzteNotizen.filter((n) => n.kategorie === aktiveNotizKategorie);
+    let notizen = letzteNotizen.filter((n) => n.kategorie === aktiveNotizKategorie);
+
+    const begriff = notizenSuche.trim().toLowerCase();
+    if (begriff) {
+      notizen = notizen.filter(
+        (n) => n.text.toLowerCase().includes(begriff) || n.autor.toLowerCase().includes(begriff)
+      );
+    }
 
     el.notesList.innerHTML = "";
     el.notesEmpty.hidden = notizen.length !== 0;
     if (el.notesEmpty && notizen.length === 0) {
-      const kategorieInfo = NOTIZ_KATEGORIEN[aktiveNotizKategorie];
-      el.notesEmpty.textContent = `Noch keine „${kategorieInfo.label}"-Notizen vorhanden.`;
+      if (begriff) {
+        el.notesEmpty.textContent = "Keine Notizen gefunden, die zu deiner Suche passen.";
+      } else {
+        const kategorieInfo = NOTIZ_KATEGORIEN[aktiveNotizKategorie];
+        el.notesEmpty.textContent = `Noch keine „${kategorieInfo.label}"-Notizen vorhanden.`;
+      }
     }
 
     notizen.forEach((notiz) => {
@@ -1043,9 +1062,16 @@
   el.notesList.addEventListener("click", (event) => {
     const btn = event.target.closest('[data-role="delete-notiz"]');
     if (!btn) return;
-    db.collection(NOTIZEN_COLLECTION).doc(btn.dataset.id).delete().catch(() => {
-      zeigeToast("Notiz konnte nicht gelöscht werden.");
-    });
+
+    oeffneBestaetigungsModal(
+      "Notiz löschen",
+      "Möchtest du diese Notiz wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      () => {
+        db.collection(NOTIZEN_COLLECTION).doc(btn.dataset.id).delete().catch(() => {
+          zeigeToast("Notiz konnte nicht gelöscht werden.");
+        });
+      }
+    );
   });
 
   /* ------------------------------------------------------------------------
@@ -1360,11 +1386,17 @@
     const deleteBtn = event.target.closest('[data-role="delete-verkauf"]');
     if (deleteBtn) {
       if (!istAdmin()) return;
-      db.collection(VERKAUFSLOG_COLLECTION)
-        .doc(deleteBtn.dataset.id)
-        .delete()
-        .then(() => zeigeToast("Verkauf gelöscht."))
-        .catch(() => zeigeToast("Verkauf konnte nicht gelöscht werden."));
+      oeffneBestaetigungsModal(
+        "Verkauf löschen",
+        "Möchtest du diesen Verkauf wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+        () => {
+          db.collection(VERKAUFSLOG_COLLECTION)
+            .doc(deleteBtn.dataset.id)
+            .delete()
+            .then(() => zeigeToast("Verkauf gelöscht."))
+            .catch(() => zeigeToast("Verkauf konnte nicht gelöscht werden."));
+        }
+      );
       return;
     }
 
@@ -1664,9 +1696,16 @@
       const deleteBtn = event.target.closest('[data-role="delete-info"]');
       if (deleteBtn && istAdmin()) {
         const info = infosListe.find((i) => i.id === deleteBtn.dataset.id);
-        infosListe = infosListe.filter((i) => i.id !== deleteBtn.dataset.id);
-        speichereInfos();
-        if (info) zeigeToast(`„${info.titel}“ wurde entfernt.`);
+        if (!info) return;
+        oeffneBestaetigungsModal(
+          "Info-Eintrag löschen",
+          `Möchtest du „${info.titel}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
+          () => {
+            infosListe = infosListe.filter((i) => i.id !== deleteBtn.dataset.id);
+            speichereInfos();
+            zeigeToast(`„${info.titel}“ wurde entfernt.`);
+          }
+        );
         return;
       }
 
@@ -1762,7 +1801,14 @@
     el.boardList.addEventListener("click", (event) => {
       const btn = event.target.closest('[data-role="delete-ankuendigung"]');
       if (!btn || !istAdmin()) return;
-      db.collection(ANKUENDIGUNGEN_COLLECTION).doc(btn.dataset.id).delete().catch(() => {});
+
+      oeffneBestaetigungsModal(
+        "Ankündigung löschen",
+        "Möchtest du diese Ankündigung wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+        () => {
+          db.collection(ANKUENDIGUNGEN_COLLECTION).doc(btn.dataset.id).delete().catch(() => {});
+        }
+      );
     });
   }
 
@@ -1864,33 +1910,41 @@
   });
 
   /* ------------------------------------------------------------------------
-     16. Medikament löschen
+     16. Löschen-Bestätigung (generisch für Medikamente, Notizen, Verkäufe)
      ------------------------------------------------------------------------ */
+  let pendingDeleteAktion = null; // Funktion, die bei Bestätigung ausgeführt wird
+
+  function oeffneBestaetigungsModal(titel, text, aktion) {
+    el.modalDelete.querySelector(".modal__header h3").textContent = titel;
+    el.deleteText.textContent = text;
+    pendingDeleteAktion = aktion;
+    oeffneModal(el.modalDelete);
+  }
+
   function oeffneLoeschenModal(id) {
     const med = medikamente.find((m) => m.id === id);
     if (!med) return;
 
-    aktivesMedikamentId = id;
-    el.deleteText.textContent = `Möchtest du „${med.name}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`;
-    oeffneModal(el.modalDelete);
+    oeffneBestaetigungsModal(
+      "Medikament löschen",
+      `Möchtest du „${med.name}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
+      () => {
+        if (!istAdmin()) {
+          zeigeToast("Nur Chefarzt & Stellv. Chefärztin dürfen löschen.");
+          return;
+        }
+        medikamente = medikamente.filter((m) => m.id !== id);
+        speichereMedikamenteInFirestore();
+        render();
+        zeigeToast(`„${med.name}“ wurde gelöscht.`);
+      }
+    );
   }
 
   el.btnConfirmDelete.addEventListener("click", () => {
-    if (!istAdmin()) {
-      zeigeToast("Nur Chefarzt & Stellv. Chefärztin dürfen löschen.");
-      schliesseModal(el.modalDelete);
-      return;
-    }
-
-    const med = medikamente.find((m) => m.id === aktivesMedikamentId);
-    medikamente = medikamente.filter((m) => m.id !== aktivesMedikamentId);
-
-    speichereMedikamenteInFirestore();
-    render();
+    if (pendingDeleteAktion) pendingDeleteAktion();
     schliesseModal(el.modalDelete);
-
-    if (med) zeigeToast(`„${med.name}“ wurde gelöscht.`);
-    aktivesMedikamentId = null;
+    pendingDeleteAktion = null;
   });
 
   /* ------------------------------------------------------------------------
@@ -2066,7 +2120,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 13;
+  const APP_VERSION = 15;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
