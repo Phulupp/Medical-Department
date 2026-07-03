@@ -1593,11 +1593,11 @@
         eintrag.dataset.id = verkauf.id;
         eintrag.innerHTML = `
           <div class="sale-item__header">
-            <div class="sale-item__kunde-row">
-              <span class="sale-item__kunde-name">${kundeName}</span>
+            <span class="sale-item__kunde-name">${kundeName}</span>
+            <div class="sale-item__header-right">
+              <span class="sale-item__time">${zeitText}</span>
               <button type="button" class="icon-btn icon-btn--edit sale-item__edit-kunde-btn" data-role="toggle-edit-kunde" data-id="${verkauf.id}" title="Kunde bearbeiten">✎</button>
             </div>
-            <span class="sale-item__time">${zeitText}</span>
           </div>
           <div class="sale-item__verkaeufer">verkauft von ${escapeHtml(verkauf.mitarbeiter)} · ${escapeHtml(verkauf.rolle || "")}</div>
           <div class="sale-item__items">${itemsText}</div>
@@ -2393,7 +2393,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 27;
+  const APP_VERSION = 28;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
