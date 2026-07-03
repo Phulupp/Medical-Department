@@ -54,8 +54,8 @@
   // Seite anmelden kann. "geschuetzt: true" bedeutet: Für die Anmeldung mit
   // diesem Namen ist der ADMIN_PIN nötig.
   const DEFAULT_LOGIN_MITARBEITER = [
-    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Facharzt", geschuetzt: true, avatar: "🫏" },
-    { id: "grete", name: "Grete Hornhausen", rolle: "Facharzt", geschuetzt: true, avatar: "🦦" },
+    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt", geschuetzt: true, avatar: "🫏" },
+    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefarzt", geschuetzt: true, avatar: "🦦" },
   ];
 
   // Standard-Mitarbeiter-/Stationsliste: FESTE Anzahl Plätze je Station
@@ -967,6 +967,44 @@
      10c. Firestore: LOGIN-Liste (unabhängig von der Mitarbeiter-Seite,
           bestimmt einzig, wer sich anmelden kann)
      ------------------------------------------------------------------------ */
+  // Verhindert eine komplette Aussperrung, OHNE eine fremde Person (wie
+  // "Chris Moon") ins Login einzuschleusen. Stattdessen: einen bereits
+  // versehentlich hinzugefügten Notfall-Eintrag entfernen und Heinrich/Grete
+  // (die Hauptnutzer der Seite) automatisch auf Admin-Rang anheben, falls
+  // gerade niemand Admin-Rechte hat.
+  function sichereMindestensEinenAdminZu() {
+    let geaendert = false;
+
+    // Alten, versehentlich eingeschleusten Chris-Moon-Notfall-Login entfernen
+    const vorherAnzahl = loginMitarbeiterListe.length;
+    loginMitarbeiterListe = loginMitarbeiterListe.filter((m) => m.id !== "chris-moon-notfall-admin");
+    if (loginMitarbeiterListe.length !== vorherAnzahl) geaendert = true;
+
+    const hatAdmin = loginMitarbeiterListe.some((m) => ADMIN_ROLLEN.includes(m.rolle));
+    if (!hatAdmin) {
+      const heinrich = loginMitarbeiterListe.find((m) => m.id === "heinrich");
+      const grete = loginMitarbeiterListe.find((m) => m.id === "grete");
+
+      if (heinrich) {
+        heinrich.rolle = "Chefarzt";
+        geaendert = true;
+      }
+      if (grete) {
+        grete.rolle = "Stellv. Chefarzt";
+        geaendert = true;
+      }
+
+      // Falls weder Heinrich noch Grete in der Liste stehen: ersten
+      // vorhandenen Eintrag zum Admin machen, damit niemand ausgesperrt bleibt.
+      if (!heinrich && !grete && loginMitarbeiterListe.length > 0) {
+        loginMitarbeiterListe[0].rolle = "Chefarzt";
+        geaendert = true;
+      }
+    }
+
+    if (geaendert) speichereLoginMitarbeiterliste();
+  }
+
   function abonniereLoginMitarbeiterliste() {
     if (unsubLoginMitarbeiter) return Promise.resolve(); // bereits abonniert
 
@@ -977,6 +1015,7 @@
         (doc) => {
           if (doc.exists && Array.isArray(doc.data().liste)) {
             loginMitarbeiterListe = doc.data().liste;
+            sichereMindestensEinenAdminZu();
           } else {
             loginMitarbeiterListe = DEFAULT_LOGIN_MITARBEITER.map((m) => ({ ...m }));
             speichereLoginMitarbeiterliste();
@@ -2327,7 +2366,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 23;
+  const APP_VERSION = 25;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
