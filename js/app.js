@@ -766,21 +766,35 @@
   /* ------------------------------------------------------------------------
      10. Mitarbeiter-Ansicht (bekannte Liste + Online-Status)
      ------------------------------------------------------------------------ */
+  let mitarbeiterBearbeitenModus = false; // Erst nach Klick auf "Bearbeiten" sind Felder aktiv
+
   function renderMitarbeiterListe() {
     if (!el.staffGrid) return;
     renderBenutzerBadge(); // Badge-Avatar aktualisieren, sobald die Liste geladen ist
 
     const admin = istAdmin();
+    const bearbeitenAktiv = admin && mitarbeiterBearbeitenModus;
 
-    // Eine einzelne Zeile: bei Admins direkt editierbar (Name-Feld + Rang-
-    // Dropdown), bei allen anderen nur lesbar.
+    // Bearbeiten-Button nur für Admins anzeigen, Beschriftung/Status je nach Modus
+    const toolbar = document.getElementById("staff-toolbar");
+    const toggleBtn = document.getElementById("btn-toggle-mitarbeiter-bearbeiten");
+    if (toolbar) toolbar.hidden = !admin;
+    if (toggleBtn) {
+      toggleBtn.innerHTML = bearbeitenAktiv
+        ? '<span class="btn__icon">✓</span> Fertig'
+        : '<span class="btn__icon">✎</span> Bearbeiten';
+      toggleBtn.classList.toggle("btn--ghost-active", bearbeitenAktiv);
+    }
+
+    // Eine einzelne Zeile: nur im Bearbeiten-Modus editierbar (Name-Feld +
+    // Rang-Dropdown), sonst nur lesbar - egal ob Admin oder nicht.
     function slotZeile(stationKey, index, slot) {
       const istDirektion = stationKey === "direktion";
       const istDu = aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
       const duBadge = istDu ? '<span class="staff-card__badge" style="position:static;margin-left:8px;">Du</span>' : "";
 
-      if (!admin) {
-        // Reine Lese-Ansicht
+      if (!bearbeitenAktiv) {
+        // Reine Lese-Ansicht (Standard - auch für Admins, bis "Bearbeiten" geklickt wird)
         if (!slot.name) return `<div class="station-slot station-slot--frei">— Platz frei —</div>`;
         return `
           <div class="station-slot">
@@ -836,6 +850,16 @@
         ${stationsBlock("rhodes")}
       </div>
     `;
+  }
+
+  // Bearbeiten-Button: schaltet zwischen reiner Ansicht und editierbaren Feldern um
+  const btnToggleMitarbeiterBearbeiten = document.getElementById("btn-toggle-mitarbeiter-bearbeiten");
+  if (btnToggleMitarbeiterBearbeiten) {
+    btnToggleMitarbeiterBearbeiten.addEventListener("click", () => {
+      if (!istAdmin()) return;
+      mitarbeiterBearbeitenModus = !mitarbeiterBearbeitenModus;
+      renderMitarbeiterListe();
+    });
   }
 
   // Änderungen an Name-Feldern/Rang-Dropdowns direkt in der Mitarbeiter-Tabelle
@@ -2258,7 +2282,10 @@
         el.viewSubtitle.textContent = meta.subtitle;
       }
 
-      if (zielView === "mitarbeiter") renderMitarbeiterListe();
+      if (zielView === "mitarbeiter") {
+        mitarbeiterBearbeitenModus = false; // Sicherheitshalber immer mit Lese-Ansicht starten
+        renderMitarbeiterListe();
+      }
       if (zielView === "einstellungen") renderLoginVerwaltung();
     });
   });
@@ -2366,7 +2393,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 25;
+  const APP_VERSION = 26;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

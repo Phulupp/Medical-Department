@@ -1532,6 +1532,17 @@ h1, h2, h3 {
 /* --------------------------------------------------------------------------
    8. Mitarbeiter: Direktion + Stationen (Rhodes/Blackwater)
    -------------------------------------------------------------------------- */
+.staff-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.staff-toolbar .btn--ghost-active {
+  background: var(--color-mint);
+  color: #ffffff;
+}
+
 .staff-grid {
   display: flex;
   flex-direction: column;
