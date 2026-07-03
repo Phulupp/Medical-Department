@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=15" />
+  <link rel="stylesheet" href="css/style.css?v=18" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -363,17 +363,24 @@
         <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
         <div class="notes-card" id="infos-admin-form" hidden>
           <h3 id="info-form-title">ℹ️ Neuen Info-Eintrag hinzufügen</h3>
-          <div class="format-toolbar" data-target="info-text-input">
-            <button type="button" class="format-btn" data-format="bold" title="Fett im Beschreibungsfeld (markierten Text auswählen)"><strong>F</strong></button>
-            <button type="button" class="format-btn" data-format="underline" title="Unterstrichen im Beschreibungsfeld (markierten Text auswählen)"><u>U</u></button>
-          </div>
-          <form class="settings-form" id="form-add-info" style="flex-wrap: wrap;">
+          <form id="form-add-info">
             <input type="hidden" id="info-editing-id" value="" />
-            <input type="text" id="info-titel-input" class="field-input" placeholder="Titel, z. B. Medikamentenname" required style="flex: 1 1 220px;" />
-            <input type="text" id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required style="flex: 2 1 300px;" />
-            <input type="text" id="info-hinweis-input" class="field-input" placeholder="Zusatz-Hinweis (optional)" style="flex: 1 1 200px;" />
-            <button type="submit" class="btn btn--primary" id="info-form-submit">Hinzufügen</button>
-            <button type="button" class="btn btn--ghost" id="info-form-cancel" hidden>Abbrechen</button>
+
+            <div class="info-form-row">
+              <input type="text" id="info-titel-input" class="field-input info-form-row__compact" placeholder="Titel, z. B. Medikamentenname" required />
+              <input type="text" id="info-hinweis-input" class="field-input info-form-row__compact" placeholder="Zusatz-Hinweis (optional)" />
+            </div>
+
+            <div class="format-toolbar" data-target="info-text-input">
+              <button type="button" class="format-btn" data-format="bold" title="Fett im Beschreibungsfeld (markierten Text auswählen)"><strong>F</strong></button>
+              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen im Beschreibungsfeld (markierten Text auswählen)"><u>U</u></button>
+            </div>
+            <textarea id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required></textarea>
+
+            <div class="info-form-actions">
+              <button type="submit" class="btn btn--primary" id="info-form-submit">Hinzufügen</button>
+              <button type="button" class="btn btn--ghost" id="info-form-cancel" hidden>Abbrechen</button>
+            </div>
           </form>
         </div>
 
@@ -421,19 +428,29 @@
         <div id="einstellungen-admin" hidden>
           <div class="settings-card">
             <h3>🧑‍⚕️ Mitarbeiter verwalten</h3>
-            <p class="settings-card__hint">Neu eingetragene Mitarbeiter erscheinen danach in der Namensauswahl beim Betreten der Seite und in der Mitarbeiter-Ansicht.</p>
+            <p class="settings-card__hint">Ärztliche Direktion: max. 1 Person. Rhodes &amp; Blackwater: je max. 6 Plätze. Neu eingetragene Mitarbeiter erscheinen danach in der Namensauswahl beim Betreten der Seite und in der Mitarbeiter-Ansicht.</p>
 
-            <form class="settings-form" id="form-add-mitarbeiter">
-              <input type="text" id="mitarbeiter-name-input" class="field-input" placeholder="Name, z. B. Tom Berger" required />
-              <select id="mitarbeiter-rolle-input" class="field-input">
-                <option value="Oberarzt">Oberarzt</option>
-                <option value="Assistenzarzt">Assistenzarzt</option>
-                <option value="Sanitäter">Sanitäter</option>
-                <option value="Chefarzt">Chefarzt</option>
-                <option value="Stellv. Chefärztin">Stellv. Chefärztin</option>
+            <form class="settings-form" id="form-add-mitarbeiter" style="flex-wrap: wrap;">
+              <input type="text" id="mitarbeiter-name-input" class="field-input" placeholder="Name, z. B. Tom Berger" required style="flex: 1 1 200px;" />
+              <select id="mitarbeiter-station-input" class="field-input" style="flex: 0 0 180px;">
+                <option value="blackwater">🔴 Blackwater</option>
+                <option value="rhodes">🟢 Rhodes</option>
+                <option value="direktion">Ärztliche Direktion</option>
               </select>
+              <select id="mitarbeiter-rolle-input" class="field-input" style="flex: 0 0 180px;">
+                <option value="Anwärter">Anwärter</option>
+                <option value="Assistenzarzt">Assistenzarzt</option>
+                <option value="Facharzt">Facharzt</option>
+                <option value="Stellv. Chefarzt">Stellv. Chefarzt</option>
+                <option value="Chefarzt">Chefarzt</option>
+              </select>
+              <label class="mitarbeiter-pin-toggle">
+                <input type="checkbox" id="mitarbeiter-geschuetzt-input" />
+                🔒 Mit PIN schützen
+              </label>
               <button type="submit" class="btn btn--primary">Hinzufügen</button>
             </form>
+            <p class="settings-card__hint" style="margin-top: -6px;">Mit PIN geschützt: Beim Anmelden mit diesem Namen ist zusätzlich der Admin-PIN nötig, damit sich niemand anders als diese Person ausgeben kann.</p>
 
             <div class="settings-list" id="mitarbeiter-verwaltung-liste">
               <!-- wird per JavaScript befüllt -->
@@ -533,7 +550,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=15"></script>
-  <script src="js/app.js?v=15"></script>
+  <script src="js/firebase-config.js?v=18"></script>
+  <script src="js/app.js?v=18"></script>
 </body>
 </html>

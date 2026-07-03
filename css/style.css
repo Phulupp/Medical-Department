@@ -649,6 +649,47 @@ h1, h2, h3 {
 }
 
 /* --------------------------------------------------------------------------
+   6c2. Infos-Formular: kompakte Titel/Hinweis-Zeile + großes Textfeld
+   -------------------------------------------------------------------------- */
+.info-form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.info-form-row__compact {
+  flex: 1;
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+.info-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+#form-add-info textarea#info-text-input {
+  width: 100%;
+  resize: vertical;
+  border: 1.5px solid var(--color-input-border);
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--color-text);
+  min-height: 110px;
+  max-height: 350px;
+  line-height: 1.5;
+}
+
+#form-add-info textarea#info-text-input:focus {
+  outline: none;
+  border-color: var(--color-mint);
+}
+
+/* --------------------------------------------------------------------------
    6d. Formatierungsleiste (Fett/Unterstrichen) für Text-Eingabefelder
    -------------------------------------------------------------------------- */
 .format-toolbar {
@@ -701,7 +742,7 @@ h1, h2, h3 {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .notes-form__main {
@@ -1369,104 +1410,109 @@ h1, h2, h3 {
 }
 
 /* --------------------------------------------------------------------------
-   8. Mitarbeiter-Hierarchie & Platzhalter-Ansichten
+   8. Mitarbeiter: Direktion + Stationen (Rhodes/Blackwater)
    -------------------------------------------------------------------------- */
 .staff-grid {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0;
+  gap: 22px;
   margin-bottom: 26px;
-  padding: 8px 0 4px;
 }
 
-.staff-row {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
-  flex-wrap: wrap;
+.direction-card {
+  max-width: 420px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-.staff-connector {
-  width: 2px;
-  height: 26px;
-  background: linear-gradient(to bottom, var(--color-mint), var(--color-blue-soft));
-  opacity: 0.6;
+.stations-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
 }
 
-.staff-card {
-  position: relative;
+.station-card {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
-  padding: 20px 26px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 240px;
+  padding: 22px 24px;
+  border: 2px solid transparent;
 }
 
-.staff-card--lead {
-  padding: 24px 34px;
-  box-shadow: var(--shadow-medium);
-  border: 1.5px solid rgba(127, 216, 196, 0.5);
+.station-card--red {
+  border-color: var(--color-red);
 }
 
-.staff-card--lead .staff-card__avatar {
-  width: 58px;
-  height: 58px;
-  font-size: 21px;
+.station-card--green {
+  border-color: var(--color-mint);
 }
 
-.staff-card--lead .staff-card__name {
-  font-size: 16px;
+.station-card__title {
+  font-size: 15px;
+  margin-bottom: 14px;
 }
 
-.staff-card__avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  color: #ffffff;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.staff-card__avatar--mint {
-  background: var(--color-mint);
-}
-
-.staff-card__avatar--lavender {
-  background: var(--color-lavender);
-}
-
-.staff-card__avatar--blue {
-  background: var(--color-blue);
-}
-
-.staff-card__avatar--peach {
-  background: var(--color-peach);
-}
-
-.staff-card__info {
+.station-card__slots {
   display: flex;
   flex-direction: column;
-  line-height: 1.3;
+  gap: 8px;
 }
 
-.staff-card__name {
+.station-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  min-height: 40px;
+}
+
+.station-slot--frei {
+  color: var(--color-text-soft);
+  font-size: 12.5px;
+  font-style: italic;
+  justify-content: center;
+}
+
+.station-slot__name {
   font-weight: 600;
-  font-size: 14.5px;
+  font-size: 13.5px;
   color: var(--color-text);
 }
 
-.staff-card__role {
-  font-size: 12.5px;
+.station-slot__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.station-slot__rolle {
+  font-size: 11.5px;
+  font-weight: 600;
   color: var(--color-text-muted);
+  background: var(--color-surface);
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+
+.station-slot__status {
+  font-size: 11px;
+}
+
+.direction-card .station-slot {
+  padding: 18px 22px;
+  min-height: 56px;
+}
+
+.direction-card .station-slot__name {
+  font-size: 16px;
+  font-family: var(--font-display);
+}
+
+.direction-card .station-slot__rolle {
+  background: var(--color-peach-soft);
+  color: var(--color-peach-text);
 }
 
 .staff-card__badge {
@@ -1818,6 +1864,27 @@ h1, h2, h3 {
 
 .settings-form select.field-input {
   flex: 0 0 200px;
+}
+
+.mitarbeiter-pin-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-surface-soft);
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mitarbeiter-pin-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-mint);
+  cursor: pointer;
 }
 
 .settings-list {

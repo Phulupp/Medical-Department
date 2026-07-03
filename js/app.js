@@ -36,14 +36,27 @@
   const ADMIN_PIN = "1311";
 
   // Rollen, die Medikamente löschen UND die Mitarbeiterliste verwalten dürfen
-  const ADMIN_ROLLEN = ["Chefarzt", "Stellv. Chefärztin"];
+  const ADMIN_ROLLEN = ["Ärztliche Direktion", "Chefarzt", "Stellv. Chefarzt"];
 
-  // Standard-Mitarbeiterliste (wird nur beim allerersten Start in Firestore
-  // angelegt). "geschuetzt: true" bedeutet: Für die Anmeldung mit diesem
-  // Namen ist der ADMIN_PIN nötig.
+  // Ränge innerhalb einer Station (Rhodes/Blackwater). Bewusst OHNE feste
+  // Rangfolge/Sortierung in der Anzeige - einfach eine freie Auswahl beim
+  // Eintragen eines Mitarbeiters.
+  const STATIONS_RAENGE = ["Anwärter", "Assistenzarzt", "Facharzt", "Stellv. Chefarzt", "Chefarzt"];
+
+  // Die beiden Stationierungen (RDR2-Roleplay: Rhodes & Blackwater) inkl.
+  // Farbcode - passend zur farblichen Kennzeichnung im Spiel selbst.
+  const STATIONEN = {
+    direktion: { label: "Ärztliche Direktion", max: 1, farbe: null },
+    rhodes: { label: "Rhodes", max: 6, farbe: "green" },
+    blackwater: { label: "Blackwater", max: 6, farbe: "red" },
+  };
+
+  // Standard-Mitarbeiterliste (wird nur beim allerersten Start bzw. bei der
+  // Umstellung auf das Stations-System in Firestore angelegt).
+  // "geschuetzt: true" bedeutet: Für die Anmeldung mit diesem Namen ist der
+  // ADMIN_PIN nötig.
   const DEFAULT_MITARBEITER = [
-    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt", geschuetzt: true, avatar: "🫏" },
-    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefärztin", geschuetzt: true, avatar: "🦦" },
+    { id: "chris-moon", name: "Chris Moon", rolle: "Ärztliche Direktion", station: "direktion", geschuetzt: false },
   ];
 
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
@@ -61,15 +74,6 @@
   const ANKUENDIGUNGEN_COLLECTION = "ankuendigungen";
   const ONLINE_SCHWELLE_MS = 45 * 1000;   // Nach 45s ohne Update gilt jemand als offline
   const HEARTBEAT_INTERVALL_MS = 20 * 1000;
-
-  // Rangfolge für die Mitarbeiter-Hierarchie (kleinere Zahl = höher in der Hierarchie)
-  const ROLLEN_RANG = {
-    "Chefarzt": 0,
-    "Stellv. Chefärztin": 1,
-    "Oberarzt": 2,
-    "Assistenzarzt": 3,
-    "Sanitäter": 4,
-  };
 
   const DEFAULT_MEDIKAMENTE = [
     { id: "bandage", name: "Bandage", preis: 2, menge: 0, beschreibung: "Heilt nicht direkt, überbrückt aber die Zeit bei einer Schusswunde." },
@@ -202,7 +206,9 @@
     einstellungenLocked: document.getElementById("einstellungen-locked"),
     formAddMitarbeiter: document.getElementById("form-add-mitarbeiter"),
     mitarbeiterNameInput: document.getElementById("mitarbeiter-name-input"),
+    mitarbeiterStationInput: document.getElementById("mitarbeiter-station-input"),
     mitarbeiterRolleInput: document.getElementById("mitarbeiter-rolle-input"),
+    mitarbeiterGeschuetztInput: document.getElementById("mitarbeiter-geschuetzt-input"),
     mitarbeiterVerwaltungListe: document.getElementById("mitarbeiter-verwaltung-liste"),
 
     tableBody: document.getElementById("med-table-body"),
@@ -366,8 +372,11 @@
     return eintrag && eintrag.avatar ? eintrag.avatar : initialenVon(name);
   }
 
-  function rangVon(rolle) {
-    return ROLLEN_RANG[rolle] !== undefined ? ROLLEN_RANG[rolle] : 99;
+  // Für die Namensauswahl beim Betreten: Direktion zuerst, dann Rhodes, dann
+  // Blackwater - innerhalb der Station in Eintragungsreihenfolge.
+  function stationsRangFuer(station) {
+    const reihenfolge = { direktion: 0, rhodes: 1, blackwater: 2 };
+    return reihenfolge[station] !== undefined ? reihenfolge[station] : 99;
   }
 
   function formatiereZeitstempel(millis) {
@@ -492,7 +501,7 @@
       el.gateNameSelect.remove(1);
     }
 
-    const sortiert = [...mitarbeiterListe].sort((a, b) => rangVon(a.rolle) - rangVon(b.rolle));
+    const sortiert = [...mitarbeiterListe].sort((a, b) => stationsRangFuer(a.station) - stationsRangFuer(b.station));
     sortiert.forEach((person) => {
       const option = document.createElement("option");
       option.value = person.name;
@@ -746,55 +755,53 @@
 
     const online = ermittleOnlineListe();
     const onlineNamen = new Set(online.map((p) => p.name.toLowerCase()));
-    const farben = ["mint", "lavender", "blue", "peach"];
 
-    if (mitarbeiterListe.length === 0) {
-      el.staffGrid.innerHTML = `<p class="empty-state">Noch keine Mitarbeiter eingetragen.</p>`;
-      return;
+    function personKarte(person) {
+      if (!person) return `<div class="station-slot station-slot--frei">— Platz frei —</div>`;
+
+      const istOnline = onlineNamen.has(person.name.toLowerCase());
+      const istDu = aktuellerNutzer && person.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
+
+      return `
+        <div class="station-slot">
+          <span class="station-slot__name">${escapeHtml(person.name)}${person.geschuetzt ? " 🔒" : ""}${istDu ? '<span class="staff-card__badge" style="position:static;margin-left:8px;">Du</span>' : ""}</span>
+          <span class="station-slot__meta">
+            <span class="station-slot__rolle">${escapeHtml(person.rolle)}</span>
+            <span class="station-slot__status">${istOnline ? "🟢" : "⚪"}</span>
+          </span>
+        </div>
+      `;
     }
 
-    // Nach Rang gruppieren, damit z. B. der Chefarzt automatisch ganz oben steht
-    const gruppen = {};
-    mitarbeiterListe.forEach((person) => {
-      const rang = rangVon(person.rolle);
-      if (!gruppen[rang]) gruppen[rang] = [];
-      gruppen[rang].push(person);
-    });
-    const raenge = Object.keys(gruppen).map(Number).sort((a, b) => a - b);
+    // Direktion (max. 1 Person, oben zentriert)
+    const direktion = mitarbeiterListe.find((p) => p.station === "direktion");
 
-    el.staffGrid.innerHTML = "";
-
-    raenge.forEach((rang, index) => {
-      if (index > 0) {
-        const connector = document.createElement("div");
-        connector.className = "staff-connector";
-        el.staffGrid.appendChild(connector);
+    // Stationen mit ihren Mitgliedern (max. 6 je Station, restliche Plätze
+    // werden als "frei" angezeigt)
+    function stationsBlock(stationKey) {
+      const info = STATIONEN[stationKey];
+      const mitglieder = mitarbeiterListe.filter((p) => p.station === stationKey);
+      const plaetze = [];
+      for (let i = 0; i < info.max; i++) {
+        plaetze.push(personKarte(mitglieder[i] || null));
       }
+      return `
+        <div class="station-card station-card--${info.farbe}">
+          <h3 class="station-card__title">${stationKey === "rhodes" ? "🟢" : "🔴"} ${escapeHtml(info.label)}</h3>
+          <div class="station-card__slots">${plaetze.join("")}</div>
+        </div>
+      `;
+    }
 
-      const row = document.createElement("div");
-      row.className = "staff-row";
-
-      gruppen[rang].forEach((person) => {
-        const farbe = farben[mitarbeiterListe.indexOf(person) % farben.length];
-        const istOnline = onlineNamen.has(person.name.toLowerCase());
-        const istDu = aktuellerNutzer && person.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
-        const istOberste = rang === raenge[0];
-
-        const card = document.createElement("div");
-        card.className = `staff-card${istOberste ? " staff-card--lead" : ""}`;
-        card.innerHTML = `
-          <div class="staff-card__avatar staff-card__avatar--${farbe}">${person.avatar ? person.avatar : escapeHtml(initialenVon(person.name))}</div>
-          <div class="staff-card__info">
-            <span class="staff-card__name">${escapeHtml(person.name)}${person.geschuetzt ? " 🔒" : ""}</span>
-            <span class="staff-card__role">${escapeHtml(person.rolle)} · ${istOnline ? "🟢 Online" : "⚪ Offline"}</span>
-          </div>
-          ${istDu ? '<span class="staff-card__badge">Du</span>' : ""}
-        `;
-        row.appendChild(card);
-      });
-
-      el.staffGrid.appendChild(row);
-    });
+    el.staffGrid.innerHTML = `
+      <div class="direction-card">
+        ${direktion ? personKarte(direktion) : `<div class="station-slot station-slot--frei">— Ärztliche Direktion noch nicht besetzt —</div>`}
+      </div>
+      <div class="stations-row">
+        ${stationsBlock("blackwater")}
+        ${stationsBlock("rhodes")}
+      </div>
+    `;
   }
 
   /* ------------------------------------------------------------------------
@@ -836,24 +843,16 @@
     });
   }
 
-  // Ergänzt fehlende Felder (z. B. "avatar") bei bereits vorher in Firestore
-  // angelegten Standard-Mitarbeitern, ohne eigene Änderungen (z. B. eine
-  // geänderte Rolle) zu überschreiben. Speichert nur, wenn sich wirklich
-  // etwas geändert hat.
+  // Erkennt alte Mitarbeiterlisten (vor dem Stations-System, ohne "station"-
+  // Feld) und ersetzt sie einmalig durch die neue Struktur (Chris Moon als
+  // Ärztliche Direktion, Rhodes/Blackwater erstmal leer). Bereits im neuen
+  // Format gespeicherte Mitarbeiter bleiben unangetastet.
   function migriereFehlendeMitarbeiterFelder() {
-    let geaendert = false;
+    const istAltesFormat = mitarbeiterListe.some((person) => !person.station);
+    if (!istAltesFormat) return;
 
-    mitarbeiterListe.forEach((person) => {
-      const standard = DEFAULT_MITARBEITER.find((d) => d.id === person.id);
-      if (!standard) return;
-
-      if (standard.avatar && !person.avatar) {
-        person.avatar = standard.avatar;
-        geaendert = true;
-      }
-    });
-
-    if (geaendert) speichereMitarbeiterliste();
+    mitarbeiterListe = DEFAULT_MITARBEITER.map((m) => ({ ...m }));
+    speichereMitarbeiterliste();
   }
 
   function speichereMitarbeiterliste() {
@@ -884,17 +883,29 @@
     }
 
     mitarbeiterListe.forEach((person) => {
+      const stationInfo = STATIONEN[person.station];
+      const stationLabel = stationInfo ? stationInfo.label : "—";
+
       const zeile = document.createElement("div");
       zeile.className = "settings-list__item";
       zeile.innerHTML = `
         <span>
           <span class="settings-list__name">${escapeHtml(person.name)}</span>
-          <span class="settings-list__role">${escapeHtml(person.rolle)}</span>
+          <span class="settings-list__role">${escapeHtml(person.rolle)} · ${escapeHtml(stationLabel)}</span>
           ${person.geschuetzt ? '<span class="settings-list__protected">🔒 PIN-geschützt</span>' : ""}
         </span>
         <button type="button" class="icon-btn icon-btn--delete" data-role="remove-mitarbeiter" data-id="${person.id}" title="Entfernen">🗑</button>
       `;
       el.mitarbeiterVerwaltungListe.appendChild(zeile);
+    });
+  }
+
+  // Bei Auswahl "Ärztliche Direktion" als Station macht die Rang-Auswahl
+  // keinen Sinn - ausblenden und Rolle automatisch setzen.
+  if (el.mitarbeiterStationInput) {
+    el.mitarbeiterStationInput.addEventListener("change", () => {
+      const istDirektion = el.mitarbeiterStationInput.value === "direktion";
+      el.mitarbeiterRolleInput.hidden = istDirektion;
     });
   }
 
@@ -904,7 +915,8 @@
       if (!istAdmin()) return;
 
       const name = el.mitarbeiterNameInput.value.trim();
-      const rolle = el.mitarbeiterRolleInput.value;
+      const station = el.mitarbeiterStationInput.value;
+      const rolle = station === "direktion" ? "Ärztliche Direktion" : el.mitarbeiterRolleInput.value;
       if (!name) return;
 
       if (mitarbeiterListe.some((m) => m.name.toLowerCase() === name.toLowerCase())) {
@@ -912,10 +924,20 @@
         return;
       }
 
-      mitarbeiterListe.push({ id: erzeugeId(name), name, rolle, geschuetzt: false });
+      const belegtePlaetze = mitarbeiterListe.filter((m) => m.station === station).length;
+      const maxPlaetze = STATIONEN[station].max;
+      if (belegtePlaetze >= maxPlaetze) {
+        zeigeToast(`${STATIONEN[station].label} ist bereits voll besetzt (${maxPlaetze}/${maxPlaetze}).`);
+        return;
+      }
+
+      const geschuetzt = el.mitarbeiterGeschuetztInput ? el.mitarbeiterGeschuetztInput.checked : false;
+
+      mitarbeiterListe.push({ id: erzeugeId(name), name, rolle, station, geschuetzt });
       speichereMitarbeiterliste();
       el.mitarbeiterNameInput.value = "";
-      zeigeToast(`„${name}“ wurde hinzugefügt.`);
+      if (el.mitarbeiterGeschuetztInput) el.mitarbeiterGeschuetztInput.checked = false;
+      zeigeToast(`„${name}“ wurde bei ${STATIONEN[station].label} hinzugefügt.${geschuetzt ? " (PIN-geschützt)" : ""}`);
     });
   }
 
@@ -2120,7 +2142,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 15;
+  const APP_VERSION = 18;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
