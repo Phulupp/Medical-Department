@@ -1584,22 +1584,22 @@
         const itemsText = verkauf.items.map((i) => `${escapeHtml(i.name)} ×${i.menge} = ${formatiereGeld(i.menge * i.preis)}`).join("<br>");
         const zeitText = formatiereZeitstempel(verkauf.millis);
         const darfLoeschen = istAdmin();
-        const kundeAnzeige = verkauf.kunde
-          ? `${escapeHtml(verkauf.kunde)} <span style="color:var(--color-text-soft);font-weight:500;">— verkauft von ${escapeHtml(verkauf.mitarbeiter)}</span>`
-          : `<span style="color:var(--color-text-soft);font-style:italic;">Kein Kunde angegeben</span> <span style="color:var(--color-text-soft);font-weight:500;">— verkauft von ${escapeHtml(verkauf.mitarbeiter)}</span>`;
+        const kundeName = verkauf.kunde
+          ? escapeHtml(verkauf.kunde)
+          : `<span class="sale-item__kein-kunde">Kein Kunde angegeben</span>`;
 
         const eintrag = document.createElement("div");
         eintrag.className = "sale-item";
         eintrag.dataset.id = verkauf.id;
         eintrag.innerHTML = `
           <div class="sale-item__header">
-            <span class="sale-item__employee">
-              ${kundeAnzeige}
-              <span style="color:var(--color-text-soft);font-weight:500;"> (${escapeHtml(verkauf.rolle || "")})</span>
+            <div class="sale-item__kunde-row">
+              <span class="sale-item__kunde-name">${kundeName}</span>
               <button type="button" class="icon-btn icon-btn--edit sale-item__edit-kunde-btn" data-role="toggle-edit-kunde" data-id="${verkauf.id}" title="Kunde bearbeiten">✎</button>
-            </span>
+            </div>
             <span class="sale-item__time">${zeitText}</span>
           </div>
+          <div class="sale-item__verkaeufer">verkauft von ${escapeHtml(verkauf.mitarbeiter)} · ${escapeHtml(verkauf.rolle || "")}</div>
           <div class="sale-item__items">${itemsText}</div>
           <div class="sale-item__footer">
             <div class="sale-item__total">Gesamt: ${formatiereGeld(verkauf.gesamtsumme)}</div>
@@ -2393,7 +2393,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 26;
+  const APP_VERSION = 27;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
