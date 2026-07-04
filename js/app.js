@@ -1622,7 +1622,17 @@
       itemsWrapper.className = "sale-log-group__items";
 
       verkaeufeDesTages.forEach((verkauf) => {
-        const itemsText = verkauf.items.map((i) => `${escapeHtml(i.name)} ×${i.menge} = ${formatiereGeld(i.menge * i.preis)}`).join("<br>");
+        const itemsText = verkauf.items
+          .map(
+            (i) => `
+              <div class="sale-ticket__line">
+                <span class="sale-ticket__line-name">${escapeHtml(i.name)} ×${i.menge}</span>
+                <span class="sale-ticket__line-dots"></span>
+                <span class="sale-ticket__line-price">${formatiereGeld(i.menge * i.preis)}</span>
+              </div>
+            `
+          )
+          .join("");
         const zeitText = formatiereZeitstempel(verkauf.millis);
         const darfLoeschen = istAdmin();
         const kundeName = verkauf.kunde
@@ -1641,9 +1651,9 @@
             </div>
           </div>
           <div class="sale-item__verkaeufer">verkauft von ${escapeHtml(verkauf.mitarbeiter)} · ${escapeHtml(verkauf.rolle || "")}</div>
-          <div class="sale-item__items">${itemsText}</div>
+          <div class="sale-ticket__lines">${itemsText}</div>
           <div class="sale-item__footer">
-            <div class="sale-item__total">Gesamt: ${formatiereGeld(verkauf.gesamtsumme)}</div>
+            <div class="sale-item__total">GESAMT <span>${formatiereGeld(verkauf.gesamtsumme)}</span></div>
             <div class="sale-item__actions">
               <button type="button" class="btn btn--ghost sale-item__add-btn" data-role="toggle-add-item" data-id="${verkauf.id}">+ Artikel hinzufügen</button>
               ${darfLoeschen ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-verkauf" data-id="${verkauf.id}" title="Verkauf löschen">🗑</button>` : ""}
@@ -1930,10 +1940,14 @@
     if (!el.infosGrid) return;
     el.infosAdminForm.hidden = !istAdmin();
 
+    // Wie ein Karteikartenkatalog: alphabetisch sortiert
+    const sortiert = [...infosListe].sort((a, b) => a.titel.localeCompare(b.titel, "de"));
+
     el.infosGrid.innerHTML = "";
-    infosListe.forEach((info) => {
+    sortiert.forEach((info) => {
       const card = document.createElement("div");
       card.className = "info-card";
+      const anfangsbuchstabe = (info.titel || "?").trim().charAt(0).toUpperCase();
       const aktionsButtons = istAdmin()
         ? `
           <button type="button" class="icon-btn icon-btn--edit info-card__edit" data-role="edit-info" data-id="${info.id}" title="Eintrag bearbeiten">✎</button>
@@ -1941,6 +1955,7 @@
         `
         : "";
       card.innerHTML = `
+        <span class="info-card__letter">${escapeHtml(anfangsbuchstabe)}</span>
         ${aktionsButtons}
         <span class="info-card__name">${escapeHtml(info.titel)}</span>
         <span class="info-card__text">${formatiereNotizText(info.text)}</span>
@@ -2434,7 +2449,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 33;
+  const APP_VERSION = 34;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
