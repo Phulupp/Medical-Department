@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=28" />
+  <link rel="stylesheet" href="css/style.css?v=32" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -104,7 +104,7 @@
         </button>
         <button class="nav__item" data-view="infos">
           <span class="nav__icon">ℹ️</span>
-          <span>Infos</span>
+          <span>Medizin-Wiki</span>
         </button>
         <button class="nav__item" data-view="medikamente">
           <span class="nav__icon">💊</span>
@@ -112,12 +112,12 @@
         </button>
         <button class="nav__item" data-view="verkaufslog">
           <span class="nav__icon">🧾</span>
-          <span>Verkaufslog</span>
+          <span>Verkaufsliste</span>
         </button>
         <div class="nav__group">
           <button class="nav__item nav__item--parent" id="nav-notizen-toggle" data-view="notizen">
             <span class="nav__icon">📝</span>
-            <span>Notizen</span>
+            <span>Team-Infos</span>
             <span class="nav__chevron" id="nav-notizen-chevron">▾</span>
           </button>
           <div class="nav__submenu" id="nav-notizen-submenu">
@@ -137,7 +137,7 @@
         </div>
         <button class="nav__item" data-view="mitarbeiter">
           <span class="nav__icon">🧑‍⚕️</span>
-          <span>Mitarbeiter</span>
+          <span>Personal</span>
         </button>
         <button class="nav__item" data-view="einstellungen">
           <span class="nav__icon">⚙️</span>
@@ -294,7 +294,8 @@
             <div class="sale-form__row">
               <div class="sale-form__field">
                 <label class="field-label" for="sale-kunde">Kunde (Vor- &amp; Nachname)</label>
-                <input type="text" id="sale-kunde" class="field-input" placeholder="z. B. John Marston" required />
+                <input type="text" id="sale-kunde" class="field-input" placeholder="z. B. John Marston" autocomplete="off" list="bekannte-kunden-liste" required />
+                <datalist id="bekannte-kunden-liste"></datalist>
               </div>
               <div class="sale-form__field sale-form__field--small">
                 <label class="field-label" for="sale-datum">Datum</label>
@@ -441,7 +442,7 @@
         <div id="einstellungen-admin" hidden>
           <div class="settings-card">
             <h3>🔑 Login verwalten</h3>
-            <p class="settings-card__hint">Bestimmt, wer sich mit welchem Namen auf der Login-Seite anmelden kann. Die Mitarbeiter-Liste (Rhodes/Blackwater) wird direkt auf der Mitarbeiter-Seite bearbeitet, nicht hier. Mit PIN geschützt: Beim Anmelden ist zusätzlich der Admin-PIN nötig, damit sich niemand anders als diese Person ausgibt.</p>
+            <p class="settings-card__hint">Bestimmt, wer sich mit welchem Namen auf der Login-Seite anmelden kann. Die Personal-Liste (Rhodes/Blackwater) wird direkt auf der Personal-Seite bearbeitet, nicht hier. Mit PIN geschützt: Beim Anmelden ist zusätzlich der Admin-PIN nötig, damit sich niemand anders als diese Person ausgibt.</p>
 
             <form class="settings-form" id="form-add-login" style="flex-wrap: wrap;">
               <input type="text" id="login-name-input" class="field-input" placeholder="Name, z. B. Heinrich Hornhausen" required style="flex: 1 1 200px;" />
@@ -557,7 +558,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=28"></script>
-  <script src="js/app.js?v=28"></script>
+  <script src="js/firebase-config.js?v=32"></script>
+  <script src="js/app.js?v=32"></script>
 </body>
 </html>

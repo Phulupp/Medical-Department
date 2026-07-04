@@ -266,10 +266,10 @@
   const VIEW_META = {
     start: { title: "Start", subtitle: "Schwarzes Brett – wichtige Ankündigungen" },
     medikamente: { title: "Medikamente", subtitle: "Übersicht & Verwaltung des Medikamentenbestands" },
-    mitarbeiter: { title: "Mitarbeiter", subtitle: "Verwaltung des medizinischen Personals" },
-    verkaufslog: { title: "Verkaufslog", subtitle: "Verkäufe eintragen & Historie einsehen" },
-    notizen: { title: "Notizen", subtitle: "Gemeinsame Notizen des Teams" },
-    infos: { title: "Infos", subtitle: "Wirkung & Einsatzgebiet der Medikamente" },
+    mitarbeiter: { title: "Personal", subtitle: "Verwaltung des medizinischen Personals" },
+    verkaufslog: { title: "Verkaufsliste", subtitle: "Verkäufe eintragen & Historie einsehen" },
+    notizen: { title: "Team-Infos", subtitle: "Gemeinsame Infos des Teams" },
+    infos: { title: "Medizin-Wiki", subtitle: "Wirkung & Einsatzgebiet der Medikamente" },
     einstellungen: { title: "Einstellungen", subtitle: "Konfiguration des Ärztekammer-Systems" },
   };
 
@@ -1400,6 +1400,46 @@
     });
   }
 
+  /* ------------------------------------------------------------------------
+     10d. Verkaufslog: Kundennamen-Vorschläge (Datalist + Tab-Vervollständigung)
+     ------------------------------------------------------------------------ */
+  let bekannteKunden = []; // Eindeutige, bereits verwendete Kundennamen
+
+  function aktualisiereBekannteKundenListe() {
+    const namen = new Set();
+    letzteVerkaeufe.forEach((v) => {
+      if (v.kunde) namen.add(v.kunde);
+    });
+    bekannteKunden = Array.from(namen).sort((a, b) => a.localeCompare(b, "de"));
+
+    const datalist = document.getElementById("bekannte-kunden-liste");
+    if (datalist) {
+      datalist.innerHTML = bekannteKunden.map((name) => `<option value="${escapeHtml(name)}"></option>`).join("");
+    }
+  }
+
+  // Tab-Vervollständigung: Falls der bisher eingetippte Text eindeutig zu
+  // einem bekannten Kundennamen passt, füllt Tab automatisch den Rest auf -
+  // man kann es aber einfach überschreiben, es ist keine Pflicht.
+  if (el.saleKunde) {
+    el.saleKunde.addEventListener("keydown", (event) => {
+      if (event.key !== "Tab" || event.shiftKey) return;
+
+      const eingabe = el.saleKunde.value.trim();
+      if (!eingabe) return;
+
+      const treffer = bekannteKunden.find(
+        (name) => name.toLowerCase().startsWith(eingabe.toLowerCase()) && name.toLowerCase() !== eingabe.toLowerCase()
+      );
+
+      if (treffer) {
+        event.preventDefault();
+        el.saleKunde.value = treffer;
+        el.saleKunde.setSelectionRange(eingabe.length, treffer.length); // Ergänzten Teil markiert lassen
+      }
+    });
+  }
+
   if (el.formSaleEntry) {
     el.formSaleEntry.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -1500,6 +1540,7 @@
           });
           letzteVerkaeufe = verkaeufe;
           renderVerkaufslog();
+          aktualisiereBekannteKundenListe();
         },
         (fehler) => console.error("Fehler beim Laden des Verkaufslogs:", fehler)
       );
@@ -2393,7 +2434,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 28;
+  const APP_VERSION = 32;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

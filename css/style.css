@@ -9,10 +9,10 @@
    -------------------------------------------------------------------------- */
 :root {
   /* Grundfarben – warmer, cremiger Grundton statt kühlem Grau/Weiß */
-  --color-bg: #f6efe3;               /* Warmer, cremiger App-Hintergrund */
-  --color-surface: #fffcf6;          /* Karten / Sidebar / Modal – warmes Off-White statt reinem Weiß */
-  --color-surface-soft: #f3e9d8;     /* Warme, leicht abgesetzte Fläche innerhalb Karten */
-  --color-surface-raised: #ffffff;   /* Reines Weiß nur für kleine, hervorgehobene Elemente (Inputs) */
+  --color-bg: #efe6d6;               /* Warmer, cremiger App-Hintergrund (leicht gedämpft) */
+  --color-surface: #f8f2e6;          /* Karten / Sidebar / Modal – warmes, gedämpftes Off-White */
+  --color-surface-soft: #eee1cc;     /* Warme, leicht abgesetzte Fläche innerhalb Karten */
+  --color-surface-raised: #fffaf0;   /* Sanftes Creme statt reinem Weiß für Eingabefelder (weniger grell) */
 
   /* Textfarben */
   --color-text: #362d24;            /* Haupttext, warmes Dunkelbraun */
@@ -61,16 +61,16 @@
   /* Rahmenfarbe für Eingabefelder */
   --color-input-border: #e2e5eb;
 
-  /* Radien: große, runde Elemente */
-  --radius-sm: 12px;
-  --radius-md: 18px;
-  --radius-lg: 26px;
+  /* Radien: klare, moderate Rundung statt übertriebener "Bubble"-Optik */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
   --radius-pill: 999px;
 
-  /* Schatten */
-  --shadow-soft: 0 8px 24px rgba(54, 45, 36, 0.07);
-  --shadow-medium: 0 16px 40px rgba(54, 45, 36, 0.12);
-  --shadow-modal: 0 24px 60px rgba(54, 45, 36, 0.24);
+  /* Schatten: dezenter und flacher */
+  --shadow-soft: 0 2px 10px rgba(54, 45, 36, 0.06);
+  --shadow-medium: 0 6px 20px rgba(54, 45, 36, 0.09);
+  --shadow-modal: 0 16px 44px rgba(54, 45, 36, 0.2);
 
   /* Layout */
   --sidebar-width: 264px;
@@ -280,31 +280,38 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 13px 16px;
+  padding: 13px 16px 13px 13px;
   border-radius: var(--radius-md);
   font-size: 14.5px;
   font-weight: 500;
   color: var(--color-text-muted);
-  transition: background 0.18s ease, color 0.18s ease, transform 0.12s ease;
+  border-left: 3px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   text-align: left;
 }
 
 .nav__item:hover {
-  background: var(--color-mint-soft);
+  background: var(--color-surface-soft);
   color: var(--color-text);
 }
 
 .nav__item--active {
-  background: linear-gradient(135deg, var(--color-mint-soft), var(--color-blue-soft));
+  background: var(--color-surface-soft);
   color: var(--color-text);
   font-weight: 600;
-  box-shadow: inset 0 0 0 1px rgba(127, 216, 196, 0.4);
+  border-left-color: var(--color-mint);
 }
 
 .nav__icon {
-  font-size: 17px;
+  font-size: 16px;
   width: 22px;
   text-align: center;
+  opacity: 0.75;
+}
+
+.nav__item--active .nav__icon,
+.nav__item:hover .nav__icon {
+  opacity: 1;
 }
 
 /* --------------------------------------------------------------------------
@@ -496,9 +503,9 @@ h1, h2, h3 {
   box-shadow: var(--shadow-soft);
 }
 
-.stat-card--mint   { background: linear-gradient(135deg, var(--color-mint-soft), var(--color-surface)); }
-.stat-card--blue   { background: linear-gradient(135deg, var(--color-blue-soft), var(--color-surface)); }
-.stat-card--peach  { background: linear-gradient(135deg, var(--color-peach-soft), var(--color-surface)); }
+.stat-card--mint   { background: var(--color-mint-soft); }
+.stat-card--blue   { background: var(--color-blue-soft); }
+.stat-card--peach  { background: var(--color-peach-soft); }
 
 .stat-card__label {
   font-size: 13px;
@@ -574,13 +581,14 @@ h1, h2, h3 {
 }
 
 .btn--primary {
-  background: linear-gradient(135deg, var(--color-mint), #63c9b3);
+  background: var(--color-mint);
   color: #ffffff;
-  box-shadow: 0 10px 24px rgba(127, 216, 196, 0.45);
+  box-shadow: 0 4px 14px rgba(111, 205, 184, 0.35);
 }
 
 .btn--primary:hover {
-  box-shadow: 0 12px 28px rgba(127, 216, 196, 0.6);
+  background: #5fc0a8;
+  box-shadow: 0 6px 18px rgba(111, 205, 184, 0.45);
 }
 
 .btn--ghost {
@@ -589,7 +597,7 @@ h1, h2, h3 {
 }
 
 .btn--ghost:hover {
-  background: #eef1f6;
+  background: var(--color-surface-raised);
   color: var(--color-text);
 }
 
@@ -599,19 +607,24 @@ h1, h2, h3 {
 }
 
 .btn--danger {
-  background: linear-gradient(135deg, var(--color-red), #e26b6b);
+  background: var(--color-red);
   color: #ffffff;
-  box-shadow: 0 10px 24px rgba(239, 138, 138, 0.4);
+  box-shadow: 0 4px 14px rgba(239, 138, 138, 0.3);
+}
+
+.btn--danger:hover {
+  background: #e26b6b;
 }
 
 .btn--checkout {
-  background: linear-gradient(135deg, var(--color-peach), #ff9d68);
+  background: var(--color-peach);
   color: #ffffff;
-  box-shadow: 0 10px 24px rgba(255, 179, 138, 0.45);
+  box-shadow: 0 4px 14px rgba(255, 179, 138, 0.35);
 }
 
 .btn--checkout:hover {
-  box-shadow: 0 12px 28px rgba(255, 179, 138, 0.6);
+  background: #ff9d68;
+  box-shadow: 0 6px 18px rgba(255, 179, 138, 0.45);
 }
 
 .btn__icon {
@@ -622,7 +635,8 @@ h1, h2, h3 {
    6b. Info-Panel: Wirkung / Beschreibung der Medikamente
    -------------------------------------------------------------------------- */
 .info-panel {
-  background: linear-gradient(135deg, var(--color-lavender-soft), var(--color-surface));
+  background: var(--color-surface);
+  border-left: 3px solid var(--color-lavender);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   padding: 24px 28px 20px;
@@ -1202,7 +1216,8 @@ h1, h2, h3 {
 }
 
 .board-item {
-  background: linear-gradient(135deg, var(--color-peach-soft), var(--color-surface));
+  background: var(--color-surface);
+  border-left: 3px solid var(--color-peach);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   padding: 20px 24px;
@@ -1776,7 +1791,7 @@ h1, h2, h3 {
 .auth-screen {
   position: fixed;
   inset: 0;
-  background: linear-gradient(135deg, var(--color-mint-soft), var(--color-blue-soft) 60%, var(--color-lavender-soft));
+  background: linear-gradient(160deg, var(--color-bg), var(--color-surface-soft));
   display: flex;
   align-items: center;
   justify-content: center;
