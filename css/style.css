@@ -1,84 +1,92 @@
 /* ==========================================================================
-   Ärztekammer – Stylesheet
-   Modernes Verwaltungsprogramm-Design: heller Hintergrund, Pastelltöne,
-   große runde Elemente. Reine Desktop-Ansicht (keine mobile Optimierung).
+   Ärztekammer Black Wolf – Stylesheet
+   Konzept: Ein Registrierbuch der Grenz-Ärztekammer im RDR2-Roleplay.
+   Warmes Papier, ein kräftiges Waldgrün als Markenfarbe (Wachssiegel /
+   Karteikarten-Reiter), klare Typografie mit einer charaktervollen Display-
+   Schrift für Überschriften und einer Mono-Schrift für Zahlen/Beträge.
+   Reine Desktop-Ansicht (keine mobile Optimierung).
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
    1. Design-Tokens (Farben, Radien, Schatten, Abstände)
    -------------------------------------------------------------------------- */
 :root {
-  /* Grundfarben – warmer, cremiger Grundton statt kühlem Grau/Weiß */
-  --color-bg: #efe6d6;               /* Warmer, cremiger App-Hintergrund (leicht gedämpft) */
-  --color-surface: #f8f2e6;          /* Karten / Sidebar / Modal – warmes, gedämpftes Off-White */
-  --color-surface-soft: #eee1cc;     /* Warme, leicht abgesetzte Fläche innerhalb Karten */
-  --color-surface-raised: #fffaf0;   /* Sanftes Creme statt reinem Weiß für Eingabefelder (weniger grell) */
+  /* Grundfarben – warmes Registrierbuch-Papier */
+  --color-bg: #ece3cf;                /* Warmer Papier-Hintergrund */
+  --color-surface: #fbf7ee;           /* Karten / Sidebar / Modal */
+  --color-surface-soft: #efe4c9;      /* Leicht abgesetzte Fläche innerhalb Karten */
+  --color-surface-raised: #ffffff;    /* Eingabefelder - klar abgesetzt vom Papierton */
 
   /* Textfarben */
-  --color-text: #362d24;            /* Haupttext, warmes Dunkelbraun */
-  --color-text-muted: #8c7d6b;      /* Sekundärtext */
-  --color-text-soft: #bcaf9c;       /* Platzhalter / dezente Hinweise */
+  --color-text: #2b241a;             /* Haupttext, warmes Tintenschwarz */
+  --color-text-muted: #8a7d64;       /* Sekundärtext */
+  --color-text-soft: #b7ab8c;        /* Platzhalter / dezente Hinweise */
 
-  /* Pastell-Akzente */
-  --color-mint: #6fcdb8;            /* Primärakzent – Minze */
-  --color-mint-soft: #e1f5ee;
-  --color-blue: #85bdf2;            /* Sekundärakzent – Pastellblau */
-  --color-blue-soft: #e6f0fc;
-  --color-peach: #ffab7a;           /* Akzent – Pfirsich */
-  --color-peach-soft: #ffe9db;
-  --color-lavender: #b39ce8;        /* Akzent – Lavendel */
-  --color-lavender-soft: #ece3fb;
-  --color-red: #e8827e;             /* Warn-/Löschfarbe, gedämpft */
-  --color-red-soft: #fce3e1;
+  /* Markenfarbe: kräftiges Waldgrün (Wachssiegel-Grün) statt Pastell-Mint */
+  --color-mint: #2f6e51;
+  --color-mint-soft: #dfe8de;
+  --color-blue: #3f6fb0;             /* Sekundärakzent – gedecktes Blau */
+  --color-blue-soft: #e1e9f3;
+  --color-peach: #c07a2e;            /* Akzent – warmes Messing/Amber (Checkout etc.) */
+  --color-peach-soft: #f1e3c9;
+  --color-lavender: #866693;         /* Akzent – gedecktes Pflaume statt Süßlavendel */
+  --color-lavender-soft: #eae1eb;
+  --color-red: #ad5238;              /* Warn-/Löschfarbe – Siegellack-Rot statt Pink */
+  --color-red-soft: #ecdfd7;
 
-  /* Gedecktes Salbei-Grün (für "Herstellung") - dunkler/gedeckter als das helle Mint */
-  --color-sage: #5f8f74;
-  --color-sage-soft: #dde9e0;
+  /* Zweiter Grünton (für "Herstellung"/Rhodes) - deutlich abgesetzt vom Marken-Grün */
+  --color-sage: #6f8f5c;
+  --color-sage-soft: #e4e9da;
 
   /* Personal-Notizen: kräftiges, klares Blau (fester Farbcode) */
   --color-personal: #4f8ef7;
   --color-personal-soft: #e4edfd;
 
-  /* Allgemeine Infos: neutrales, dezentes Grau */
-  --color-gray: #7c8798;
-  --color-gray-soft: #e9ebef;
+  /* Allgemeine Infos: warmes, dezentes Grau (kein kühles Blaugrau) */
+  --color-gray: #7d7462;
+  --color-gray-soft: #e9e3d4;
 
-  /* Marken-Rot fürs Logo (Medical Cross) */
-  --color-brand-start: #e8564d;
-  --color-brand-end: #c6362e;
+  /* Marken-Grün fürs Logo (statt Rot - durchgängige Markenfarbe) */
+  --color-brand-start: #3d7d5b;
+  --color-brand-end: #234a35;
 
   /* Textfarben für Akzent-Badges/Links (auf hellem soft-Hintergrund gut lesbar) */
-  --color-mint-text: #2f9c82;
-  --color-blue-text: #2f6fa8;
-  --color-lavender-text: #7a5fc9;
-  --color-sage-text: #35543f;
-  --color-red-text: #c94f4f;
-  --color-peach-text: #b06a2b;
-  --color-slate-text: #4a5568;
+  --color-mint-text: #1f4e39;
+  --color-blue-text: #2c4f80;
+  --color-lavender-text: #5f4a6b;
+  --color-sage-text: #3d5432;
+  --color-red-text: #7d3c28;
+  --color-peach-text: #7a4f1c;
+  --color-slate-text: #55503f;
   --color-personal-text: #2f5fb0;
-  --color-gray-text: #565f6d;
+  --color-gray-text: #56503f;
 
   /* Rahmenfarbe für Eingabefelder */
-  --color-input-border: #e2e5eb;
+  --color-input-border: #d9cca8;
 
-  /* Radien: klare, moderate Rundung statt übertriebener "Bubble"-Optik */
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
+  /* Radien: knapp, klar, wie ein sauber geführtes Register - nicht "bubbly" */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
   --radius-pill: 999px;
 
-  /* Schatten: dezenter und flacher */
-  --shadow-soft: 0 2px 10px rgba(54, 45, 36, 0.06);
-  --shadow-medium: 0 6px 20px rgba(54, 45, 36, 0.09);
-  --shadow-modal: 0 16px 44px rgba(54, 45, 36, 0.2);
+  /* Schatten: dezent und flach, Definition kommt vor allem über Rahmenlinien */
+  --shadow-soft: 0 1px 2px rgba(43, 36, 26, 0.05), 0 4px 12px rgba(43, 36, 26, 0.05);
+  --shadow-medium: 0 4px 16px rgba(43, 36, 26, 0.08);
+  --shadow-modal: 0 16px 44px rgba(43, 36, 26, 0.22);
+
+  /* Rahmenfarbe für Karten (feine Konturlinie statt reiner Schatten-Optik) */
+  --color-card-border: rgba(43, 36, 26, 0.08);
 
   /* Layout */
   --sidebar-width: 264px;
   --topbar-height: 92px;
 
-  /* Schrift */
-  --font-display: "Outfit", "Segoe UI", sans-serif;
+  /* Schrift: Fraunces (charaktervoll, ledger-artig) für Überschriften,
+     Inter für Fließtext, JetBrains Mono für Beträge/Zahlen */
+  --font-display: "Fraunces", Georgia, serif;
   --font-body: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Courier New", monospace;
 }
 
 /* --------------------------------------------------------------------------
@@ -96,39 +104,39 @@ html[data-theme="dark"] {
   --color-text-muted: #a49d93;
   --color-text-soft: #6f6a63;
 
-  /* Pastell-Akzente: gleicher Ton, etwas kräftiger für Kontrast auf Dunkel */
-  --color-mint: #6fcdb8;
-  --color-mint-soft: #1e3a34;
-  --color-blue: #85bdf2;
-  --color-blue-soft: #1c2f42;
-  --color-peach: #ffab7a;
-  --color-peach-soft: #3a2a1f;
-  --color-lavender: #b39ce8;
-  --color-lavender-soft: #2b2440;
-  --color-red: #e8827e;
-  --color-red-soft: #3a2323;
-  --color-sage: #7aab90;
-  --color-sage-soft: #203228;
+  /* Markenfarbe bleibt Waldgrün, im Dark Mode aufgehellt für Kontrast */
+  --color-mint: #5ba184;
+  --color-mint-soft: #1c2e26;
+  --color-blue: #7096c9;
+  --color-blue-soft: #1c2733;
+  --color-peach: #d19a55;
+  --color-peach-soft: #332619;
+  --color-lavender: #a68bb0;
+  --color-lavender-soft: #2a2430;
+  --color-red: #c4805f;
+  --color-red-soft: #332720;
+  --color-sage: #8fae7a;
+  --color-sage-soft: #232d1e;
 
   --color-personal: #6fa2fb;
   --color-personal-soft: #1c2c4a;
 
-  --color-gray: #97a1b0;
-  --color-gray-soft: #2b2e35;
+  --color-gray: #a89d84;
+  --color-gray-soft: #2a2721;
 
-  /* Marken-Rot fürs Logo bleibt gleich */
-  --color-brand-start: #e8564d;
-  --color-brand-end: #c6362e;
+  /* Marken-Grün fürs Logo bleibt gleich */
+  --color-brand-start: #4f9370;
+  --color-brand-end: #2d5c42;
 
   /* Textfarben für Akzent-Badges/Links: im Dark Mode deutlich aufgehellt,
      damit sie auf den dunklen "-soft"-Hintergründen lesbar bleiben */
-  --color-mint-text: #7fe0c8;
-  --color-blue-text: #8ec5f7;
-  --color-lavender-text: #c2aef5;
-  --color-sage-text: #9fd4b4;
-  --color-red-text: #f0a29e;
-  --color-peach-text: #ffbf8f;
-  --color-slate-text: #c7ccd6;
+  --color-mint-text: #8fd4b6;
+  --color-blue-text: #a3c6ec;
+  --color-lavender-text: #cbb3d4;
+  --color-sage-text: #b8d6a6;
+  --color-red-text: #e2a58f;
+  --color-peach-text: #eec18a;
+  --color-slate-text: #d1cabb;
   --color-personal-text: #a8c6fb;
   --color-gray-text: #c7ccd6;
 
@@ -219,8 +227,8 @@ h1, h2, h3 {
   width: var(--sidebar-width);
   flex-shrink: 0;
   background: var(--color-surface);
-  border-right: 1px solid rgba(43, 52, 68, 0.05);
-  padding: 28px 20px;
+  border-right: 1px solid var(--color-card-border);
+  padding: 28px 0;
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -232,21 +240,21 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 6px 10px 32px;
+  padding: 6px 20px 32px;
 }
 
 .sidebar__brand-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(145deg, var(--color-brand-start), var(--color-brand-end));
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 700;
-  box-shadow: 0 8px 20px rgba(198, 54, 46, 0.35);
+  box-shadow: 0 6px 16px rgba(35, 74, 53, 0.3);
 }
 
 .sidebar__brand-text {
@@ -257,37 +265,53 @@ h1, h2, h3 {
 
 .sidebar__brand-title {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 16px;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: 0.01em;
   color: var(--color-text);
 }
 
 .sidebar__brand-subtitle {
-  font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 13px;
-  color: var(--color-text-muted);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-mint-text);
 }
 
 .sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   flex: 1;
+  padding-right: 14px;
 }
 
 .nav__item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 13px 16px 13px 13px;
-  border-radius: var(--radius-md);
-  font-size: 14.5px;
+  position: relative;
+  padding: 12px 16px 12px 22px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 14px;
   font-weight: 500;
   color: var(--color-text-muted);
-  border-left: 3px solid transparent;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
   text-align: left;
+}
+
+.nav__item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 4px;
+  border-radius: 0 3px 3px 0;
+  background: transparent;
+  transition: background 0.15s ease;
 }
 
 .nav__item:hover {
@@ -296,17 +320,21 @@ h1, h2, h3 {
 }
 
 .nav__item--active {
-  background: var(--color-surface-soft);
+  background: var(--color-bg);
   color: var(--color-text);
-  font-weight: 600;
-  border-left-color: var(--color-mint);
+  font-weight: 700;
+  box-shadow: 2px 0 10px rgba(43, 36, 26, 0.05);
+}
+
+.nav__item--active::before {
+  background: var(--color-mint);
 }
 
 .nav__icon {
-  font-size: 16px;
-  width: 22px;
+  font-size: 15.5px;
+  width: 20px;
   text-align: center;
-  opacity: 0.75;
+  opacity: 0.7;
 }
 
 .nav__item--active .nav__icon,
@@ -315,7 +343,7 @@ h1, h2, h3 {
 }
 
 /* --------------------------------------------------------------------------
-   3b. Sidebar: Aufklappbares Untermenü (Notizen-Kategorien)
+   3b. Sidebar: Aufklappbares Untermenü (Team-Infos-Kategorien)
    -------------------------------------------------------------------------- */
 .nav__group {
   display: flex;
@@ -342,7 +370,7 @@ h1, h2, h3 {
   display: none;
   flex-direction: column;
   gap: 2px;
-  padding: 4px 0 6px 18px;
+  padding: 3px 0 6px 34px;
 }
 
 .nav__group--open .nav__submenu {
@@ -352,10 +380,10 @@ h1, h2, h3 {
 .nav__subitem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 14px;
+  gap: 9px;
+  padding: 8px 14px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 500;
   color: var(--color-text-muted);
   text-align: left;
@@ -374,8 +402,8 @@ h1, h2, h3 {
 }
 
 .nav__sub-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -393,11 +421,12 @@ h1, h2, h3 {
 }
 
 .sidebar__footer {
-  padding: 16px 12px 4px;
-  border-top: 1px solid rgba(43, 52, 68, 0.06);
+  padding: 16px 20px 4px;
+  border-top: 1px solid var(--color-card-border);
   color: var(--color-text-soft);
   font-size: 12px;
   line-height: 1.6;
+  margin: 0 20px;
 }
 
 .sidebar__footer-small {
@@ -501,6 +530,7 @@ h1, h2, h3 {
   flex-direction: column;
   gap: 8px;
   box-shadow: var(--shadow-soft);
+  border: 1px solid var(--color-card-border);
 }
 
 .stat-card--mint   { background: var(--color-mint-soft); }
@@ -514,7 +544,7 @@ h1, h2, h3 {
 }
 
 .stat-card__value {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-size: 28px;
   font-weight: 700;
   color: var(--color-text);
@@ -833,6 +863,7 @@ h1, h2, h3 {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
+  border: 1px solid var(--color-card-border);
   padding: 22px 26px;
   margin-bottom: 20px;
 }
@@ -864,20 +895,34 @@ h1, h2, h3 {
   flex: 1;
   resize: vertical;
   border: 1.5px solid var(--color-input-border);
-  background: var(--color-surface-soft);
+  background-color: var(--color-surface-raised);
+  background-image: linear-gradient(
+    to right,
+    transparent 34px,
+    var(--color-red) 34px,
+    var(--color-red) 35px,
+    transparent 35px
+  );
+  background-repeat: no-repeat;
+  opacity: 1;
   border-radius: var(--radius-sm);
-  padding: 12px 14px;
+  padding: 14px 16px 14px 48px;
   font-size: 13.5px;
   font-family: inherit;
   color: var(--color-text);
   min-height: 130px;
   max-height: 400px;
-  line-height: 1.5;
+  line-height: 1.6;
+}
+
+.notes-form textarea::placeholder {
+  color: var(--color-text-soft);
 }
 
 .notes-form textarea:focus {
   outline: none;
   border-color: var(--color-mint);
+  box-shadow: 0 0 0 3px var(--color-mint-soft);
 }
 
 .notes-form__kategorie {
@@ -1014,6 +1059,7 @@ h1, h2, h3 {
   background: var(--color-surface);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
+  border: 1px solid var(--color-card-border);
   padding: 12px 16px;
   margin-bottom: 6px;
 }
@@ -1077,7 +1123,7 @@ h1, h2, h3 {
 }
 
 .sale-item__total {
-  font-family: var(--font-display);
+  font-family: var(--font-mono);
   font-weight: 700;
   font-size: 13.5px;
   color: var(--color-mint-text);
@@ -1200,6 +1246,7 @@ h1, h2, h3 {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
+  border: 1px solid var(--color-card-border);
   padding: 22px 26px;
   margin-bottom: 20px;
 }
@@ -1441,6 +1488,7 @@ h1, h2, h3 {
 
 .med-price {
   display: inline-block;
+  font-family: var(--font-mono);
   color: var(--color-slate-text);
   font-weight: 600;
   font-size: 13px;
@@ -1468,6 +1516,7 @@ h1, h2, h3 {
 
 .subtotal {
   display: inline-block;
+  font-family: var(--font-mono);
   font-weight: 700;
   font-size: 13px;
   color: var(--color-mint-text);
@@ -2064,6 +2113,7 @@ h1, h2, h3 {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
+  border: 1px solid var(--color-card-border);
   padding: 26px 28px;
 }
 
@@ -2239,17 +2289,18 @@ h1, h2, h3 {
 
 .field-input {
   border: 1.5px solid var(--color-input-border);
-  background: var(--color-surface-soft);
+  background: var(--color-surface-raised);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   font-size: 14.5px;
   color: var(--color-text);
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .field-input:focus {
   outline: none;
   border-color: var(--color-mint);
+  box-shadow: 0 0 0 3px var(--color-mint-soft);
 }
 
 .field-textarea {
