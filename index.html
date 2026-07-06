@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=34" />
+  <link rel="stylesheet" href="css/style.css?v=38" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -196,10 +196,16 @@
           <h3>📌 Neue Ankündigung</h3>
           <form class="notes-form" id="form-ankuendigung">
             <div class="format-toolbar" data-target="ankuendigung-input">
-              <button type="button" class="format-btn" data-format="bold" title="Fett (markierten Text auswählen)"><strong>F</strong></button>
-              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen (markierten Text auswählen)"><u>U</u></button>
+              <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
+              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
+              <span class="format-toolbar__divider"></span>
+              <button type="button" class="format-btn format-btn--swatch" data-highlight="#ffe066" style="background:#ffe066" title="Gelb markieren"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-highlight="#8ce196" style="background:#8ce196" title="Grün markieren"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-highlight="#ff8a80" style="background:#ff8a80" title="Rot markieren"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-highlight="#82b1ff" style="background:#82b1ff" title="Blau markieren"></button>
+              <button type="button" class="format-btn format-btn--clear" data-highlight="transparent" title="Markierung entfernen">✕</button>
             </div>
-            <textarea id="ankuendigung-input" placeholder="Wichtige Info für alle eintragen..." maxlength="500"></textarea>
+            <div class="rich-editor" id="ankuendigung-input" contenteditable="true" data-placeholder="Wichtige Info für alle eintragen..."></div>
             <button type="submit" class="btn btn--primary">Veröffentlichen</button>
           </form>
         </div>
@@ -350,11 +356,17 @@
         <div class="notes-card">
           <form class="notes-form" id="form-note">
             <div class="format-toolbar" data-target="note-input">
-              <button type="button" class="format-btn" data-format="bold" title="Fett (markierten Text auswählen)"><strong>F</strong></button>
-              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen (markierten Text auswählen)"><u>U</u></button>
+              <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
+              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
+              <span class="format-toolbar__divider"></span>
+              <button type="button" class="format-btn format-btn--swatch" data-highlight="#ffe066" style="background:#ffe066" title="Gelb markieren"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-highlight="#8ce196" style="background:#8ce196" title="Grün markieren"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-highlight="#ff8a80" style="background:#ff8a80" title="Rot markieren"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-highlight="#82b1ff" style="background:#82b1ff" title="Blau markieren"></button>
+              <button type="button" class="format-btn format-btn--clear" data-highlight="transparent" title="Markierung entfernen">✕</button>
             </div>
             <div class="notes-form__main">
-              <textarea id="note-input" placeholder="Notiz eintragen..." maxlength="500"></textarea>
+              <div class="rich-editor" id="note-input" contenteditable="true" data-placeholder="Notiz eintragen..."></div>
             </div>
             <button type="submit" class="btn btn--primary">Hinzufügen</button>
           </form>
@@ -450,6 +462,8 @@
                 <option value="Anwärter">Anwärter</option>
                 <option value="Assistenzarzt">Assistenzarzt</option>
                 <option value="Facharzt">Facharzt</option>
+                <option value="Stellv. Oberarzt">Stellv. Oberarzt</option>
+                <option value="Oberarzt">Oberarzt</option>
                 <option value="Stellv. Chefarzt">Stellv. Chefarzt</option>
                 <option value="Chefarzt">Chefarzt</option>
               </select>
@@ -558,7 +572,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=34"></script>
-  <script src="js/app.js?v=34"></script>
+  <script src="js/firebase-config.js?v=38"></script>
+  <script src="js/app.js?v=38"></script>
 </body>
 </html>

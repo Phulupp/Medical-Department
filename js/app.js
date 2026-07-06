@@ -39,7 +39,7 @@
   const ADMIN_ROLLEN = ["Ärztliche Direktion", "Chefarzt", "Stellv. Chefarzt"];
 
   // Ränge (gemeinsam genutzt für Login-Verwaltung UND Stations-Verwaltung)
-  const STATIONS_RAENGE = ["Anwärter", "Assistenzarzt", "Facharzt", "Stellv. Chefarzt", "Chefarzt"];
+  const STATIONS_RAENGE = ["Anwärter", "Assistenzarzt", "Facharzt", "Stellv. Oberarzt", "Oberarzt", "Stellv. Chefarzt", "Chefarzt"];
 
   // Die beiden Stationierungen (RDR2-Roleplay: Rhodes & Blackwater) inkl.
   // Farbcode - passend zur farblichen Kennzeichnung im Spiel selbst.
@@ -340,7 +340,9 @@
     return div.innerHTML;
   }
 
-  // Wandelt **fett** und __unterstrichen__ sicher in <strong>/<u> um.
+  // Wandelt **fett** und __unterstrichen__ sicher in <strong>/<u> um (für
+  // ältere, noch als Markdown gespeicherte Einträge und für das Medizin-Wiki,
+  // das weiterhin ein einfaches Textfeld nutzt).
   // WICHTIG: escaped zuerst den kompletten Text (verhindert HTML-Injection),
   // wendet die Formatierung erst danach auf den bereits sicheren Text an.
   function formatiereNotizText(text) {
@@ -350,30 +352,133 @@
     return sicher;
   }
 
-  // Formatierungsleisten (Fett/Unterstrichen) mit den Textfeldern verbinden.
-  // Fügt bei markiertem Text **../__.. um die Auswahl herum ein, sonst an
-  // der Cursor-Position mit dem Cursor mittig zwischen den Markern.
-  document.querySelectorAll(".format-toolbar").forEach((toolbar) => {
-    const textarea = document.getElementById(toolbar.dataset.target);
-    if (!textarea) return;
+  // Erkennt, ob ein gespeicherter Text bereits "echtes" HTML aus dem neuen
+  // Rich-Text-Editor ist (Notizen/Ankündigungen) oder noch altes Markdown /
+  // reiner Text ist, und behandelt ihn entsprechend richtig.
+  function verarbeiteRichInhalt(text) {
+    if (/<[a-z][\s\S]*>/i.test(text)) {
+      return sanitisiereRichText(text);
+    }
+    return formatiereNotizText(text);
+  }
 
-    toolbar.querySelectorAll(".format-btn").forEach((btn) => {
+  // Erlaubt NUR eine kleine, feste Auswahl an Tags/Stilen (fett, unterstrichen,
+  // Zeilenumbruch, Marker-Hervorhebung in 4 festen Farben) und verwirft alles
+  // andere (Skripte, Bilder, fremde Attribute, ...) - verhindert HTML-Injection
+  // aus dem contenteditable-Feld.
+  const ERLAUBTE_MARKER_FARBEN = new Set([
+    "rgb(255, 224, 102)", // Gelb
+    "rgb(140, 225, 150)", // Grün
+    "rgb(255, 138, 128)", // Rot
+    "rgb(130, 177, 255)", // Blau
+  ]);
+
+  function sanitisiereRichText(html) {
+    const quelle = document.createElement("div");
+    quelle.innerHTML = html;
+
+    function bereinigeKinder(knoten, ziel) {
+      Array.from(knoten.childNodes).forEach((kind) => {
+        if (kind.nodeType === Node.TEXT_NODE) {
+          ziel.appendChild(document.createTextNode(kind.textContent));
+          return;
+        }
+        if (kind.nodeType !== Node.ELEMENT_NODE) return;
+
+        const tag = kind.tagName;
+
+        if (tag === "BR") {
+          ziel.appendChild(document.createElement("br"));
+          return;
+        }
+        if (tag === "B" || tag === "STRONG") {
+          const neu = document.createElement("strong");
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+        if (tag === "U") {
+          const neu = document.createElement("u");
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+        if (tag === "SPAN" || tag === "MARK" || tag === "FONT") {
+          const bgFarbe = kind.style && kind.style.backgroundColor;
+          if (bgFarbe && ERLAUBTE_MARKER_FARBEN.has(bgFarbe)) {
+            const neu = document.createElement("mark");
+            neu.style.backgroundColor = bgFarbe;
+            bereinigeKinder(kind, neu);
+            ziel.appendChild(neu);
+          } else {
+            // Keine erlaubte Marker-Farbe -> Tag verwerfen, Inhalt behalten
+            bereinigeKinder(kind, ziel);
+          }
+          return;
+        }
+
+        // Alles andere (DIV, P, SCRIPT, IMG, ...): Tag verwerfen, aber
+        // Text-Inhalt behalten. Bei Block-Elementen zusätzlich einen
+        // Zeilenumbruch einfügen, damit Absätze nicht zusammenlaufen.
+        bereinigeKinder(kind, ziel);
+        if (tag === "DIV" || tag === "P") {
+          ziel.appendChild(document.createElement("br"));
+        }
+      });
+    }
+
+    const ergebnis = document.createElement("div");
+    bereinigeKinder(quelle, ergebnis);
+    return ergebnis.innerHTML;
+  }
+
+  // Formatierungsleisten mit den Feldern verbinden. Bei contenteditable-
+  // Rich-Editoren (Notizen/Ankündigungen) wirkt Fett/Unterstrichen/Marker
+  // sofort WYSIWYG (kein **/__ mehr). Das Medizin-Wiki-Textfeld ist weiterhin
+  // ein normales Textfeld mit **/__ Markdown.
+  document.querySelectorAll(".format-toolbar").forEach((toolbar) => {
+    const feld = document.getElementById(toolbar.dataset.target);
+    if (!feld) return;
+
+    const istRichEditor = feld.isContentEditable;
+
+    toolbar.querySelectorAll(".format-btn[data-format]").forEach((btn) => {
+      if (istRichEditor) {
+        // "mousedown" statt "click" + preventDefault, damit das Editor-Feld
+        // beim Klick auf den Button nicht den Fokus/die Markierung verliert
+        btn.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          feld.focus();
+          document.execCommand(btn.dataset.format === "bold" ? "bold" : "underline");
+        });
+        return;
+      }
+
+      // Altes Verhalten fürs Medizin-Wiki-Textfeld (Markdown-Marker einfügen)
       btn.addEventListener("click", () => {
         const marker = btn.dataset.format === "bold" ? "**" : "__";
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const ausgewaehlt = textarea.value.slice(start, end);
-
-        const neuerText =
-          textarea.value.slice(0, start) + marker + ausgewaehlt + marker + textarea.value.slice(end);
-        textarea.value = neuerText;
-        textarea.focus();
-
+        const start = feld.selectionStart;
+        const end = feld.selectionEnd;
+        const ausgewaehlt = feld.value.slice(start, end);
+        feld.value = feld.value.slice(0, start) + marker + ausgewaehlt + marker + feld.value.slice(end);
+        feld.focus();
         if (ausgewaehlt) {
-          textarea.setSelectionRange(start + marker.length, end + marker.length);
+          feld.setSelectionRange(start + marker.length, end + marker.length);
         } else {
-          textarea.setSelectionRange(start + marker.length, start + marker.length);
+          feld.setSelectionRange(start + marker.length, start + marker.length);
         }
+      });
+    });
+
+    if (!istRichEditor) return;
+
+    // Marker-Farb-Buttons (nur bei Rich-Editoren vorhanden)
+    toolbar.querySelectorAll("[data-highlight]").forEach((btn) => {
+      btn.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        feld.focus();
+        const farbe = btn.dataset.highlight;
+        document.execCommand("hiliteColor", false, farbe === "transparent" ? "transparent" : farbe);
       });
     });
   });
@@ -772,6 +877,15 @@
     if (!el.staffGrid) return;
     renderBenutzerBadge(); // Badge-Avatar aktualisieren, sobald die Liste geladen ist
 
+    // Schutz gegen Fokus-Verlust: Wenn gerade ein Namensfeld/Rang-Dropdown in
+    // Benutzung ist (Tippen oder gerade ausgewählt), wird die Liste NICHT
+    // mitten drin komplett neu aufgebaut - das würde das Feld/Dropdown
+    // zerstören und den Fokus/die Eingabe verlieren. Der nächste Render
+    // (z. B. nach dem Verlassen des Feldes) holt den aktuellen Stand nach.
+    if (el.staffGrid.contains(document.activeElement) && document.activeElement !== el.staffGrid) {
+      return;
+    }
+
     const admin = istAdmin();
     const bearbeitenAktiv = admin && mitarbeiterBearbeitenModus;
 
@@ -786,38 +900,45 @@
       toggleBtn.classList.toggle("btn--ghost-active", bearbeitenAktiv);
     }
 
-    // Eine einzelne Zeile: nur im Bearbeiten-Modus editierbar (Name-Feld +
-    // Rang-Dropdown), sonst nur lesbar - egal ob Admin oder nicht.
-    function slotZeile(stationKey, index, slot) {
+    // Eine einzelne Person als Ausweis-Kachel. Nur im Bearbeiten-Modus
+    // editierbar (Name-Feld + Rang-Dropdown), sonst nur lesbar - egal ob
+    // Admin oder nicht.
+    // Ab dieser Ebene gilt jemand als "Leitung" - bekommt ein kleines,
+    // dezentes Stern-Symbol vor dem Rang, um das auf einen Blick zu zeigen.
+    const LEITUNGS_RAENGE = new Set(["Stellv. Oberarzt", "Oberarzt", "Stellv. Chefarzt", "Chefarzt"]);
+
+    function badgeKachel(stationKey, index, slot, farbklasse) {
       const istDirektion = stationKey === "direktion";
       const istDu = aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
-      const duBadge = istDu ? '<span class="staff-card__badge" style="position:static;margin-left:8px;">Du</span>' : "";
+      const initiale = slot.name ? slot.name.trim().charAt(0).toUpperCase() : "?";
+      const istLeitung = LEITUNGS_RAENGE.has(slot.rolle);
 
       if (!bearbeitenAktiv) {
-        // Reine Lese-Ansicht (Standard - auch für Admins, bis "Bearbeiten" geklickt wird)
-        if (!slot.name) return `<div class="station-slot station-slot--frei">— Platz frei —</div>`;
+        if (!slot.name) {
+          return `<div class="badge-tile badge-tile--frei"><span>+ Frei</span></div>`;
+        }
         return `
-          <div class="station-slot">
-            <span class="station-slot__name">${escapeHtml(slot.name)}${duBadge}</span>
-            <span class="station-slot__meta">
-              <span class="station-slot__rolle">${escapeHtml(slot.rolle)}</span>
-            </span>
+          <div class="badge-tile ${istDu ? "badge-tile--du" : ""}">
+            <span class="badge-tile__avatar badge-tile__avatar--${farbklasse}">${escapeHtml(initiale)}</span>
+            <span class="badge-tile__name">${escapeHtml(slot.name)}</span>
+            <span class="badge-tile__rolle ${istLeitung ? "badge-tile__rolle--leitung" : ""}">${istLeitung ? "★ " : ""}${escapeHtml(slot.rolle)}</span>
+            ${istDu ? '<span class="badge-tile__du">Du</span>' : ""}
           </div>
         `;
       }
 
-      // Editierbare Admin-Ansicht
       const rolleFeld = istDirektion
-        ? `<span class="station-slot__rolle">Ärztliche Direktion</span>`
-        : `<select class="field-input station-slot__rolle-select" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
-            ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${r}</option>`).join("")}
+        ? `<span class="badge-tile__rolle">Ärztliche Direktion</span>`
+        : `<select class="badge-tile__rolle-select" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
+            ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${LEITUNGS_RAENGE.has(r) ? "★ " : ""}${r}</option>`).join("")}
           </select>`;
 
       return `
-        <div class="station-slot station-slot--edit">
+        <div class="badge-tile badge-tile--edit">
+          <span class="badge-tile__avatar badge-tile__avatar--${farbklasse}">${escapeHtml(initiale)}</span>
           <input
             type="text"
-            class="field-input station-slot__name-input"
+            class="badge-tile__name-input"
             placeholder="Name eintragen..."
             value="${escapeHtml(slot.name)}"
             data-role="slot-name"
@@ -829,14 +950,19 @@
       `;
     }
 
-    function stationsBlock(stationKey) {
+    function stationsPanel(stationKey) {
       const info = STATIONEN[stationKey];
       const plaetze = stationenDaten[stationKey] || [];
-      const zeilen = plaetze.map((slot, index) => slotZeile(stationKey, index, slot)).join("");
+      const farbklasse = stationKey === "rhodes" ? "gruen" : "rot";
+      const besetzt = plaetze.filter((s) => s.name).length;
+      const kacheln = plaetze.map((slot, index) => badgeKachel(stationKey, index, slot, farbklasse)).join("");
       return `
-        <div class="station-card station-card--${info.farbe}">
-          <h3 class="station-card__title">${stationKey === "rhodes" ? "🟢" : "🔴"} ${escapeHtml(info.label)}</h3>
-          <div class="station-card__slots">${zeilen}</div>
+        <div class="station-panel station-panel--${info.farbe}">
+          <div class="station-panel__header">
+            <h3 class="station-panel__title">${stationKey === "rhodes" ? "🟢" : "🔴"} ${escapeHtml(info.label)}</h3>
+            <span class="station-panel__count">${besetzt}/${info.max} besetzt</span>
+          </div>
+          <div class="station-panel__grid">${kacheln}</div>
         </div>
       `;
     }
@@ -844,10 +970,12 @@
     const direktionSlot = (stationenDaten.direktion && stationenDaten.direktion[0]) || { name: "", rolle: "Ärztliche Direktion" };
 
     el.staffGrid.innerHTML = `
-      <div class="direction-card">${slotZeile("direktion", 0, direktionSlot)}</div>
+      <div class="direction-badge">
+        ${badgeKachel("direktion", 0, direktionSlot, "gold")}
+      </div>
       <div class="stations-row">
-        ${stationsBlock("blackwater")}
-        ${stationsBlock("rhodes")}
+        ${stationsPanel("blackwater")}
+        ${stationsPanel("rhodes")}
       </div>
     `;
   }
@@ -1226,7 +1354,7 @@
   function aktualisierePlatzhalterNotizfeld() {
     if (!el.noteInput) return;
     const kategorieInfo = NOTIZ_KATEGORIEN[aktiveNotizKategorie];
-    el.noteInput.placeholder = `${kategorieInfo.label} eintragen...`;
+    el.noteInput.setAttribute("data-placeholder", `${kategorieInfo.label} eintragen...`);
   }
   aktualisierePlatzhalterNotizfeld();
 
@@ -1291,7 +1419,7 @@
       eintrag.className = `note-item note-item--${notiz.kategorie}`;
       eintrag.innerHTML = `
         <div class="note-item__body">
-          <div class="note-item__text">${formatiereNotizText(notiz.text)}</div>
+          <div class="note-item__text">${verarbeiteRichInhalt(notiz.text)}</div>
           <div class="note-item__meta">— ${escapeHtml(notiz.autor)}${rolleText} · ${formatiereZeitstempel(notiz.millis)} Uhr</div>
         </div>
         ${loeschButton}
@@ -1302,19 +1430,20 @@
 
   el.formNote.addEventListener("submit", (event) => {
     event.preventDefault();
-    const text = el.noteInput.value.trim();
-    if (!text || !aktuellerNutzer) return;
+    const text = el.noteInput.innerHTML.trim();
+    const nurText = el.noteInput.textContent.trim();
+    if (!nurText || !aktuellerNutzer) return;
 
     db.collection(NOTIZEN_COLLECTION)
       .add({
-        text: text,
+        text: sanitisiereRichText(text),
         autor: aktuellerNutzer.name,
         rolle: aktuellerNutzer.rolle,
         kategorie: aktiveNotizKategorie,
         zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
       })
       .then(() => {
-        el.noteInput.value = "";
+        el.noteInput.innerHTML = "";
       })
       .catch((fehler) => {
         console.error("Notiz konnte nicht gespeichert werden:", fehler);
@@ -2086,7 +2215,7 @@
       karte.className = "board-item";
       karte.innerHTML = `
         <span class="board-item__pin">📌</span>
-        <div class="board-item__text">${formatiereNotizText(eintrag.text)}</div>
+        <div class="board-item__text">${verarbeiteRichInhalt(eintrag.text)}</div>
         <div class="board-item__meta">
           <span>— ${escapeHtml(eintrag.autor)} · ${formatiereZeitstempel(eintrag.millis)} Uhr</span>
           ${loeschButton}
@@ -2101,13 +2230,14 @@
       event.preventDefault();
       if (!istAdmin()) return;
 
-      const text = el.ankuendigungInput.value.trim();
-      if (!text) return;
+      const text = el.ankuendigungInput.innerHTML.trim();
+      const nurText = el.ankuendigungInput.textContent.trim();
+      if (!nurText) return;
 
       db.collection(ANKUENDIGUNGEN_COLLECTION)
-        .add({ text, autor: aktuellerNutzer.name, zeitpunkt: firebase.firestore.FieldValue.serverTimestamp() })
+        .add({ text: sanitisiereRichText(text), autor: aktuellerNutzer.name, zeitpunkt: firebase.firestore.FieldValue.serverTimestamp() })
         .then(() => {
-          el.ankuendigungInput.value = "";
+          el.ankuendigungInput.innerHTML = "";
         })
         .catch((fehler) => {
           console.error("Ankündigung konnte nicht gespeichert werden:", fehler);
@@ -2449,7 +2579,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 34;
+  const APP_VERSION = 38;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
