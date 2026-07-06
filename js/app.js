@@ -903,15 +903,23 @@
     // Eine einzelne Person als Ausweis-Kachel. Nur im Bearbeiten-Modus
     // editierbar (Name-Feld + Rang-Dropdown), sonst nur lesbar - egal ob
     // Admin oder nicht.
-    // Ab dieser Ebene gilt jemand als "Leitung" - bekommt ein kleines,
-    // dezentes Stern-Symbol vor dem Rang, um das auf einen Blick zu zeigen.
-    const LEITUNGS_RAENGE = new Set(["Stellv. Oberarzt", "Oberarzt", "Stellv. Chefarzt", "Chefarzt"]);
+    // Zwei Leitungs-Ebenen, jeweils mit einem eigenen, dezenten Symbol
+    // gekennzeichnet - unterschiedliche Form statt nur Anzahl, damit man die
+    // beiden Ebenen auch auf den ersten Blick auseinanderhalten kann.
+    const OBERARZT_EBENE = new Set(["Stellv. Oberarzt", "Oberarzt"]);
+    const CHEFARZT_EBENE = new Set(["Stellv. Chefarzt", "Chefarzt"]);
+
+    function leitungsSymbol(rolle) {
+      if (CHEFARZT_EBENE.has(rolle)) return "★ ";
+      if (OBERARZT_EBENE.has(rolle)) return "◆ ";
+      return "";
+    }
 
     function badgeKachel(stationKey, index, slot, farbklasse) {
       const istDirektion = stationKey === "direktion";
       const istDu = aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
       const initiale = slot.name ? slot.name.trim().charAt(0).toUpperCase() : "?";
-      const istLeitung = LEITUNGS_RAENGE.has(slot.rolle);
+      const istLeitung = OBERARZT_EBENE.has(slot.rolle) || CHEFARZT_EBENE.has(slot.rolle);
 
       if (!bearbeitenAktiv) {
         if (!slot.name) {
@@ -921,7 +929,7 @@
           <div class="badge-tile ${istDu ? "badge-tile--du" : ""}">
             <span class="badge-tile__avatar badge-tile__avatar--${farbklasse}">${escapeHtml(initiale)}</span>
             <span class="badge-tile__name">${escapeHtml(slot.name)}</span>
-            <span class="badge-tile__rolle ${istLeitung ? "badge-tile__rolle--leitung" : ""}">${istLeitung ? "★ " : ""}${escapeHtml(slot.rolle)}</span>
+            <span class="badge-tile__rolle ${istLeitung ? "badge-tile__rolle--leitung" : ""}">${leitungsSymbol(slot.rolle)}${escapeHtml(slot.rolle)}</span>
             ${istDu ? '<span class="badge-tile__du">Du</span>' : ""}
           </div>
         `;
@@ -930,7 +938,7 @@
       const rolleFeld = istDirektion
         ? `<span class="badge-tile__rolle">Ärztliche Direktion</span>`
         : `<select class="badge-tile__rolle-select" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
-            ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${LEITUNGS_RAENGE.has(r) ? "★ " : ""}${r}</option>`).join("")}
+            ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${leitungsSymbol(r)}${r}</option>`).join("")}
           </select>`;
 
       return `
@@ -2579,7 +2587,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 38;
+  const APP_VERSION = 39;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
