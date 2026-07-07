@@ -238,6 +238,7 @@
     tableTotal: document.getElementById("table-total"),
 
     btnAddMedikament: document.getElementById("btn-add-medikament"),
+    modalCheckoutKunde: document.getElementById("modal-checkout-kunde"),
     modalStatistik: document.getElementById("modal-statistik"),
     modalAdd: document.getElementById("modal-add"),
     inputMedName: document.getElementById("input-med-name"),
@@ -622,6 +623,7 @@
       localStorage.setItem(GATE_ROLLE, rolle);
 
       aktuellerNutzer = { name, rolle };
+      aktualisiereAdminStatusVonNutzer();
       anmeldenUndStarten();
     });
   }
@@ -1167,10 +1169,9 @@
           bestimmt einzig, wer sich anmelden kann)
      ------------------------------------------------------------------------ */
   // Verhindert eine komplette Aussperrung, OHNE eine fremde Person (wie
-  // "Chris Moon") ins Login einzuschleusen. Stattdessen: einen bereits
-  // versehentlich hinzugefügten Notfall-Eintrag entfernen und Heinrich/Grete
-  // (die Hauptnutzer der Seite) automatisch auf Admin-Rang anheben, falls
-  // gerade niemand Admin-Rechte hat.
+  // "Chris Moon") ins Login einzuschleusen. Admin-Rechte hängen jetzt am
+  // PIN-Schutz (geschuetzt), NICHT mehr am Rang - Heinrich/Grete können also
+  // z. B. "Oberarzt"/"Stellv. Oberarzt" heißen und trotzdem Admin sein.
   function sichereMindestensEinenAdminZu() {
     let geaendert = false;
 
@@ -1179,24 +1180,24 @@
     loginMitarbeiterListe = loginMitarbeiterListe.filter((m) => m.id !== "chris-moon-notfall-admin");
     if (loginMitarbeiterListe.length !== vorherAnzahl) geaendert = true;
 
-    const hatAdmin = loginMitarbeiterListe.some((m) => ADMIN_ROLLEN.includes(m.rolle));
+    const hatAdmin = loginMitarbeiterListe.some((m) => m.geschuetzt);
     if (!hatAdmin) {
       const heinrich = loginMitarbeiterListe.find((m) => m.id === "heinrich");
       const grete = loginMitarbeiterListe.find((m) => m.id === "grete");
 
       if (heinrich) {
-        heinrich.rolle = "Chefarzt";
+        heinrich.geschuetzt = true;
         geaendert = true;
       }
       if (grete) {
-        grete.rolle = "Stellv. Chefarzt";
+        grete.geschuetzt = true;
         geaendert = true;
       }
 
       // Falls weder Heinrich noch Grete in der Liste stehen: ersten
       // vorhandenen Eintrag zum Admin machen, damit niemand ausgesperrt bleibt.
       if (!heinrich && !grete && loginMitarbeiterListe.length > 0) {
-        loginMitarbeiterListe[0].rolle = "Chefarzt";
+        loginMitarbeiterListe[0].geschuetzt = true;
         geaendert = true;
       }
     }
@@ -1222,6 +1223,8 @@
 
           populiereNamensDropdown();
           renderLoginVerwaltung();
+          aktualisiereAdminStatusVonNutzer();
+          renderMitarbeiterListe();
 
           if (ersterDurchlauf) {
             ersterDurchlauf = false;
@@ -1249,7 +1252,18 @@
   }
 
   function istAdmin() {
-    return aktuellerNutzer && ADMIN_ROLLEN.includes(aktuellerNutzer.rolle);
+    return !!(aktuellerNutzer && aktuellerNutzer.admin);
+  }
+
+  // Ermittelt den Admin-Status live aus der aktuellen Login-Liste (nicht aus
+  // dem Rang!) und aktualisiert aktuellerNutzer entsprechend. Wird sowohl
+  // direkt nach dem Login als auch bei jeder Änderung der Login-Liste
+  // aufgerufen, damit ein nachträglich entzogener/vergebener PIN-Schutz
+  // sofort wirkt.
+  function aktualisiereAdminStatusVonNutzer() {
+    if (!aktuellerNutzer) return;
+    const eintrag = loginMitarbeiterListe.find((m) => m.name.toLowerCase() === aktuellerNutzer.name.toLowerCase());
+    aktuellerNutzer.admin = !!(eintrag && eintrag.geschuetzt);
   }
 
   /* ------------------------------------------------------------------------
@@ -1276,7 +1290,7 @@
         <span>
           <span class="settings-list__name">${escapeHtml(person.name)}</span>
           <span class="settings-list__role">${escapeHtml(person.rolle)}</span>
-          ${person.geschuetzt ? '<span class="settings-list__protected">🔒 PIN-geschützt</span>' : ""}
+          ${person.geschuetzt ? '<span class="settings-list__protected">🔒 PIN-geschützt · Admin</span>' : ""}
         </span>
         <button type="button" class="icon-btn icon-btn--delete" data-role="remove-login" data-id="${person.id}" title="Entfernen">🗑</button>
       `;
@@ -1303,7 +1317,7 @@
       speichereLoginMitarbeiterliste();
       el.loginNameInput.value = "";
       el.loginGeschuetztInput.checked = true;
-      zeigeToast(`„${name}“ kann sich jetzt anmelden.${geschuetzt ? " (PIN-geschützt)" : ""}`);
+      zeigeToast(`„${name}“ kann sich jetzt anmelden.${geschuetzt ? " (PIN-geschützt · Admin)" : ""}`);
     });
   }
 
@@ -1657,6 +1671,8 @@
 
   // Sammel-Checkout aus der Medikamententabelle (mehrere Artikel auf einmal,
   // ohne Kundenname - z. B. für interne Bestandsanpassungen)
+  let ausstehenderCheckout = null; // { verkaufteArtikel, gesamtsumme, items }
+
   el.btnCheckout.addEventListener("click", () => {
     const verkaufteArtikel = medikamente.filter((m) => (Number(m.menge) || 0) > 0);
 
@@ -1668,26 +1684,61 @@
     const gesamtsumme = verkaufteArtikel.reduce((summe, m) => summe + Number(m.menge) * Number(m.preis), 0);
     const items = verkaufteArtikel.map((m) => ({ name: m.name, menge: Number(m.menge), preis: Number(m.preis) }));
 
-    db.collection(VERKAUFSLOG_COLLECTION)
-      .add({
-        mitarbeiter: aktuellerNutzer ? aktuellerNutzer.name : "Unbekannt",
-        rolle: aktuellerNutzer ? aktuellerNutzer.rolle : "",
-        kunde: null,
-        items: items,
-        gesamtsumme: gesamtsumme,
-        zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
-      })
-      .then(() => {
-        medikamente.forEach((m) => (m.menge = 0));
-        speichereMedikamenteInFirestore();
-        render();
-        zeigeToast(`Verkauf über ${formatiereGeld(gesamtsumme)} abgeschlossen.`);
-      })
-      .catch((fehler) => {
-        console.error("Verkauf konnte nicht gespeichert werden:", fehler);
-        zeigeToast("Verkauf konnte nicht gespeichert werden.");
-      });
+    ausstehenderCheckout = { gesamtsumme, items };
+
+    const artikelText = items.map((i) => `${i.name} ×${i.menge}`).join(", ");
+    document.getElementById("checkout-kunde-summe").textContent = `${artikelText} — Gesamt: ${formatiereGeld(gesamtsumme)}`;
+    document.getElementById("checkout-kunde-input").value = "";
+    oeffneModal(el.modalCheckoutKunde);
+    setTimeout(() => document.getElementById("checkout-kunde-input").focus(), 50);
   });
+
+  const btnCheckoutKundeBestaetigen = document.getElementById("btn-checkout-kunde-bestaetigen");
+  if (btnCheckoutKundeBestaetigen) {
+    btnCheckoutKundeBestaetigen.addEventListener("click", () => {
+      if (!ausstehenderCheckout) return;
+
+      const kunde = document.getElementById("checkout-kunde-input").value.trim();
+      const { gesamtsumme, items } = ausstehenderCheckout;
+
+      db.collection(VERKAUFSLOG_COLLECTION)
+        .add({
+          mitarbeiter: aktuellerNutzer ? aktuellerNutzer.name : "Unbekannt",
+          rolle: aktuellerNutzer ? aktuellerNutzer.rolle : "",
+          kunde: kunde || null,
+          items: items,
+          gesamtsumme: gesamtsumme,
+          zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
+        })
+        .then(() => {
+          medikamente.forEach((m) => (m.menge = 0));
+          speichereMedikamenteInFirestore();
+          render();
+          schliesseModal(el.modalCheckoutKunde);
+          ausstehenderCheckout = null;
+          zeigeToast(
+            kunde
+              ? `Verkauf an „${kunde}“ über ${formatiereGeld(gesamtsumme)} eingetragen.`
+              : `Verkauf über ${formatiereGeld(gesamtsumme)} eingetragen.`
+          );
+        })
+        .catch((fehler) => {
+          console.error("Verkauf konnte nicht gespeichert werden:", fehler);
+          zeigeToast("Verkauf konnte nicht gespeichert werden.");
+        });
+    });
+  }
+
+  // Enter im Kunde-Feld soll den Verkauf genauso bestätigen wie der Button
+  const checkoutKundeInput = document.getElementById("checkout-kunde-input");
+  if (checkoutKundeInput) {
+    checkoutKundeInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        btnCheckoutKundeBestaetigen.click();
+      }
+    });
+  }
 
   let letzteVerkaeufe = [];       // Zwischenspeicher für Client-seitige Suche
   let verkaufslogSuche = "";
@@ -2666,7 +2717,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 41;
+  const APP_VERSION = 43;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

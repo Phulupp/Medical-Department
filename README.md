@@ -1,629 +1,159 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ärztekammer Black Wolf | Verwaltung</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%233d7d5b'/%3E%3Cstop offset='1' stop-color='%23234a35'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='26' fill='url(%23g)'/%3E%3Crect x='42' y='18' width='16' height='64' rx='7' fill='white'/%3E%3Crect x='18' y='42' width='64' height='16' rx='7' fill='white'/%3E%3C/svg%3E" />
+# Ärztekammer
 
-  <!-- Google Fonts: Outfit (Display) & Inter (Text) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"
-    rel="stylesheet"
-  />
+Ein modernes Verwaltungsprogramm für die Ärztekammer im **RedM Roleplay**.
+Zugang, Medikamentenliste, Notizen und mehr werden über **Firebase** in Echtzeit
+zwischen allen Mitarbeitern synchronisiert (z. B. Heinrich & Grete sehen
+dieselben, live aktuellen Daten – egal auf welchem PC).
 
-  <link rel="stylesheet" href="css/style.css?v=43" />
+## ✨ Funktionen
 
-  <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-</head>
-<body>
-  <!-- ============================ -->
-  <!-- ZUGANGSSPERRE: Passwort + Name (kein klassischer Login) -->
-  <!-- ============================ -->
-  <div class="auth-screen" id="auth-screen">
-    <div class="auth-card">
-      <div class="auth-card__brand">
-        <div class="sidebar__brand-icon"><svg viewBox="0 0 100 100" width="20" height="20" fill="white"><rect x="42" y="18" width="16" height="64" rx="7"/><rect x="18" y="42" width="64" height="16" rx="7"/></svg></div>
-        <div class="sidebar__brand-text">
-          <span class="sidebar__brand-title">Ärztekammer</span>
-          <span class="sidebar__brand-subtitle">Black Wolf</span>
-        </div>
-      </div>
+- **Zugang per gemeinsamem Passwort + Namensauswahl** (kein Account-Login, kein `prompt()`)
+- **PIN-Schutz** für die festen Namen Heinrich & Grete, damit sich niemand sonst als diese ausgeben kann
+- **„Wer ist online“-Anzeige** oben in der App, live in Echtzeit
+- **Echtzeit-Synchronisierung**: Änderungen sind sofort bei allen Mitarbeitern sichtbar
+- **Sidebar-Navigation**: Start, Medikamente, Mitarbeiter, Verkaufslog, Notizen, Infos, Einstellungen
+- **Start-Seite („Schwarzes Brett“)**: Landing-Page mit Ankündigungen, nur Admins dürfen posten
+- **Mitarbeiter-Hierarchie**: Chefarzt oben mit Krone, weitere Ränge darunter, live Online-Status
+- **Medikamententabelle**: Name, Preis, Menge, automatische Zwischensumme pro Zeile
+- **Medikamente hinzufügen / löschen (nur Admins) / Preise bearbeiten**
+- **Automatische Gesamtsumme** (Live-Statistik-Karten)
+- **Verkaufslog mit Eintrags-Formular**: Kunde, Medikament, Menge, Datum – Verkäufer wird automatisch aus dem angemeldeten Nutzer eingetragen
+- **Notizen-Seite**: gemeinsame Notizen mit Autor + Datum/Uhrzeit, löschbar durch Admins oder den Verfasser selbst
+- **Infos-Seite**: Wirkung/Einsatzgebiet der Medikamente, von Admins erweiterbar
+- **Suchfeld** zum schnellen Filtern der Medikamentenliste
+- **Eigene, gestaltete Dialogfenster** statt `prompt()`/`confirm()`
 
-      <!-- Schritt 1: Website-Passwort -->
-      <form class="auth-form auth-form--active" id="form-gate-password">
-        <label class="field-label" for="gate-password">Zugangspasswort</label>
-        <input type="password" id="gate-password" class="field-input" placeholder="Passwort eingeben..." autocomplete="off" required />
+## 📁 Projektstruktur
 
-        <p class="field-error" id="gate-password-error" hidden></p>
+```
+Medical_Department/
+│
+├── index.html              # Struktur: Login, Sidebar, Topbar, Tabelle, Modale
+├── css/
+│   └── style.css           # Gesamtes Design (Pastellfarben, große runde Elemente)
+├── js/
+│   ├── firebase-config.js  # HIER TRAGST DU DEINE FIREBASE-DATEN EIN
+│   └── app.js               # Logik: Auth, Firestore-Sync, Rendering, Modale
+├── assets/                   # Für eigene Icons/Bilder
+└── README.md
+```
 
-        <button type="submit" class="btn btn--primary auth-submit">Weiter</button>
-      </form>
+## 🚀 Einrichtung (einmalig, ca. 10 Minuten)
 
-      <!-- Schritt 2: Name auswählen -->
-      <form class="auth-form" id="form-gate-name">
-        <label class="field-label" for="gate-name-select">Wer bist du?</label>
-        <select id="gate-name-select" class="field-input">
-          <option value="">Bitte auswählen...</option>
-          <option value="__andere__">Andere Person...</option>
-        </select>
+### 1. Firebase-Projekt erstellen
+1. Gehe zu [console.firebase.google.com](https://console.firebase.google.com/)
+2. „Projekt hinzufügen“ → Namen eingeben (z. B. `medical-department`) → erstellen
 
-        <div id="gate-name-custom-wrapper" hidden>
-          <label class="field-label" for="gate-name-custom">Dein Name</label>
-          <input type="text" id="gate-name-custom" class="field-input" placeholder="z. B. Grete" />
-        </div>
+### 2. Anonymen Zugang aktivieren
+- **Sicherheit → Authentication** → „Los geht's" → Tab „Sign-in method" → Anbieter **„Anonym"** aktivieren
 
-        <div id="gate-pin-wrapper" hidden>
-          <label class="field-label" for="gate-pin">Dieser Name ist geschützt – PIN eingeben</label>
-          <input type="password" id="gate-pin" class="field-input" placeholder="PIN" inputmode="numeric" autocomplete="off" />
-        </div>
+> Warum "Anonym"? Der sichtbare Zugang läuft über ein gemeinsames Website-Passwort (siehe unten), nicht über einzelne E-Mail-Konten. Im Hintergrund meldet sich die App trotzdem anonym bei Firebase an, damit die Datenbank vor Fremdzugriff geschützt bleibt.
 
-        <p class="field-error" id="gate-name-error" hidden></p>
+### 3. Datenbank erstellen
+- **Datenbanken und Speicher → Firestore** → „Datenbank erstellen" → Standort wählen (z. B. `europe-west3`) → **Testmodus** starten
 
-        <button type="submit" class="btn btn--primary auth-submit">Betreten</button>
-      </form>
+### 4. Sicherheitsregeln setzen
+Im Firestore-Bereich → Tab **„Regeln“** → Inhalt ersetzen durch:
 
-      <p class="auth-hint" id="auth-config-hint" hidden>
-        ⚠️ Firebase ist noch nicht konfiguriert. Trage deine Projektdaten in
-        <code>js/firebase-config.js</code> ein, damit die Seite funktioniert.
-      </p>
-    </div>
-  </div>
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
 
-  <!-- ============================ -->
-  <!-- APP (erst sichtbar nach Login) -->
-  <!-- ============================ -->
-  <!-- Update-Banner: erscheint automatisch, wenn eine neuere Version online ist -->
-  <div class="update-banner" id="update-banner" hidden>
-    <span>🔄 Eine neue Version ist verfügbar. Danach ist eine erneute Anmeldung nötig.</span>
-    <button type="button" class="btn btn--primary" id="update-banner-btn">Jetzt aktualisieren</button>
-  </div>
+→ „Veröffentlichen“ klicken. (Das bedeutet: Nur eingeloggte Mitarbeiter dürfen Daten lesen/schreiben.)
 
-  <div class="app" id="app-root" hidden>
-    <!-- ============================ -->
-    <!-- SIDEBAR (linke Navigation)   -->
-    <!-- ============================ -->
-    <aside class="sidebar">
-      <div class="sidebar__brand">
-        <div class="sidebar__brand-icon" id="easter-egg-trigger"><svg viewBox="0 0 100 100" width="20" height="20" fill="white"><rect x="42" y="18" width="16" height="64" rx="7"/><rect x="18" y="42" width="64" height="16" rx="7"/></svg></div>
-        <div class="sidebar__brand-text">
-          <span class="sidebar__brand-title">Ärztekammer</span>
-          <span class="sidebar__brand-subtitle">Black Wolf</span>
-        </div>
-      </div>
+### 5. Web-App registrieren & Konfiguration kopieren
+1. Zahnrad → „Projekteinstellungen“ → runter zu „Meine Apps“ → **`</>`** (Web)
+2. Spitznamen eingeben, **kein** Firebase Hosting aktivieren, „App registrieren“
+3. Den angezeigten `firebaseConfig`-Block **komplett** in `js/firebase-config.js` einfügen (die Platzhalter-Werte ersetzen)
 
-      <nav class="sidebar__nav">
-        <button class="nav__item nav__item--active" data-view="start">
-          <span class="nav__icon">📌</span>
-          <span>Start</span>
-        </button>
-        <button class="nav__item" data-view="infos">
-          <span class="nav__icon">ℹ️</span>
-          <span>Medizin-Wiki</span>
-        </button>
-        <button class="nav__item" data-view="medikamente">
-          <span class="nav__icon">💊</span>
-          <span>Medikamente</span>
-        </button>
-        <button class="nav__item" data-view="verkaufslog">
-          <span class="nav__icon">🧾</span>
-          <span>Verkaufsliste</span>
-        </button>
-        <div class="nav__group">
-          <button class="nav__item nav__item--parent" id="nav-notizen-toggle" data-view="notizen">
-            <span class="nav__icon">📝</span>
-            <span>Team-Infos</span>
-            <span class="nav__chevron" id="nav-notizen-chevron">▾</span>
-          </button>
-          <div class="nav__submenu" id="nav-notizen-submenu">
-            <button class="nav__subitem" data-kategorie="allgemein">
-              <span class="nav__sub-dot nav__sub-dot--allgemein"></span>
-              Allgemeine Infos
-            </button>
-            <button class="nav__subitem" data-kategorie="personal">
-              <span class="nav__sub-dot nav__sub-dot--personal"></span>
-              Personal
-            </button>
-            <button class="nav__subitem" data-kategorie="herstellung">
-              <span class="nav__sub-dot nav__sub-dot--herstellung"></span>
-              Herstellung
-            </button>
-          </div>
-        </div>
-        <button class="nav__item" data-view="mitarbeiter">
-          <span class="nav__icon">🧑‍⚕️</span>
-          <span>Personal</span>
-        </button>
-        <button class="nav__item" data-view="einstellungen">
-          <span class="nav__icon">⚙️</span>
-          <span>Einstellungen</span>
-        </button>
-      </nav>
+### 6. Online stellen (GitHub Pages)
+Firebase Login funktioniert zuverlässig nur über `http(s)`, nicht beim direkten Doppelklick auf die Datei. Daher:
 
-      <div class="sidebar__footer">
-        <p>Ärztekammer</p>
-        <p class="sidebar__footer-small">Black Wolf Verwaltungssystem</p>
-      </div>
-    </aside>
+1. Projekt zu GitHub hochladen (siehe unten)
+2. Im Repository: **Settings → Pages** → „Deploy from branch“ → Branch `main`, Ordner `/root` → Speichern
+3. Die von GitHub angezeigte Adresse (z. B. `https://dein-name.github.io/Medical-Department/`) im Firebase-Projekt eintragen:
+   **Authentication → Settings → Authorized domains → „Domain hinzufügen“** → dort die GitHub-Pages-Adresse (ohne `https://`) eintragen
 
-    <!-- ============================ -->
-    <!-- HAUPTBEREICH                 -->
-    <!-- ============================ -->
-    <div class="main">
-      <!-- Topbar -->
-      <header class="topbar">
-        <div class="topbar__title">
-          <h1 id="view-title">Start</h1>
-          <p id="view-subtitle">Schwarzes Brett – wichtige Ankündigungen</p>
-        </div>
+Danach ist die App unter der GitHub-Pages-Adresse für dich **und** Grete nutzbar – einfach das gemeinsame Website-Passwort eingeben und den eigenen Namen auswählen (siehe „Zugangspasswort & PIN ändern" unten).
 
-        <div class="topbar__user">
-          <div class="online-widget">
-            <button class="online-widget__btn" id="online-widget-btn">
-              <span class="online-dot"></span>
-              <span id="online-count">0</span> online
-            </button>
-            <div class="online-panel" id="online-panel">
-              <p class="online-panel__title">Gerade online</p>
-              <div id="online-panel-list"></div>
-            </div>
-          </div>
+> **Lokal testen ohne GitHub Pages:** In VS Code die Erweiterung „Live Server" installieren und `index.html` per Rechtsklick → „Open with Live Server" öffnen (läuft dann über `http://127.0.0.1`, funktioniert mit Firebase Login).
 
-          <button class="user-badge" id="user-badge-btn">
-            <div class="user-badge__avatar" id="user-avatar">?</div>
-            <div class="user-badge__info">
-              <span class="user-badge__name" id="user-name">Lädt...</span>
-              <span class="user-badge__role" id="user-role">—</span>
-            </div>
-          </button>
-          <div class="user-menu" id="user-menu">
-            <button class="user-menu__item" id="btn-logout">Nutzer wechseln</button>
-          </div>
-        </div>
-      </header>
+## 🔄 Automatische Update-Erkennung
 
-      <!-- ============================ -->
-      <!-- VIEW: START (Schwarzes Brett) -->
-      <!-- ============================ -->
-      <section class="view view--active" id="view-start">
-        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
-        <div class="board-card" id="board-admin-form" hidden>
-          <h3>📌 Neue Ankündigung</h3>
-          <form class="notes-form" id="form-ankuendigung">
-            <div class="format-toolbar" data-target="ankuendigung-input">
-              <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
-              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
-              <span class="format-toolbar__divider"></span>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#b8860b" style="background:#b8860b" title="Gelb/Gold"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#1a7a3c" style="background:#1a7a3c" title="Grün"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#b71c1c" style="background:#b71c1c" title="Rot"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#1a56db" style="background:#1a56db" title="Blau"></button>
-              <button type="button" class="format-btn format-btn--clear" data-color="__reset__" title="Farbe entfernen">✕</button>
-            </div>
-            <div class="rich-editor" id="ankuendigung-input" contenteditable="true" data-placeholder="Wichtige Info für alle eintragen..."></div>
-            <button type="submit" class="btn btn--primary">Veröffentlichen</button>
-          </form>
-        </div>
+Die App prüft alle paar Minuten automatisch (und sofort wenn der Tab wieder aktiv wird), ob eine neuere Version online ist. Falls ja, erscheint oben ein Banner „Eine neue Version ist verfügbar" mit einem Button zum Neuladen. So bleibt niemand aus Versehen tagelang auf einer veralteten Version hängen, selbst wenn der Tab nie geschlossen wird.
 
-        <div class="board-list" id="board-list">
-          <!-- wird per JavaScript befüllt -->
-        </div>
-        <p class="empty-state" id="board-empty" hidden>Noch keine Ankündigungen vorhanden.</p>
-      </section>
+**Wichtig bei jedem zukünftigen Update:** Zwei Werte müssen zusammen erhöht werden, sonst greift weder die Update-Erkennung noch das Cache-Busting:
 
-      <!-- ============================ -->
-      <!-- VIEW: MEDIKAMENTE            -->
-      <!-- ============================ -->
-      <section class="view" id="view-medikamente">
-        <!-- Statistik-Karten + dezenter Statistik-Button in der Ecke -->
-        <div class="medikamente-header">
-          <div class="stats">
-            <div class="stat-card stat-card--mint">
-              <span class="stat-card__label">Verschiedene Medikamente</span>
-              <span class="stat-card__value" id="stat-count">0</span>
-            </div>
-            <div class="stat-card stat-card--blue">
-              <span class="stat-card__label">Gesamtmenge</span>
-              <span class="stat-card__value" id="stat-quantity">0</span>
-            </div>
-            <div class="stat-card stat-card--peach">
-              <span class="stat-card__label">Gesamtsumme</span>
-              <span class="stat-card__value" id="stat-total">0$</span>
-            </div>
-          </div>
-          <button class="icon-btn icon-btn--stats" id="btn-verkaufsstatistik" title="Verkaufsstatistik ansehen">ⓘ</button>
-        </div>
+1. In `version.json`: `"version"` um 1 erhöhen
+2. In `js/app.js`: Konstante `APP_VERSION` auf denselben Wert setzen
+3. In `index.html`: die `?v=` Anhänge bei `style.css`, `firebase-config.js` und `app.js` ebenfalls auf denselben Wert setzen
 
-        <!-- Werkzeugleiste: Suche + Hinzufügen -->
-        <div class="toolbar">
-          <div class="search-field">
-            <span class="search-field__icon">🔍</span>
-            <input
-              type="text"
-              id="search-input"
-              placeholder="Medikament suchen..."
-              autocomplete="off"
-            />
-          </div>
+## 🔑 Zugangspasswort & PIN ändern
 
-          <div class="toolbar__buttons">
-            <button class="btn btn--checkout" id="btn-checkout">
-              <span class="btn__icon">🧾</span>
-              Verkauf abschließen
-            </button>
-            <button class="btn btn--primary" id="btn-add-medikament">
-              <span class="btn__icon">＋</span>
-              Medikament hinzufügen
-            </button>
-          </div>
-        </div>
+Beide stehen in `js/app.js` ganz oben:
 
-        <!-- Medikamententabelle -->
-        <div class="table-card">
-          <table class="med-table">
-            <thead>
-              <tr>
-                <th>Medikament</th>
-                <th>Preis (Stück)</th>
-                <th>Menge</th>
-                <th>Zwischensumme</th>
-                <th class="med-table__actions-col">Aktionen</th>
-              </tr>
-            </thead>
-            <tbody id="med-table-body">
-              <!-- wird per JavaScript befüllt -->
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3" class="med-table__total-label">Gesamtsumme</td>
-                <td class="med-table__total-value" id="table-total">0$</td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
+```js
+const SITE_PASSWORD = "Otter";   // Website-Passwort (kennt das ganze Team)
+const ADMIN_PIN = "1311";        // Zusätzlicher PIN nur für geschützte Namen
+```
 
-          <p class="empty-state" id="empty-state" hidden>
-            Keine Medikamente gefunden. Passe deine Suche an oder füge ein neues Medikament hinzu.
-          </p>
-        </div>
-      </section>
+Einfach die Werte ändern, Datei speichern und wieder hochladen (siehe Schritt 2).
 
-      <!-- ============================ -->
-      <!-- VIEW: VERKAUFSLOG             -->
-      <!-- ============================ -->
-      <section class="view" id="view-verkaufslog">
-        <div class="sale-form-card">
-          <h3>🧾 Neuen Verkauf eintragen</h3>
-          <form class="sale-form" id="form-sale-entry">
-            <div class="sale-form__row">
-              <div class="sale-form__field">
-                <label class="field-label" for="sale-kunde">Kunde (Vor- &amp; Nachname)</label>
-                <input type="text" id="sale-kunde" class="field-input" placeholder="z. B. John Marston" autocomplete="off" list="bekannte-kunden-liste" required />
-                <datalist id="bekannte-kunden-liste"></datalist>
-              </div>
-              <div class="sale-form__field sale-form__field--small">
-                <label class="field-label" for="sale-datum">Datum</label>
-                <input type="date" id="sale-datum" class="field-input" required />
-              </div>
-              <div class="sale-form__field">
-                <label class="field-label">Verkäufer</label>
-                <p class="sale-form__verkaeufer" id="sale-form-verkaeufer">—</p>
-              </div>
-            </div>
+## 🧑‍⚕️ Mitarbeiter verwalten
 
-            <div class="sale-cart-add">
-              <label class="field-label" for="sale-medikament">Artikel zum Verkauf hinzufügen</label>
-              <div class="sale-cart-add__row">
-                <select id="sale-medikament" class="field-input">
-                  <option value="">Medikament auswählen...</option>
-                </select>
-                <input type="number" id="sale-menge" class="field-input" min="1" step="1" value="1" />
-                <button type="button" class="btn btn--ghost" id="btn-add-to-cart">+ Zum Verkauf hinzufügen</button>
-              </div>
-            </div>
+Es gibt zwei Wege, wie ein Name in der Namensauswahl landet:
 
-            <div class="sale-cart" id="sale-cart">
-              <p class="sale-cart__empty" id="sale-cart-empty">Noch keine Artikel hinzugefügt.</p>
-              <div id="sale-cart-items"></div>
-              <div class="sale-cart__total" id="sale-cart-total" hidden>Zwischensumme: <span id="sale-cart-total-value">0$</span></div>
-            </div>
+**1. Fest eingebaute, PIN-geschützte Namen** (aktuell Heinrich & Grete)
+Stehen in `js/app.js` unter `DEFAULT_MITARBEITER`. Wer diese Namen auswählt, muss zusätzlich den `ADMIN_PIN` eingeben – so kann sich niemand fälschlicherweise als Chefarzt/Stellv. Chefärztin ausgeben.
 
-            <p class="field-error" id="sale-entry-error" hidden></p>
-            <button type="submit" class="btn btn--checkout sale-form__submit">Verkauf eintragen</button>
-          </form>
-        </div>
+**2. Über die Einstellungen hinzugefügt** (z. B. weiteres Personal)
+Chefarzt und Stellv. Chefärztin können unter **Einstellungen → Mitarbeiter verwalten** direkt in der App neue Namen + Position eintragen oder entfernen – ohne Code-Änderung, sofort für alle sichtbar. Diese Namen sind **nicht** PIN-geschützt und können von jedem mit dem Website-Passwort ausgewählt werden.
 
-        <div class="sale-log-search">
-          <span class="search-field__icon">🔍</span>
-          <input type="text" id="sales-log-search" placeholder="Nach Kunde, Verkäufer oder Medikament suchen..." autocomplete="off" />
-        </div>
+Wer gar nicht in der Liste steht, kann sich weiterhin über „Andere Person..." mit freiem Namen anmelden (erscheint dann als „Mitarbeiter", ohne besondere Rechte).
 
-        <div id="sales-log-list">
-          <!-- wird per JavaScript befüllt -->
-        </div>
-        <p class="empty-state" id="sales-log-empty" hidden>Noch keine Verkäufe eingetragen.</p>
-        <p class="empty-state" id="sales-log-no-results" hidden>Keine Verkäufe gefunden, die zu deiner Suche passen.</p>
-      </section>
+## 🔒 Rechte-System
 
-      <!-- ============================ -->
-      <!-- VIEW: NOTIZEN                 -->
-      <!-- ============================ -->
-      <section class="view" id="view-notizen">
-        <div class="notes-kategorie-badge" id="notes-kategorie-badge"></div>
+Nur **Chefarzt** und **Stellv. Chefärztin** dürfen:
+- Medikamente löschen
+- Die Mitarbeiterliste verwalten (Einstellungen)
 
-        <div class="notes-card">
-          <form class="notes-form" id="form-note">
-            <div class="format-toolbar" data-target="note-input">
-              <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
-              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
-              <span class="format-toolbar__divider"></span>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#b8860b" style="background:#b8860b" title="Gelb/Gold"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#1a7a3c" style="background:#1a7a3c" title="Grün"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#b71c1c" style="background:#b71c1c" title="Rot"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#1a56db" style="background:#1a56db" title="Blau"></button>
-              <button type="button" class="format-btn format-btn--clear" data-color="__reset__" title="Farbe entfernen">✕</button>
-            </div>
-            <div class="notes-form__main">
-              <div class="rich-editor" id="note-input" contenteditable="true" data-placeholder="Notiz eintragen..."></div>
-            </div>
-            <button type="submit" class="btn btn--primary">Hinzufügen</button>
-          </form>
-        </div>
-        <div class="sale-log-search">
-          <span class="search-field__icon">🔍</span>
-          <input type="text" id="notes-search" placeholder="Notizen durchsuchen..." autocomplete="off" />
-        </div>
+Alle anderen (inkl. „Andere Person") können Medikamente hinzufügen, Preise bearbeiten, Mengen eintragen, Notizen schreiben und Verkäufe abschließen – aber nicht löschen oder die Mitarbeiterliste ändern.
 
-        <div class="notes-list notes-list--page" id="notes-list">
-          <!-- wird per JavaScript befüllt -->
-        </div>
-        <p class="empty-state" id="notes-empty" hidden>Noch keine Notizen vorhanden.</p>
-      </section>
 
-      <!-- ============================ -->
-      <!-- VIEW: INFOS                   -->
-      <!-- ============================ -->
-      <section class="view" id="view-infos">
-        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
-        <div class="notes-card" id="infos-admin-form" hidden>
-          <h3 id="info-form-title">ℹ️ Neuen Info-Eintrag hinzufügen</h3>
-          <form id="form-add-info">
-            <input type="hidden" id="info-editing-id" value="" />
+## 💊 Standard-Medikamente
 
-            <div class="info-form-row">
-              <input type="text" id="info-titel-input" class="field-input info-form-row__compact" placeholder="Titel, z. B. Medikamentenname" required />
-              <input type="text" id="info-hinweis-input" class="field-input info-form-row__compact" placeholder="Zusatz-Hinweis (optional)" />
-            </div>
+Wird beim allerersten Start automatisch in Firestore angelegt:
 
-            <div class="format-toolbar" data-target="info-text-input">
-              <button type="button" class="format-btn" data-format="bold" title="Fett im Beschreibungsfeld (markierten Text auswählen)"><strong>F</strong></button>
-              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen im Beschreibungsfeld (markierten Text auswählen)"><u>U</u></button>
-            </div>
-            <textarea id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required></textarea>
+| Medikament            | Preis | Hinweis |
+|------------------------|-------|---------|
+| Bandage                | 2$    | Überbrückt Zeit bei Schusswunde |
+| Adrenalinspritze       | 3$    | Nur bei Bewusstlosigkeit/Notfall |
+| Cola                   | 1$    | Herz-Kreislauf & Ausdauer |
+| Schiene                | 2$    | Behandlung von Brüchen |
+| Riechsalz              | 8$    | 8$ Bürger / 6$ Departments |
+| Schlangengift          | 2$    | Gegengift bei Schlangenbissen |
+| Impfung                | 5$    | Schutz gegen Krankheiten |
+| Heilsalbe              | 3$    | Gegen Prellungen |
+| Fruchtbarkeitssalbe    | 1$    | Für Rancher |
+| Vitaminspritze         | 1$    | Für Rancher |
 
-            <div class="info-form-actions">
-              <button type="submit" class="btn btn--primary" id="info-form-submit">Hinzufügen</button>
-              <button type="button" class="btn btn--ghost" id="info-form-cancel" hidden>Abbrechen</button>
-            </div>
-          </form>
-        </div>
+Kann danach beliebig über die Oberfläche erweitert, bearbeitet und gelöscht werden – Änderungen sind sofort bei allen Mitarbeitern sichtbar.
 
-        <div class="info-panel__grid" id="infos-grid">
-          <!-- wird per JavaScript befüllt -->
-        </div>
-      </section>
+## 🔧 Technisches
 
-      <!-- ============================ -->
-      <!-- VIEW: MITARBEITER (Platzhalter) -->
-      <!-- ============================ -->
-      <section class="view" id="view-mitarbeiter">
-        <div class="staff-toolbar" id="staff-toolbar" hidden>
-          <button type="button" class="btn btn--ghost" id="btn-toggle-mitarbeiter-bearbeiten">
-            <span class="btn__icon">✎</span>
-            Bearbeiten
-          </button>
-        </div>
-        <div class="staff-grid" id="staff-grid">
-          <!-- wird per JavaScript befüllt -->
-        </div>
-      </section>
+- Kein Framework, kein Build-Prozess – Vanilla HTML/CSS/JavaScript
+- **Firebase Anonymous Auth** im Hintergrund (unsichtbar) + gemeinsames Website-Passwort für den sichtbaren Zugang
+- **Cloud Firestore** als Echtzeit-Datenbank (Medikamente, Mitarbeiterliste, Notizen, Verkaufslog, Infos, Ankündigungen)
+- `localStorage` dient nur noch als Offline-Fallback/Zwischenspeicher
+- Code ist durchgehend kommentiert (deutsch)
 
-      <!-- ============================ -->
-      <!-- VIEW: EINSTELLUNGEN            -->
-      <!-- ============================ -->
-      <section class="view" id="view-einstellungen">
-        <!-- Für alle Mitarbeiter sichtbar -->
-        <div class="settings-card">
-          <h3>🎨 Design</h3>
-          <p class="settings-card__hint">Diese Einstellung wird nur in deinem eigenen Browser gespeichert und gilt nicht für andere Mitarbeiter.</p>
-          <div class="theme-switch">
-            <button type="button" class="theme-option theme-option--active" id="theme-btn-light" data-theme="light">
-              <span class="theme-option__preview theme-option__preview--light"></span>
-              ☀️ Hell
-            </button>
-            <button type="button" class="theme-option" id="theme-btn-dark" data-theme="dark">
-              <span class="theme-option__preview theme-option__preview--dark"></span>
-              🌙 Dunkel
-            </button>
-          </div>
-        </div>
+## 📌 Geplante Erweiterungen
 
-        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
-        <div id="einstellungen-admin" hidden>
-          <div class="settings-card">
-            <h3>🔑 Login verwalten</h3>
-            <p class="settings-card__hint">Bestimmt, wer sich mit welchem Namen auf der Login-Seite anmelden kann. Die Personal-Liste (Rhodes/Blackwater) wird direkt auf der Personal-Seite bearbeitet, nicht hier. <strong>Mit PIN geschützt = Admin-Rechte</strong> (Login-Liste verwalten, Personal-Liste bearbeiten, Medikamente löschen) - unabhängig vom Rang, der hier nur für die Anzeige (z. B. bei Notizen) gilt.</p>
-
-            <form class="settings-form" id="form-add-login" style="flex-wrap: wrap;">
-              <input type="text" id="login-name-input" class="field-input" placeholder="Name, z. B. Heinrich Hornhausen" required style="flex: 1 1 200px;" />
-              <select id="login-rolle-input" class="field-input" style="flex: 0 0 180px;">
-                <option value="Anwärter">Anwärter</option>
-                <option value="Assistenzarzt">Assistenzarzt</option>
-                <option value="Facharzt">Facharzt</option>
-                <option value="Stellv. Oberarzt">Stellv. Oberarzt</option>
-                <option value="Oberarzt">Oberarzt</option>
-                <option value="Stellv. Chefarzt">Stellv. Chefarzt</option>
-                <option value="Chefarzt">Chefarzt</option>
-              </select>
-              <label class="mitarbeiter-pin-toggle">
-                <input type="checkbox" id="login-geschuetzt-input" checked />
-                🔒 Mit PIN schützen (= Admin-Rechte)
-              </label>
-              <button type="submit" class="btn btn--primary">Hinzufügen</button>
-            </form>
-
-            <div class="settings-list" id="login-verwaltung-liste">
-              <!-- wird per JavaScript befüllt -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Für Nicht-Admins: Platzhalter (statt Mitarbeiterverwaltung) -->
-        <div id="einstellungen-locked" class="placeholder-card" hidden>
-          <div class="placeholder-card__icon">⚙️</div>
-          <h2>Weitere Einstellungen</h2>
-          <p>Die Mitarbeiterverwaltung ist nur für Chefarzt und Stellv. Chefärztin sichtbar. Weitere Einstellungen folgen in einem zukünftigen Update.</p>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <!-- ============================ -->
-  <!-- MODAL: Kunde für Schnell-Verkauf (aus Medikamentenliste) -->
-  <!-- ============================ -->
-  <div class="modal-overlay" id="modal-checkout-kunde">
-    <div class="modal modal--small">
-      <div class="modal__header">
-        <h3>🧾 Verkauf abschließen</h3>
-        <button class="modal__close" data-close-modal="modal-checkout-kunde">✕</button>
-      </div>
-      <div class="modal__body">
-        <p class="stats-modal__hint" id="checkout-kunde-summe"></p>
-        <label class="field-label" for="checkout-kunde-input">Kunde (optional)</label>
-        <input
-          type="text"
-          id="checkout-kunde-input"
-          class="field-input"
-          placeholder="z. B. John Marston"
-          list="bekannte-kunden-liste"
-          autocomplete="off"
-          style="width: 100%; margin-top: 6px;"
-        />
-      </div>
-      <div class="modal__footer">
-        <button class="btn btn--ghost" data-close-modal="modal-checkout-kunde">Abbrechen</button>
-        <button class="btn btn--checkout" id="btn-checkout-kunde-bestaetigen">Verkauf eintragen</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================ -->
-  <!-- MODAL: Verkaufsstatistik (versteckt, nur über ⓘ-Button) -->
-  <!-- ============================ -->
-  <div class="modal-overlay" id="modal-statistik">
-    <div class="modal modal--stats">
-      <div class="modal__header">
-        <h3>📊 Verkaufsstatistik</h3>
-        <button class="modal__close" data-close-modal="modal-statistik">✕</button>
-      </div>
-      <div class="modal__body">
-        <p class="stats-modal__hint">Basiert auf den letzten Einträgen im Verkaufslog.</p>
-        <div class="stats-modal__list" id="stats-modal-list">
-          <!-- wird per JavaScript befüllt -->
-        </div>
-        <p class="empty-state" id="stats-modal-empty" hidden>Noch keine Verkäufe erfasst.</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================ -->
-  <!-- MODAL: Medikament hinzufügen -->
-  <!-- ============================ -->
-  <div class="modal-overlay" id="modal-add">
-    <div class="modal">
-      <div class="modal__header">
-        <h3>Neues Medikament</h3>
-        <button class="modal__close" data-close-modal="modal-add">✕</button>
-      </div>
-      <div class="modal__body">
-        <label class="field-label" for="input-med-name">Name des Medikaments</label>
-        <input type="text" id="input-med-name" class="field-input" placeholder="z. B. Bandage" />
-
-        <label class="field-label" for="input-med-price">Preis pro Stück ($)</label>
-        <input type="number" id="input-med-price" class="field-input" placeholder="z. B. 2" min="0" step="1" />
-
-        <label class="field-label" for="input-med-beschreibung">Beschreibung (optional)</label>
-        <textarea id="input-med-beschreibung" class="field-input field-textarea" placeholder="z. B. Wirkung oder Einsatzgebiet..." rows="2"></textarea>
-
-        <p class="field-error" id="add-error" hidden></p>
-      </div>
-      <div class="modal__footer">
-        <button class="btn btn--ghost" data-close-modal="modal-add">Abbrechen</button>
-        <button class="btn btn--primary" id="btn-confirm-add">Hinzufügen</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================ -->
-  <!-- MODAL: Preis bearbeiten      -->
-  <!-- ============================ -->
-  <div class="modal-overlay" id="modal-edit-price">
-    <div class="modal">
-      <div class="modal__header">
-        <h3>Preis bearbeiten</h3>
-        <button class="modal__close" data-close-modal="modal-edit-price">✕</button>
-      </div>
-      <div class="modal__body">
-        <p class="modal__hint" id="edit-price-name"></p>
-        <label class="field-label" for="input-edit-price">Neuer Preis pro Stück ($)</label>
-        <input type="number" id="input-edit-price" class="field-input" min="0" step="1" />
-        <p class="field-error" id="edit-error" hidden></p>
-      </div>
-      <div class="modal__footer">
-        <button class="btn btn--ghost" data-close-modal="modal-edit-price">Abbrechen</button>
-        <button class="btn btn--primary" id="btn-confirm-edit">Speichern</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================ -->
-  <!-- MODAL: Löschen bestätigen    -->
-  <!-- ============================ -->
-  <div class="modal-overlay" id="modal-delete">
-    <div class="modal modal--small">
-      <div class="modal__header">
-        <h3>Medikament löschen</h3>
-        <button class="modal__close" data-close-modal="modal-delete">✕</button>
-      </div>
-      <div class="modal__body">
-        <p id="delete-text">Möchtest du dieses Medikament wirklich löschen?</p>
-      </div>
-      <div class="modal__footer">
-        <button class="btn btn--ghost" data-close-modal="modal-delete">Abbrechen</button>
-        <button class="btn btn--danger" id="btn-confirm-delete">Löschen</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast-Benachrichtigung -->
-  <div class="toast" id="toast"></div>
-
-  <!-- Geheimes Easter Egg: 7x auf das Logo klicken -->
-  <div class="easter-egg-overlay" id="easter-egg-overlay">
-    <div class="easter-egg-card">
-      <div class="easter-egg-emoji">🤠</div>
-      <h2>Yeehaw, Partner!</h2>
-      <p>Du hast das geheime Easter Egg der Ärztekammer gefunden.<br />Doc Holliday wäre stolz auf dich.</p>
-      <button class="btn btn--primary" id="easter-egg-close">Zurück an die Arbeit</button>
-    </div>
-  </div>
-
-  <script src="js/firebase-config.js?v=43"></script>
-  <script src="js/app.js?v=43"></script>
-</body>
-</html>
+- Einstellungen (z. B. Rabatte, Rollen-Rechte)
