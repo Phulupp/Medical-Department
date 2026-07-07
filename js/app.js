@@ -45,8 +45,8 @@
   // Farbcode - passend zur farblichen Kennzeichnung im Spiel selbst.
   const STATIONEN = {
     direktion: { label: "Ärztliche Direktion", max: 1, farbe: null },
-    rhodes: { label: "Rhodes", max: 6, farbe: "green" },
-    blackwater: { label: "Blackwater", max: 6, farbe: "red" },
+    rhodes: { label: "Rhodes", max: 8, farbe: "green" },
+    blackwater: { label: "Blackwater", max: 8, farbe: "red" },
   };
 
   // Standard-LOGIN-Liste (komplett unabhängig von der Mitarbeiter-/Stations-
@@ -69,8 +69,8 @@
 
   const DEFAULT_STATIONEN = {
     direktion: [{ name: "Chris Moon", rolle: "Ärztliche Direktion" }],
-    blackwater: erzeugeLeereStation(6),
-    rhodes: erzeugeLeereStation(6),
+    blackwater: erzeugeLeereStation(8),
+    rhodes: erzeugeLeereStation(8),
   };
 
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
@@ -238,6 +238,7 @@
     tableTotal: document.getElementById("table-total"),
 
     btnAddMedikament: document.getElementById("btn-add-medikament"),
+    modalStatistik: document.getElementById("modal-statistik"),
     modalAdd: document.getElementById("modal-add"),
     inputMedName: document.getElementById("input-med-name"),
     inputMedPrice: document.getElementById("input-med-price"),
@@ -363,15 +364,42 @@
   }
 
   // Erlaubt NUR eine kleine, feste Auswahl an Tags/Stilen (fett, unterstrichen,
-  // Zeilenumbruch, Marker-Hervorhebung in 4 festen Farben) und verwirft alles
-  // andere (Skripte, Bilder, fremde Attribute, ...) - verhindert HTML-Injection
-  // aus dem contenteditable-Feld.
-  const ERLAUBTE_MARKER_FARBEN = new Set([
-    "rgb(255, 224, 102)", // Gelb
-    "rgb(140, 225, 150)", // Grün
-    "rgb(255, 138, 128)", // Rot
-    "rgb(130, 177, 255)", // Blau
-  ]);
+  // Zeilenumbruch, Schriftfarbe in 4 festen, kräftigen Farben) und verwirft
+  // alles andere (Skripte, Bilder, fremde Attribute, ...) - verhindert
+  // HTML-Injection aus dem contenteditable-Feld.
+  //
+  // WICHTIG: Der Vergleich erfolgt über geparste RGB-Zahlen (nicht über
+  // exakten String-Vergleich) - unterschiedliche Browser/Chromium-Versionen
+  // formatieren "rgb(...)"-Werte manchmal minimal anders (Leerzeichen etc.),
+  // ein reiner Text-Vergleich hätte dann die Farbe stillschweigend verworfen.
+  const ERLAUBTE_TEXT_FARBEN = [
+    { hex: "#b8860b", rgb: [184, 134, 11] }, // Gelb/Gold
+    { hex: "#1a7a3c", rgb: [26, 122, 60] }, // Grün
+    { hex: "#b71c1c", rgb: [183, 28, 28] }, // Rot
+    { hex: "#1a56db", rgb: [26, 86, 219] }, // Blau
+  ];
+
+  function parseRgbString(wert) {
+    const treffer = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i.exec(wert || "");
+    if (!treffer) return null;
+    return [Number(treffer[1]), Number(treffer[2]), Number(treffer[3])];
+  }
+
+  function findeErlaubteTextfarbe(wert) {
+    if (!wert) return null;
+    const bereinigt = wert.trim().toLowerCase();
+
+    // Fall 1: reiner Hex-Wert, z. B. aus einem "color"-Attribut ("#b71c1c")
+    const perHex = ERLAUBTE_TEXT_FARBEN.find((f) => f.hex.toLowerCase() === bereinigt);
+    if (perHex) return perHex;
+
+    // Fall 2: "rgb(...)"/"rgba(...)", z. B. aus einer CSS-style-Eigenschaft
+    const rgb = parseRgbString(bereinigt);
+    if (!rgb) return null;
+    return (
+      ERLAUBTE_TEXT_FARBEN.find((f) => f.rgb[0] === rgb[0] && f.rgb[1] === rgb[1] && f.rgb[2] === rgb[2]) || null
+    );
+  }
 
   function sanitisiereRichText(html) {
     const quelle = document.createElement("div");
@@ -403,15 +431,20 @@
           ziel.appendChild(neu);
           return;
         }
-        if (tag === "SPAN" || tag === "MARK" || tag === "FONT") {
-          const bgFarbe = kind.style && kind.style.backgroundColor;
-          if (bgFarbe && ERLAUBTE_MARKER_FARBEN.has(bgFarbe)) {
-            const neu = document.createElement("mark");
-            neu.style.backgroundColor = bgFarbe;
+        if (tag === "SPAN" || tag === "FONT" || tag === "MARK") {
+          // Chrome erzeugt bei execCommand("foreColor") ein <font color="...">
+          // (klassisches HTML-Attribut, keine CSS-style-Eigenschaft!) - daher
+          // hier BEIDES prüfen: das "color"-Attribut UND style.color.
+          const textFarbe =
+            (kind.getAttribute && findeErlaubteTextfarbe(kind.getAttribute("color"))) ||
+            (kind.style && findeErlaubteTextfarbe(kind.style.color));
+          if (textFarbe) {
+            const neu = document.createElement("span");
+            neu.style.color = textFarbe.hex;
             bereinigeKinder(kind, neu);
             ziel.appendChild(neu);
           } else {
-            // Keine erlaubte Marker-Farbe -> Tag verwerfen, Inhalt behalten
+            // Keine erlaubte Farbe -> Tag verwerfen, Text-Inhalt behalten
             bereinigeKinder(kind, ziel);
           }
           return;
@@ -433,7 +466,7 @@
   }
 
   // Formatierungsleisten mit den Feldern verbinden. Bei contenteditable-
-  // Rich-Editoren (Notizen/Ankündigungen) wirkt Fett/Unterstrichen/Marker
+  // Rich-Editoren (Notizen/Ankündigungen) wirkt Fett/Unterstrichen/Schriftfarbe
   // sofort WYSIWYG (kein **/__ mehr). Das Medizin-Wiki-Textfeld ist weiterhin
   // ein normales Textfeld mit **/__ Markdown.
   document.querySelectorAll(".format-toolbar").forEach((toolbar) => {
@@ -472,13 +505,19 @@
 
     if (!istRichEditor) return;
 
-    // Marker-Farb-Buttons (nur bei Rich-Editoren vorhanden)
-    toolbar.querySelectorAll("[data-highlight]").forEach((btn) => {
+    // Schriftfarb-Buttons (nur bei Rich-Editoren vorhanden)
+    toolbar.querySelectorAll("[data-color]").forEach((btn) => {
       btn.addEventListener("mousedown", (event) => {
         event.preventDefault();
         feld.focus();
-        const farbe = btn.dataset.highlight;
-        document.execCommand("hiliteColor", false, farbe === "transparent" ? "transparent" : farbe);
+        if (btn.dataset.color === "__reset__") {
+          // Setzt die Schriftfarbe auf die aktuelle Standard-Textfarbe
+          // zurück (abhängig vom Hell-/Dunkel-Modus)
+          const standardFarbe = getComputedStyle(feld).color;
+          document.execCommand("foreColor", false, standardFarbe);
+        } else {
+          document.execCommand("foreColor", false, btn.dataset.color);
+        }
       });
     });
   });
@@ -923,7 +962,7 @@
 
       if (!bearbeitenAktiv) {
         if (!slot.name) {
-          return `<div class="badge-tile badge-tile--frei"><span>+ Frei</span></div>`;
+          return `<div class="badge-tile badge-tile--frei"></div>`;
         }
         return `
           <div class="badge-tile ${istDu ? "badge-tile--du" : ""}">
@@ -2286,6 +2325,46 @@
     });
   });
 
+  // Versteckte Verkaufsstatistik: nur über den kleinen ⓘ-Button in der
+  // Medikamenten-Werkzeugleiste erreichbar, sonst nirgends sichtbar.
+  const btnVerkaufsstatistik = document.getElementById("btn-verkaufsstatistik");
+  if (btnVerkaufsstatistik) {
+    btnVerkaufsstatistik.addEventListener("click", () => {
+      renderVerkaufsstatistik();
+      oeffneModal(el.modalStatistik);
+    });
+  }
+
+  function renderVerkaufsstatistik() {
+    const liste = document.getElementById("stats-modal-list");
+    const leer = document.getElementById("stats-modal-empty");
+    if (!liste) return;
+
+    // Menge je Medikament aus allen bekannten Verkäufen aufsummieren
+    const mengenProArtikel = {};
+    letzteVerkaeufe.forEach((verkauf) => {
+      verkauf.items.forEach((item) => {
+        mengenProArtikel[item.name] = (mengenProArtikel[item.name] || 0) + item.menge;
+      });
+    });
+
+    const sortiert = Object.entries(mengenProArtikel).sort((a, b) => b[1] - a[1]);
+
+    liste.innerHTML = "";
+    leer.hidden = sortiert.length !== 0;
+
+    sortiert.slice(0, 8).forEach(([name, menge], index) => {
+      const zeile = document.createElement("div");
+      zeile.className = "stats-modal__row";
+      zeile.innerHTML = `
+        <span class="stats-modal__rank">#${index + 1}</span>
+        <span class="stats-modal__name">${escapeHtml(name)}</span>
+        <span class="stats-modal__count">${menge}× verkauft</span>
+      `;
+      liste.appendChild(zeile);
+    });
+  }
+
   document.querySelectorAll("[data-close-modal]").forEach((btn) => {
     btn.addEventListener("click", () => {
       schliesseModal(document.getElementById(btn.getAttribute("data-close-modal")));
@@ -2587,7 +2666,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 39;
+  const APP_VERSION = 41;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

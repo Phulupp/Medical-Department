@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ärztekammer Black Wolf | Verwaltung</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23c6362e'/%3E%3Crect x='42' y='20' width='16' height='60' rx='4' fill='white'/%3E%3Crect x='20' y='42' width='60' height='16' rx='4' fill='white'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%233d7d5b'/%3E%3Cstop offset='1' stop-color='%23234a35'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='26' fill='url(%23g)'/%3E%3Crect x='42' y='18' width='16' height='64' rx='7' fill='white'/%3E%3Crect x='18' y='42' width='64' height='16' rx='7' fill='white'/%3E%3C/svg%3E" />
 
   <!-- Google Fonts: Outfit (Display) & Inter (Text) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=39" />
+  <link rel="stylesheet" href="css/style.css?v=41" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -28,7 +28,7 @@
   <div class="auth-screen" id="auth-screen">
     <div class="auth-card">
       <div class="auth-card__brand">
-        <div class="sidebar__brand-icon">✚</div>
+        <div class="sidebar__brand-icon"><svg viewBox="0 0 100 100" width="20" height="20" fill="white"><rect x="42" y="18" width="16" height="64" rx="7"/><rect x="18" y="42" width="64" height="16" rx="7"/></svg></div>
         <div class="sidebar__brand-text">
           <span class="sidebar__brand-title">Ärztekammer</span>
           <span class="sidebar__brand-subtitle">Black Wolf</span>
@@ -90,7 +90,7 @@
     <!-- ============================ -->
     <aside class="sidebar">
       <div class="sidebar__brand">
-        <div class="sidebar__brand-icon" id="easter-egg-trigger">✚</div>
+        <div class="sidebar__brand-icon" id="easter-egg-trigger"><svg viewBox="0 0 100 100" width="20" height="20" fill="white"><rect x="42" y="18" width="16" height="64" rx="7"/><rect x="18" y="42" width="64" height="16" rx="7"/></svg></div>
         <div class="sidebar__brand-text">
           <span class="sidebar__brand-title">Ärztekammer</span>
           <span class="sidebar__brand-subtitle">Black Wolf</span>
@@ -199,11 +199,11 @@
               <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
               <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
               <span class="format-toolbar__divider"></span>
-              <button type="button" class="format-btn format-btn--swatch" data-highlight="#ffe066" style="background:#ffe066" title="Gelb markieren"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-highlight="#8ce196" style="background:#8ce196" title="Grün markieren"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-highlight="#ff8a80" style="background:#ff8a80" title="Rot markieren"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-highlight="#82b1ff" style="background:#82b1ff" title="Blau markieren"></button>
-              <button type="button" class="format-btn format-btn--clear" data-highlight="transparent" title="Markierung entfernen">✕</button>
+              <button type="button" class="format-btn format-btn--swatch" data-color="#b8860b" style="background:#b8860b" title="Gelb/Gold"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-color="#1a7a3c" style="background:#1a7a3c" title="Grün"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-color="#b71c1c" style="background:#b71c1c" title="Rot"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-color="#1a56db" style="background:#1a56db" title="Blau"></button>
+              <button type="button" class="format-btn format-btn--clear" data-color="__reset__" title="Farbe entfernen">✕</button>
             </div>
             <div class="rich-editor" id="ankuendigung-input" contenteditable="true" data-placeholder="Wichtige Info für alle eintragen..."></div>
             <button type="submit" class="btn btn--primary">Veröffentlichen</button>
@@ -247,6 +247,8 @@
               autocomplete="off"
             />
           </div>
+
+          <button class="icon-btn icon-btn--stats" id="btn-verkaufsstatistik" title="Verkaufsstatistik ansehen">ⓘ</button>
 
           <div class="toolbar__buttons">
             <button class="btn btn--checkout" id="btn-checkout">
@@ -359,11 +361,11 @@
               <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
               <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
               <span class="format-toolbar__divider"></span>
-              <button type="button" class="format-btn format-btn--swatch" data-highlight="#ffe066" style="background:#ffe066" title="Gelb markieren"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-highlight="#8ce196" style="background:#8ce196" title="Grün markieren"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-highlight="#ff8a80" style="background:#ff8a80" title="Rot markieren"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-highlight="#82b1ff" style="background:#82b1ff" title="Blau markieren"></button>
-              <button type="button" class="format-btn format-btn--clear" data-highlight="transparent" title="Markierung entfernen">✕</button>
+              <button type="button" class="format-btn format-btn--swatch" data-color="#b8860b" style="background:#b8860b" title="Gelb/Gold"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-color="#1a7a3c" style="background:#1a7a3c" title="Grün"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-color="#b71c1c" style="background:#b71c1c" title="Rot"></button>
+              <button type="button" class="format-btn format-btn--swatch" data-color="#1a56db" style="background:#1a56db" title="Blau"></button>
+              <button type="button" class="format-btn format-btn--clear" data-color="__reset__" title="Farbe entfernen">✕</button>
             </div>
             <div class="notes-form__main">
               <div class="rich-editor" id="note-input" contenteditable="true" data-placeholder="Notiz eintragen..."></div>
@@ -491,6 +493,25 @@
   </div>
 
   <!-- ============================ -->
+  <!-- MODAL: Verkaufsstatistik (versteckt, nur über ⓘ-Button) -->
+  <!-- ============================ -->
+  <div class="modal-overlay" id="modal-statistik">
+    <div class="modal modal--stats">
+      <div class="modal__header">
+        <h3>📊 Verkaufsstatistik</h3>
+        <button class="modal__close" data-close-modal="modal-statistik">✕</button>
+      </div>
+      <div class="modal__body">
+        <p class="stats-modal__hint">Basiert auf den letzten Einträgen im Verkaufslog.</p>
+        <div class="stats-modal__list" id="stats-modal-list">
+          <!-- wird per JavaScript befüllt -->
+        </div>
+        <p class="empty-state" id="stats-modal-empty" hidden>Noch keine Verkäufe erfasst.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ -->
   <!-- MODAL: Medikament hinzufügen -->
   <!-- ============================ -->
   <div class="modal-overlay" id="modal-add">
@@ -572,7 +593,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=39"></script>
-  <script src="js/app.js?v=39"></script>
+  <script src="js/firebase-config.js?v=41"></script>
+  <script src="js/app.js?v=41"></script>
 </body>
 </html>
