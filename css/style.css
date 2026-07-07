@@ -1,9 +1,9 @@
 /* ==========================================================================
    Ärztekammer Black Wolf – Stylesheet
-   Konzept: Ein Registrierbuch der Grenz-Ärztekammer im RDR2-Roleplay.
-   Warmes Papier, ein kräftiges Waldgrün als Markenfarbe (Wachssiegel /
-   Karteikarten-Reiter), klare Typografie mit einer charaktervollen Display-
-   Schrift für Überschriften und einer Mono-Schrift für Zahlen/Beträge.
+   Klares, ruhiges Verwaltungsprogramm-Design: neutrale Flächen, EINE
+   Markenfarbe (Grün), sparsame Akzente nur dort wo sie etwas bedeuten
+   (Gefahr = Rot, Personal-Kategorie = Blau). Keine Leucht-Schatten, keine
+   Farbwäsche über ganze Karten - Kontur/Text statt Glanz.
    Reine Desktop-Ansicht (keine mobile Optimierung).
    ========================================================================== */
 
@@ -11,79 +11,81 @@
    1. Design-Tokens (Farben, Radien, Schatten, Abstände)
    -------------------------------------------------------------------------- */
 :root {
-  /* Grundfarben – warmes Registrierbuch-Papier */
-  --color-bg: #ece3cf;                /* Warmer Papier-Hintergrund */
-  --color-surface: #fbf7ee;           /* Karten / Sidebar / Modal */
-  --color-surface-soft: #efe4c9;      /* Leicht abgesetzte Fläche innerhalb Karten */
-  --color-surface-raised: #ffffff;    /* Eingabefelder - klar abgesetzt vom Papierton */
+  /* Grundfarben – neutral, kaum getönt (kein warmes "Papier" mehr) */
+  --color-bg: #f2f2f0;                /* Neutraler, ruhiger Hintergrund */
+  --color-surface: #ffffff;           /* Karten / Sidebar-Inhalte / Modal */
+  --color-surface-soft: #edeeec;      /* Leicht abgesetzte Fläche innerhalb Karten */
+  --color-surface-raised: #ffffff;    /* Eingabefelder */
 
-  /* Textfarben */
-  --color-text: #2b241a;             /* Haupttext, warmes Tintenschwarz */
-  --color-text-muted: #8a7d64;       /* Sekundärtext */
-  --color-text-soft: #b7ab8c;        /* Platzhalter / dezente Hinweise */
+  /* Textfarben - neutrales Anthrazit statt warmes Braun */
+  --color-text: #23262a;
+  --color-text-muted: #74787d;
+  --color-text-soft: #a6aaae;
 
-  /* Markenfarbe: kräftiges Waldgrün (Wachssiegel-Grün) statt Pastell-Mint */
-  --color-mint: #2f6e51;
-  --color-mint-soft: #dfe8de;
-  --color-blue: #3f6fb0;             /* Sekundärakzent – gedecktes Blau */
-  --color-blue-soft: #e1e9f3;
-  --color-peach: #c07a2e;            /* Akzent – warmes Messing/Amber (Checkout etc.) */
-  --color-peach-soft: #f1e3c9;
-  --color-lavender: #866693;         /* Akzent – gedecktes Pflaume statt Süßlavendel */
-  --color-lavender-soft: #eae1eb;
-  --color-red: #ad5238;              /* Warn-/Löschfarbe – Siegellack-Rot statt Pink */
-  --color-red-soft: #ecdfd7;
+  /* Markenfarbe: gedecktes Grün - EINZIGER Hauptakzent, sparsam eingesetzt */
+  --color-mint: #3c6b54;
+  --color-mint-soft: #e6ece8;
 
-  /* Zweiter Grünton (für "Herstellung"/Rhodes) - deutlich abgesetzt vom Marken-Grün */
-  --color-sage: #6f8f5c;
-  --color-sage-soft: #e4e9da;
+  /* Gefahr/Löschen */
+  --color-red: #a8493f;
+  --color-red-soft: #f3e6e4;
 
-  /* Personal-Notizen: kräftiges, klares Blau (fester Farbcode) */
+  /* Einziger zweiter Akzent: gedecktes Amber (Checkout-Button, Leitungs-Badge,
+     Herstellung) - bewusst sparsam, nicht mehr über die ganze Seite verteilt */
+  --color-peach: #a6752f;
+  --color-peach-soft: #efe8dc;
+
+  /* Personal-Kategorie: fester Farbcode (Vorgabe) */
   --color-personal: #4f8ef7;
-  --color-personal-soft: #e4edfd;
+  --color-personal-soft: #e7edfb;
 
-  /* Allgemeine Infos: warmes, dezentes Grau (kein kühles Blaugrau) */
-  --color-gray: #7d7462;
-  --color-gray-soft: #e9e3d4;
+  /* Alles Weitere läuft über neutrales Grau statt eigener Farbtöne */
+  --color-sage: #3c6b54;              /* = Markengrün (Herstellung teilt sich die Farbe) */
+  --color-sage-soft: #e6ece8;
+  --color-lavender: #74787d;           /* neutral statt Lila */
+  --color-lavender-soft: #edeeec;
+  --color-gray: #74787d;
+  --color-gray-soft: #edeeec;
+  --color-blue: #4f7cb0;               /* nur noch für vereinzelte Restnutzung */
+  --color-blue-soft: #e7edf5;
 
-  /* Marken-Grün fürs Logo (statt Rot - durchgängige Markenfarbe) */
-  --color-brand-start: #3d7d5b;
-  --color-brand-end: #234a35;
+  /* Marken-Grün fürs Logo */
+  --color-brand-start: #4a8265;
+  --color-brand-end: #2c5240;
 
-  /* Textfarben für Akzent-Badges/Links (auf hellem soft-Hintergrund gut lesbar) */
-  --color-mint-text: #1f4e39;
-  --color-blue-text: #2c4f80;
-  --color-lavender-text: #5f4a6b;
-  --color-sage-text: #3d5432;
-  --color-red-text: #7d3c28;
-  --color-peach-text: #7a4f1c;
-  --color-slate-text: #55503f;
-  --color-personal-text: #2f5fb0;
-  --color-gray-text: #56503f;
+  /* Textfarben für Akzent-Badges (auf hellem soft-Hintergrund gut lesbar) */
+  --color-mint-text: #2b5140;
+  --color-blue-text: #395f87;
+  --color-lavender-text: #55585c;
+  --color-sage-text: #2b5140;
+  --color-red-text: #83352c;
+  --color-peach-text: #7c5a24;
+  --color-slate-text: #4a4d51;
+  --color-personal-text: #35588f;
+  --color-gray-text: #55585c;
 
   /* Rahmenfarbe für Eingabefelder */
-  --color-input-border: #d9cca8;
+  --color-input-border: #d7d9d6;
 
-  /* Radien: knapp, klar, wie ein sauber geführtes Register - nicht "bubbly" */
+  /* Radien: knapp, klar */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-pill: 999px;
 
-  /* Schatten: dezent und flach, Definition kommt vor allem über Rahmenlinien */
-  --shadow-soft: 0 1px 2px rgba(43, 36, 26, 0.05), 0 4px 12px rgba(43, 36, 26, 0.05);
-  --shadow-medium: 0 4px 16px rgba(43, 36, 26, 0.08);
-  --shadow-modal: 0 16px 44px rgba(43, 36, 26, 0.22);
+  /* Schatten: rein neutral/grau, NIE farbig - kein "Leuchten" */
+  --shadow-soft: 0 1px 2px rgba(20, 20, 20, 0.04), 0 3px 10px rgba(20, 20, 20, 0.04);
+  --shadow-medium: 0 4px 14px rgba(20, 20, 20, 0.07);
+  --shadow-modal: 0 16px 40px rgba(20, 20, 20, 0.18);
 
-  /* Rahmenfarbe für Karten (feine Konturlinie statt reiner Schatten-Optik) */
-  --color-card-border: rgba(43, 36, 26, 0.08);
+  /* Rahmenfarbe für Karten */
+  --color-card-border: rgba(20, 20, 20, 0.08);
 
   /* Layout */
   --sidebar-width: 264px;
   --topbar-height: 92px;
 
-  /* Schrift: Fraunces (charaktervoll, ledger-artig) für Überschriften,
-     Inter für Fließtext, JetBrains Mono für Beträge/Zahlen */
+  /* Schrift */
   --font-display: "Fraunces", Georgia, serif;
   --font-body: "Inter", "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "Courier New", monospace;
@@ -93,60 +95,64 @@
    1b. Dark Mode – Farb-Overrides (aktiviert über [data-theme="dark"] am <html>)
    -------------------------------------------------------------------------- */
 html[data-theme="dark"] {
-  /* Grundfarben: dunkles, warmes Anthrazit statt Creme/Weiß */
-  --color-bg: #16151a;               /* Sehr dunkler Hintergrund (fast schwarz) */
-  --color-surface: #211f26;          /* Karten / Modal – helleres Dunkelgrau */
-  --color-surface-soft: #2a2830;     /* Leicht abgesetzte Fläche innerhalb Karten */
-  --color-surface-raised: #322f38;   /* Eingabefelder - nochmal einen Ton heller */
+  /* Grundfarben: neutrales, ruhiges Anthrazit statt Buntheit */
+  --color-bg: #16171a;               /* Sehr dunkler, neutraler Hintergrund */
+  --color-surface: #1c1d20;          /* Karten / Modal */
+  --color-surface-soft: #26272b;     /* Leicht abgesetzte Fläche innerhalb Karten */
+  --color-surface-raised: #202124;   /* Eingabefelder */
 
-  /* Textfarben */
-  --color-text: #f3efe8;             /* Helles Warmweiß */
-  --color-text-muted: #a49d93;
-  --color-text-soft: #6f6a63;
+  /* Textfarben - neutrales Hellgrau statt Warmweiß */
+  --color-text: #eaebec;
+  --color-text-muted: #93989e;
+  --color-text-soft: #5c6066;
 
-  /* Markenfarbe bleibt Waldgrün, im Dark Mode aufgehellt für Kontrast */
-  --color-mint: #5ba184;
-  --color-mint-soft: #1c2e26;
-  --color-blue: #7096c9;
-  --color-blue-soft: #1c2733;
-  --color-peach: #d19a55;
-  --color-peach-soft: #332619;
-  --color-lavender: #a68bb0;
-  --color-lavender-soft: #2a2430;
-  --color-red: #c4805f;
-  --color-red-soft: #332720;
-  --color-sage: #8fae7a;
-  --color-sage-soft: #232d1e;
+  /* Markenfarbe bleibt Grün, im Dark Mode etwas heller für Kontrast */
+  --color-mint: #5a9678;
+  --color-mint-soft: #1d2a23;
+
+  --color-red: #b06b5f;
+  --color-red-soft: #2c211f;
+
+  --color-peach: #b58e57;
+  --color-peach-soft: #2b2620;
 
   --color-personal: #6fa2fb;
-  --color-personal-soft: #1c2c4a;
+  --color-personal-soft: #1a2536;
 
-  --color-gray: #a89d84;
-  --color-gray-soft: #2a2721;
+  --color-sage: #5a9678;
+  --color-sage-soft: #1d2a23;
+  --color-lavender: #93989e;
+  --color-lavender-soft: #26272b;
+  --color-gray: #93989e;
+  --color-gray-soft: #26272b;
+  --color-blue: #6f93bb;
+  --color-blue-soft: #1e2833;
 
   /* Marken-Grün fürs Logo bleibt gleich */
   --color-brand-start: #4f9370;
   --color-brand-end: #2d5c42;
 
-  /* Textfarben für Akzent-Badges/Links: im Dark Mode deutlich aufgehellt,
-     damit sie auf den dunklen "-soft"-Hintergründen lesbar bleiben */
-  --color-mint-text: #8fd4b6;
-  --color-blue-text: #a3c6ec;
-  --color-lavender-text: #cbb3d4;
-  --color-sage-text: #b8d6a6;
-  --color-red-text: #e2a58f;
-  --color-peach-text: #eec18a;
-  --color-slate-text: #d1cabb;
+  /* Textfarben für Akzent-Badges: im Dark Mode aufgehellt für Lesbarkeit */
+  --color-mint-text: #8ec9a9;
+  --color-blue-text: #a0bcdc;
+  --color-lavender-text: #b7bbc0;
+  --color-sage-text: #8ec9a9;
+  --color-red-text: #d3a099;
+  --color-peach-text: #d9bd8c;
+  --color-slate-text: #c2c5c9;
   --color-personal-text: #a8c6fb;
-  --color-gray-text: #c7ccd6;
+  --color-gray-text: #b7bbc0;
 
-  /* Rahmenfarbe für Eingabefelder: dezenter Ton passend zum dunklen Grund */
-  --color-input-border: #3d3a44;
+  /* Rahmenfarbe für Eingabefelder */
+  --color-input-border: #35363a;
 
-  /* Schatten: dunkler/kräftiger auf dunklem Grund */
-  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --shadow-medium: 0 16px 40px rgba(0, 0, 0, 0.45);
-  --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.6);
+  /* Schatten: rein neutral/schwarz, kein farbiges "Leuchten" */
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
+  --shadow-medium: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.55);
+
+  /* Rahmenfarbe für Karten */
+  --color-card-border: rgba(255, 255, 255, 0.07);
 }
 
 /* Sanfter Übergang beim Umschalten zwischen Hell/Dunkel */
@@ -312,7 +318,6 @@ h1, h2, h3 {
   background: var(--color-mint);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 4px 14px rgba(47, 110, 81, 0.4);
 }
 
 .nav__icon {
@@ -330,30 +335,6 @@ h1, h2, h3 {
 
 .nav__item--active .nav__icon {
   background: rgba(255, 255, 255, 0.18);
-}
-
-/* Jeder Menüpunkt bekommt eine eigene Kachel-Grundfarbe (nur wenn inaktiv,
-   damit der aktive Zustand einheitlich auf dem Marken-Grün bleibt) */
-.nav__item:not(.nav__item--active)[data-view="start"] .nav__icon {
-  background: rgba(224, 152, 105, 0.16);
-}
-.nav__item:not(.nav__item--active)[data-view="infos"] .nav__icon {
-  background: rgba(107, 157, 214, 0.16);
-}
-.nav__item:not(.nav__item--active)[data-view="medikamente"] .nav__icon {
-  background: rgba(196, 110, 90, 0.18);
-}
-.nav__item:not(.nav__item--active)[data-view="verkaufslog"] .nav__icon {
-  background: rgba(212, 168, 92, 0.18);
-}
-#nav-notizen-toggle:not(.nav__item--active) .nav__icon {
-  background: rgba(150, 120, 170, 0.18);
-}
-.nav__item:not(.nav__item--active)[data-view="mitarbeiter"] .nav__icon {
-  background: rgba(79, 142, 247, 0.16);
-}
-.nav__item:not(.nav__item--active)[data-view="einstellungen"] .nav__icon {
-  background: rgba(154, 168, 159, 0.14);
 }
 
 /* --------------------------------------------------------------------------
@@ -581,7 +562,8 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
@@ -593,7 +575,16 @@ h1, h2, h3 {
   border-radius: var(--radius-pill);
   padding: 12px 20px;
   box-shadow: var(--shadow-soft);
-  width: 340px;
+  width: 300px;
+}
+
+.search-field--kunde {
+  width: 260px;
+  border: 1.5px solid transparent;
+}
+
+.search-field--kunde:focus-within {
+  border-color: var(--color-mint);
 }
 
 .search-field__icon {
@@ -605,6 +596,7 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: 12px;
+  margin-left: auto;
 }
 
 .search-field input {
@@ -639,12 +631,10 @@ h1, h2, h3 {
 .btn--primary {
   background: var(--color-mint);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(111, 205, 184, 0.35);
 }
 
 .btn--primary:hover {
-  background: #5fc0a8;
-  box-shadow: 0 6px 18px rgba(111, 205, 184, 0.45);
+  filter: brightness(1.12);
 }
 
 .btn--ghost {
@@ -658,29 +648,26 @@ h1, h2, h3 {
 }
 
 .btn--ghost-active {
-  background: var(--color-lavender-soft);
-  color: var(--color-lavender-text);
+  background: var(--color-mint-soft);
+  color: var(--color-mint-text);
 }
 
 .btn--danger {
   background: var(--color-red);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(239, 138, 138, 0.3);
 }
 
 .btn--danger:hover {
-  background: #e26b6b;
+  filter: brightness(1.1);
 }
 
 .btn--checkout {
   background: var(--color-peach);
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(255, 179, 138, 0.35);
 }
 
 .btn--checkout:hover {
-  background: #ff9d68;
-  box-shadow: 0 6px 18px rgba(255, 179, 138, 0.45);
+  filter: brightness(1.1);
 }
 
 .btn__icon {
@@ -1325,6 +1312,12 @@ h1, h2, h3 {
 .sale-item__add-form button {
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.view-lead {
+  font-size: 13px;
+  color: var(--color-text-soft);
+  margin-bottom: 18px;
 }
 
 .sale-log-search {
@@ -2253,8 +2246,7 @@ h1, h2, h3 {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #4ecb8f;
-  box-shadow: 0 0 0 3px rgba(78, 203, 143, 0.25);
+  background: var(--color-mint);
 }
 
 .online-panel {
@@ -2296,6 +2288,10 @@ h1, h2, h3 {
   font-size: 12.5px;
   color: var(--color-text-soft);
   padding: 4px;
+}
+
+.user-badge-wrapper {
+  position: relative;
 }
 
 .user-badge {

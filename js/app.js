@@ -240,7 +240,7 @@
     tableTotal: document.getElementById("table-total"),
 
     btnAddMedikament: document.getElementById("btn-add-medikament"),
-    modalCheckoutKunde: document.getElementById("modal-checkout-kunde"),
+    medKundeInput: document.getElementById("med-kunde-input"),
     modalStatistik: document.getElementById("modal-statistik"),
     modalAdd: document.getElementById("modal-add"),
     inputMedName: document.getElementById("input-med-name"),
@@ -732,7 +732,6 @@
 
     renderBenutzerBadge();
     renderMitarbeiterListe();
-    initialisiereVerkaufsformular();
 
     sessionId = sessionStorage.getItem("medicalDepartment.sessionId") || erzeugeSessionId();
     sessionStorage.setItem("medicalDepartment.sessionId", sessionId);
@@ -748,15 +747,6 @@
     abonniereAnkuendigungen();
 
     window.addEventListener("beforeunload", entferneEigenePresence);
-  }
-
-  function initialisiereVerkaufsformular() {
-    if (!el.saleFormVerkaeufer) return;
-    el.saleFormVerkaeufer.textContent = aktuellerNutzer ? `${aktuellerNutzer.name} (${aktuellerNutzer.rolle})` : "—";
-
-    const heute = new Date();
-    const iso = `${heute.getFullYear()}-${String(heute.getMonth() + 1).padStart(2, "0")}-${String(heute.getDate()).padStart(2, "0")}`;
-    el.saleDatum.value = iso;
   }
 
   function renderBenutzerBadge() {
@@ -1273,15 +1263,22 @@
     return !!(aktuellerNutzer && aktuellerNutzer.admin);
   }
 
-  // Ermittelt den Admin-Status live aus der aktuellen Login-Liste (nicht aus
-  // dem Rang!) und aktualisiert aktuellerNutzer entsprechend. Wird sowohl
-  // direkt nach dem Login als auch bei jeder Änderung der Login-Liste
-  // aufgerufen, damit ein nachträglich entzogener/vergebener PIN-Schutz
-  // sofort wirkt.
+  // Ermittelt Admin-Status UND Rang live aus der aktuellen Login-Liste und
+  // aktualisiert aktuellerNutzer entsprechend - inklusive sofortiger
+  // Aktualisierung des Badges oben rechts. Wird sowohl direkt nach dem
+  // Login als auch bei jeder Änderung der Login-Liste aufgerufen, damit
+  // eine nachträgliche Rang-/PIN-Änderung sofort überall sichtbar wird.
   function aktualisiereAdminStatusVonNutzer() {
     if (!aktuellerNutzer) return;
     const eintrag = loginMitarbeiterListe.find((m) => m.name.toLowerCase() === aktuellerNutzer.name.toLowerCase());
     aktuellerNutzer.admin = !!(eintrag && eintrag.geschuetzt);
+
+    if (eintrag && eintrag.rolle && eintrag.rolle !== aktuellerNutzer.rolle) {
+      aktuellerNutzer.rolle = eintrag.rolle;
+      localStorage.setItem(GATE_ROLLE, eintrag.rolle);
+    }
+
+    renderBenutzerBadge();
   }
 
   /* ------------------------------------------------------------------------
@@ -1367,7 +1364,7 @@
   const navNotizenToggle = document.getElementById("nav-notizen-toggle");
   const navNotizenSubmenu = document.getElementById("nav-notizen-submenu");
   const navNotizenGroup = navNotizenToggle ? navNotizenToggle.closest(".nav__group") : null;
-  const navSubitems = document.querySelectorAll(".nav__subitem");
+  const navSubitems = navNotizenSubmenu ? navNotizenSubmenu.querySelectorAll(".nav__subitem") : [];
 
   if (navNotizenToggle) {
     navNotizenToggle.addEventListener("click", () => {
@@ -1401,6 +1398,12 @@
     navNotizenGroup.classList.add("nav__group--open");
     navSubitems.forEach((i) => i.classList.toggle("nav__subitem--active", i.dataset.kategorie === kategorie));
 
+    // Verkauf-Untermenü schließen (immer nur eine Gruppe gleichzeitig offen)
+    if (navVerkaufGroup) {
+      navVerkaufGroup.classList.remove("nav__group--open");
+      navVerkaufToggle.classList.remove("nav__item--active");
+    }
+
     // Hauptansicht wechseln
     el.views.forEach((view) => view.classList.remove("view--active"));
     document.getElementById("view-notizen").classList.add("view--active");
@@ -1420,6 +1423,66 @@
       notizenSuche = event.target.value;
       renderNotizen();
     });
+  }
+
+  /* ------------------------------------------------------------------------
+     10b2. Verkauf: Sidebar-Untermenü (Medikamente / Verkaufslog)
+     ------------------------------------------------------------------------ */
+  let aktiverVerkaufSubview = "medikamente"; // Standard-Unterseite beim Öffnen
+
+  const navVerkaufToggle = document.getElementById("nav-verkauf-toggle");
+  const navVerkaufSubmenu = document.getElementById("nav-verkauf-submenu");
+  const navVerkaufGroup = navVerkaufToggle ? navVerkaufToggle.closest(".nav__group") : null;
+  const navVerkaufSubitems = navVerkaufSubmenu ? navVerkaufSubmenu.querySelectorAll(".nav__subitem") : [];
+
+  if (navVerkaufToggle) {
+    navVerkaufToggle.addEventListener("click", () => {
+      const istOffen = navVerkaufGroup.classList.contains("nav__group--open");
+      const istAktivePage =
+        document.getElementById("view-medikamente").classList.contains("view--active") ||
+        document.getElementById("view-verkaufslog").classList.contains("view--active");
+
+      if (!istOffen) {
+        navVerkaufGroup.classList.add("nav__group--open");
+      } else if (istAktivePage) {
+        navVerkaufGroup.classList.remove("nav__group--open");
+      }
+
+      wechsleZuVerkaufAnsicht(aktiverVerkaufSubview);
+    });
+  }
+
+  navVerkaufSubitems.forEach((item) => {
+    item.addEventListener("click", (event) => {
+      event.stopPropagation();
+      wechsleZuVerkaufAnsicht(item.dataset.subview);
+    });
+  });
+
+  function wechsleZuVerkaufAnsicht(subview) {
+    aktiverVerkaufSubview = subview;
+
+    // Sidebar: "Verkauf" + passenden Unterpunkt aktiv markieren
+    el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
+    navVerkaufToggle.classList.add("nav__item--active");
+    navVerkaufGroup.classList.add("nav__group--open");
+    navVerkaufSubitems.forEach((i) => i.classList.toggle("nav__subitem--active", i.dataset.subview === subview));
+
+    // Team-Infos-Untermenü schließen (immer nur eine Gruppe gleichzeitig offen)
+    if (navNotizenGroup) {
+      navNotizenGroup.classList.remove("nav__group--open");
+      navNotizenToggle.classList.remove("nav__item--active");
+    }
+
+    // Hauptansicht wechseln
+    el.views.forEach((view) => view.classList.remove("view--active"));
+    document.getElementById(`view-${subview}`).classList.add("view--active");
+
+    const meta = VIEW_META[subview];
+    if (meta) {
+      el.viewTitle.textContent = meta.title;
+      el.viewSubtitle.textContent = meta.subtitle;
+    }
   }
 
   function aktualisiereKategorieBadge() {
@@ -1546,70 +1609,8 @@
   });
 
   /* ------------------------------------------------------------------------
-     10c. Verkaufslog: Warenkorb-Formular (mehrere Artikel pro Verkauf),
-          Sammel-Checkout + Log anzeigen
-     ------------------------------------------------------------------------ */
-  let verkaufsWarenkorb = []; // [{ name, menge, preis }]
-
-  function renderWarenkorb() {
-    el.saleCartItems.innerHTML = "";
-    el.saleCartEmpty.hidden = verkaufsWarenkorb.length !== 0;
-    el.saleCartTotal.hidden = verkaufsWarenkorb.length === 0;
-
-    let summe = 0;
-    verkaufsWarenkorb.forEach((item, index) => {
-      const zwischensumme = item.menge * item.preis;
-      summe += zwischensumme;
-
-      const zeile = document.createElement("div");
-      zeile.className = "sale-cart-item";
-      zeile.innerHTML = `
-        <span>${escapeHtml(item.name)} × ${item.menge} = ${formatiereGeld(zwischensumme)}</span>
-        <button type="button" class="icon-btn icon-btn--delete sale-cart-item__remove" data-index="${index}" title="Entfernen">✕</button>
-      `;
-      el.saleCartItems.appendChild(zeile);
-    });
-
-    el.saleCartTotalValue.textContent = formatiereGeld(summe);
-  }
-
-  if (el.btnAddToCart) {
-    el.btnAddToCart.addEventListener("click", () => {
-      el.saleEntryError.hidden = true;
-
-      const medName = el.saleMedikament.value;
-      const menge = parseInt(el.saleMenge.value, 10);
-
-      if (!medName) return zeigeFeldFehler(el.saleEntryError, "Bitte ein Medikament auswählen.");
-      if (isNaN(menge) || menge < 1) return zeigeFeldFehler(el.saleEntryError, "Bitte eine gültige Menge (mind. 1) eingeben.");
-
-      const med = medikamente.find((m) => m.name === medName);
-      if (!med) return zeigeFeldFehler(el.saleEntryError, "Dieses Medikament existiert nicht mehr.");
-
-      const bestehend = verkaufsWarenkorb.find((i) => i.name === med.name);
-      if (bestehend) {
-        bestehend.menge += menge;
-      } else {
-        verkaufsWarenkorb.push({ name: med.name, menge: menge, preis: Number(med.preis) });
-      }
-
-      renderWarenkorb();
-      el.saleMedikament.value = "";
-      el.saleMenge.value = "1";
-    });
-  }
-
-  if (el.saleCartItems) {
-    el.saleCartItems.addEventListener("click", (event) => {
-      const btn = event.target.closest(".sale-cart-item__remove");
-      if (!btn) return;
-      verkaufsWarenkorb.splice(Number(btn.dataset.index), 1);
-      renderWarenkorb();
-    });
-  }
-
-  /* ------------------------------------------------------------------------
-     10d. Verkaufslog: Kundennamen-Vorschläge (Datalist + Tab-Vervollständigung)
+     10c. Verkaufslog: Kundennamen-Vorschläge (Datalist + Tab-Vervollständigung
+          im Kunde-Feld der Medikamente-Werkzeugleiste)
      ------------------------------------------------------------------------ */
   let bekannteKunden = []; // Eindeutige, bereits verwendete Kundennamen
 
@@ -1626,14 +1627,14 @@
     }
   }
 
-  // Tab-Vervollständigung: Falls der bisher eingetippte Text eindeutig zu
-  // einem bekannten Kundennamen passt, füllt Tab automatisch den Rest auf -
-  // man kann es aber einfach überschreiben, es ist keine Pflicht.
-  if (el.saleKunde) {
-    el.saleKunde.addEventListener("keydown", (event) => {
+  // Tab-Vervollständigung im Kunde-Feld: Falls der bisher eingetippte Text
+  // eindeutig zu einem bekannten Kundennamen passt, füllt Tab automatisch
+  // den Rest auf - man kann es aber einfach überschreiben, keine Pflicht.
+  if (el.medKundeInput) {
+    el.medKundeInput.addEventListener("keydown", (event) => {
       if (event.key !== "Tab" || event.shiftKey) return;
 
-      const eingabe = el.saleKunde.value.trim();
+      const eingabe = el.medKundeInput.value.trim();
       if (!eingabe) return;
 
       const treffer = bekannteKunden.find(
@@ -1642,54 +1643,29 @@
 
       if (treffer) {
         event.preventDefault();
-        el.saleKunde.value = treffer;
-        el.saleKunde.setSelectionRange(eingabe.length, treffer.length); // Ergänzten Teil markiert lassen
+        el.medKundeInput.value = treffer;
+        el.medKundeInput.setSelectionRange(eingabe.length, treffer.length); // Ergänzten Teil markiert lassen
       }
     });
   }
 
-  if (el.formSaleEntry) {
-    el.formSaleEntry.addEventListener("submit", (event) => {
-      event.preventDefault();
-      el.saleEntryError.hidden = true;
-
-      const kunde = el.saleKunde.value.trim();
-      const datum = el.saleDatum.value;
-
-      if (!kunde) return zeigeFeldFehler(el.saleEntryError, "Bitte Vor- und Nachname des Kunden eingeben.");
-      if (!datum) return zeigeFeldFehler(el.saleEntryError, "Bitte ein Datum wählen.");
-      if (verkaufsWarenkorb.length === 0) {
-        return zeigeFeldFehler(el.saleEntryError, "Bitte mindestens einen Artikel zum Verkauf hinzufügen.");
+  // Sammel-Checkout aus der Medikamententabelle (mehrere Artikel auf einmal).
+  // Der Kunde wird direkt aus dem persistenten Feld in der Werkzeugleiste
+  // übernommen - kein zusätzliches Pop-up mehr nötig.
+  const btnResetMengen = document.getElementById("btn-reset-mengen");
+  if (btnResetMengen) {
+    btnResetMengen.addEventListener("click", () => {
+      const betroffen = medikamente.filter((m) => (Number(m.menge) || 0) > 0).length;
+      if (betroffen === 0) {
+        zeigeToast("Es sind gerade keine Mengen eingetragen.");
+        return;
       }
-
-      const gesamtsumme = verkaufsWarenkorb.reduce((summe, i) => summe + i.menge * i.preis, 0);
-
-      db.collection(VERKAUFSLOG_COLLECTION)
-        .add({
-          mitarbeiter: aktuellerNutzer ? aktuellerNutzer.name : "Unbekannt",
-          rolle: aktuellerNutzer ? aktuellerNutzer.rolle : "",
-          kunde: kunde,
-          datum: datum,
-          items: verkaufsWarenkorb.map((i) => ({ ...i })),
-          gesamtsumme: gesamtsumme,
-          zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
-        })
-        .then(() => {
-          el.saleKunde.value = "";
-          verkaufsWarenkorb = [];
-          renderWarenkorb();
-          zeigeToast(`Verkauf an „${kunde}“ über ${formatiereGeld(gesamtsumme)} eingetragen.`);
-        })
-        .catch((fehler) => {
-          console.error("Verkauf konnte nicht gespeichert werden:", fehler);
-          zeigeFeldFehler(el.saleEntryError, "Verkauf konnte nicht gespeichert werden.");
-        });
+      medikamente.forEach((m) => (m.menge = 0));
+      render();
+      if (el.medKundeInput) el.medKundeInput.value = "";
+      zeigeToast("Alle eingetragenen Mengen wurden zurückgesetzt.");
     });
   }
-
-  // Sammel-Checkout aus der Medikamententabelle (mehrere Artikel auf einmal,
-  // ohne Kundenname - z. B. für interne Bestandsanpassungen)
-  let ausstehenderCheckout = null; // { verkaufteArtikel, gesamtsumme, items }
 
   el.btnCheckout.addEventListener("click", () => {
     const verkaufteArtikel = medikamente.filter((m) => (Number(m.menge) || 0) > 0);
@@ -1701,62 +1677,33 @@
 
     const gesamtsumme = verkaufteArtikel.reduce((summe, m) => summe + Number(m.menge) * Number(m.preis), 0);
     const items = verkaufteArtikel.map((m) => ({ name: m.name, menge: Number(m.menge), preis: Number(m.preis) }));
+    const kunde = el.medKundeInput ? el.medKundeInput.value.trim() : "";
 
-    ausstehenderCheckout = { gesamtsumme, items };
-
-    const artikelText = items.map((i) => `${i.name} ×${i.menge}`).join(", ");
-    document.getElementById("checkout-kunde-summe").textContent = `${artikelText} — Gesamt: ${formatiereGeld(gesamtsumme)}`;
-    document.getElementById("checkout-kunde-input").value = "";
-    oeffneModal(el.modalCheckoutKunde);
-    setTimeout(() => document.getElementById("checkout-kunde-input").focus(), 50);
+    db.collection(VERKAUFSLOG_COLLECTION)
+      .add({
+        mitarbeiter: aktuellerNutzer ? aktuellerNutzer.name : "Unbekannt",
+        rolle: aktuellerNutzer ? aktuellerNutzer.rolle : "",
+        kunde: kunde || null,
+        items: items,
+        gesamtsumme: gesamtsumme,
+        zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
+      })
+      .then(() => {
+        medikamente.forEach((m) => (m.menge = 0));
+        speichereMedikamenteInFirestore();
+        render();
+        if (el.medKundeInput) el.medKundeInput.value = "";
+        zeigeToast(
+          kunde
+            ? `Verkauf an „${kunde}“ über ${formatiereGeld(gesamtsumme)} eingetragen.`
+            : `Verkauf über ${formatiereGeld(gesamtsumme)} eingetragen.`
+        );
+      })
+      .catch((fehler) => {
+        console.error("Verkauf konnte nicht gespeichert werden:", fehler);
+        zeigeToast("Verkauf konnte nicht gespeichert werden.");
+      });
   });
-
-  const btnCheckoutKundeBestaetigen = document.getElementById("btn-checkout-kunde-bestaetigen");
-  if (btnCheckoutKundeBestaetigen) {
-    btnCheckoutKundeBestaetigen.addEventListener("click", () => {
-      if (!ausstehenderCheckout) return;
-
-      const kunde = document.getElementById("checkout-kunde-input").value.trim();
-      const { gesamtsumme, items } = ausstehenderCheckout;
-
-      db.collection(VERKAUFSLOG_COLLECTION)
-        .add({
-          mitarbeiter: aktuellerNutzer ? aktuellerNutzer.name : "Unbekannt",
-          rolle: aktuellerNutzer ? aktuellerNutzer.rolle : "",
-          kunde: kunde || null,
-          items: items,
-          gesamtsumme: gesamtsumme,
-          zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
-        })
-        .then(() => {
-          medikamente.forEach((m) => (m.menge = 0));
-          speichereMedikamenteInFirestore();
-          render();
-          schliesseModal(el.modalCheckoutKunde);
-          ausstehenderCheckout = null;
-          zeigeToast(
-            kunde
-              ? `Verkauf an „${kunde}“ über ${formatiereGeld(gesamtsumme)} eingetragen.`
-              : `Verkauf über ${formatiereGeld(gesamtsumme)} eingetragen.`
-          );
-        })
-        .catch((fehler) => {
-          console.error("Verkauf konnte nicht gespeichert werden:", fehler);
-          zeigeToast("Verkauf konnte nicht gespeichert werden.");
-        });
-    });
-  }
-
-  // Enter im Kunde-Feld soll den Verkauf genauso bestätigen wie der Button
-  const checkoutKundeInput = document.getElementById("checkout-kunde-input");
-  if (checkoutKundeInput) {
-    checkoutKundeInput.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        btnCheckoutKundeBestaetigen.click();
-      }
-    });
-  }
 
   let letzteVerkaeufe = [];       // Zwischenspeicher für Client-seitige Suche
   let verkaufslogSuche = "";
@@ -1892,7 +1839,7 @@
             <span class="sale-item__kunde-name">${kundeName}</span>
             <div class="sale-item__header-right">
               <span class="sale-item__time">${zeitText}</span>
-              <button type="button" class="icon-btn icon-btn--edit sale-item__edit-kunde-btn" data-role="toggle-edit-kunde" data-id="${verkauf.id}" title="Kunde bearbeiten">✎</button>
+              <button type="button" class="icon-btn icon-btn--edit sale-item__edit-kunde-btn" data-role="toggle-edit-datum" data-id="${verkauf.id}" title="Datum bearbeiten">✎</button>
             </div>
           </div>
           <div class="sale-item__verkaeufer">verkauft von ${escapeHtml(verkauf.mitarbeiter)} · ${escapeHtml(verkauf.rolle || "")}</div>
@@ -1904,9 +1851,9 @@
               ${darfLoeschen ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-verkauf" data-id="${verkauf.id}" title="Verkauf löschen">🗑</button>` : ""}
             </div>
           </div>
-          <div class="sale-item__add-form" id="edit-kunde-form-${verkauf.id}" hidden>
-            <input type="text" class="field-input" placeholder="Name des Kunden..." value="${verkauf.kunde ? escapeHtml(verkauf.kunde) : ""}" data-role="edit-kunde-input" />
-            <button type="button" class="btn btn--primary" data-role="confirm-edit-kunde" data-id="${verkauf.id}">Speichern</button>
+          <div class="sale-item__add-form" id="edit-datum-form-${verkauf.id}" hidden>
+            <input type="date" class="field-input" value="${gruppenSchluesselVon(verkauf)}" data-role="edit-datum-input" />
+            <button type="button" class="btn btn--primary" data-role="confirm-edit-datum" data-id="${verkauf.id}">Speichern</button>
           </div>
           <div class="sale-item__add-form" id="add-form-${verkauf.id}" hidden>
             <select class="field-input" data-role="add-item-select">
@@ -1966,30 +1913,35 @@
       return;
     }
 
-    const toggleKundeBtn = event.target.closest('[data-role="toggle-edit-kunde"]');
-    if (toggleKundeBtn) {
-      const form = document.getElementById(`edit-kunde-form-${toggleKundeBtn.dataset.id}`);
+    const toggleDatumBtn = event.target.closest('[data-role="toggle-edit-datum"]');
+    if (toggleDatumBtn) {
+      const form = document.getElementById(`edit-datum-form-${toggleDatumBtn.dataset.id}`);
       if (form) {
         form.hidden = !form.hidden;
-        if (!form.hidden) form.querySelector('[data-role="edit-kunde-input"]').focus();
+        if (!form.hidden) form.querySelector('[data-role="edit-datum-input"]').focus();
       }
       return;
     }
 
-    const confirmKundeBtn = event.target.closest('[data-role="confirm-edit-kunde"]');
-    if (confirmKundeBtn) {
-      const verkaufId = confirmKundeBtn.dataset.id;
-      const zeile = confirmKundeBtn.closest(".sale-item__add-form");
-      const input = zeile.querySelector('[data-role="edit-kunde-input"]');
-      const neuerName = input.value.trim();
+    const confirmDatumBtn = event.target.closest('[data-role="confirm-edit-datum"]');
+    if (confirmDatumBtn) {
+      const verkaufId = confirmDatumBtn.dataset.id;
+      const zeile = confirmDatumBtn.closest(".sale-item__add-form");
+      const input = zeile.querySelector('[data-role="edit-datum-input"]');
+      const neuesDatum = input.value;
+
+      if (!neuesDatum) {
+        zeigeToast("Bitte ein gültiges Datum wählen.");
+        return;
+      }
 
       db.collection(VERKAUFSLOG_COLLECTION)
         .doc(verkaufId)
-        .update({ kunde: neuerName || null })
-        .then(() => zeigeToast(neuerName ? `Kunde „${neuerName}“ gespeichert.` : "Kunde entfernt."))
+        .update({ datum: neuesDatum })
+        .then(() => zeigeToast("Datum aktualisiert."))
         .catch((fehler) => {
-          console.error("Kunde konnte nicht gespeichert werden:", fehler);
-          zeigeToast("Kunde konnte nicht gespeichert werden.");
+          console.error("Datum konnte nicht gespeichert werden:", fehler);
+          zeigeToast("Datum konnte nicht gespeichert werden.");
         });
       return;
     }
@@ -2047,25 +1999,6 @@
   function render() {
     renderTabelle();
     renderStatistik();
-    populiereMedikamentDropdownVerkauf();
-  }
-
-  function populiereMedikamentDropdownVerkauf() {
-    if (!el.saleMedikament) return;
-    const aktuellerWert = el.saleMedikament.value;
-
-    el.saleMedikament.innerHTML = '<option value="">Bitte auswählen...</option>';
-    medikamente.forEach((med) => {
-      const option = document.createElement("option");
-      option.value = med.name;
-      option.textContent = `${med.name} (${formatiereGeld(med.preis)})`;
-      el.saleMedikament.appendChild(option);
-    });
-
-    // Auswahl nach Möglichkeit beibehalten (z. B. wenn nur die Menge eines anderen Medikaments geändert wurde)
-    if ([...el.saleMedikament.options].some((o) => o.value === aktuellerWert)) {
-      el.saleMedikament.value = aktuellerWert;
-    }
   }
 
   function renderTabelle() {
@@ -2608,11 +2541,15 @@
       el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
       item.classList.add("nav__item--active");
 
-      // Notizen-Untermenü schließen und dessen Aktiv-Status entfernen,
-      // wenn zu einem anderen Hauptpunkt gewechselt wird
+      // Notizen- und Verkauf-Untermenü schließen und deren Aktiv-Status
+      // entfernen, wenn zu einem anderen Hauptpunkt gewechselt wird
       if (navNotizenToggle) {
         navNotizenToggle.classList.remove("nav__item--active");
         navNotizenGroup.classList.remove("nav__group--open");
+      }
+      if (navVerkaufToggle) {
+        navVerkaufToggle.classList.remove("nav__item--active");
+        navVerkaufGroup.classList.remove("nav__group--open");
       }
 
       el.views.forEach((view) => view.classList.remove("view--active"));
@@ -2735,7 +2672,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 44;
+  const APP_VERSION = 47;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

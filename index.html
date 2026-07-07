@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=44" />
+  <link rel="stylesheet" href="css/style.css?v=47" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -106,14 +106,23 @@
           <span class="nav__icon">ℹ️</span>
           <span>Medizin-Wiki</span>
         </button>
-        <button class="nav__item" data-view="medikamente">
-          <span class="nav__icon">💊</span>
-          <span>Medikamente</span>
-        </button>
-        <button class="nav__item" data-view="verkaufslog">
-          <span class="nav__icon">🧾</span>
-          <span>Verkaufsliste</span>
-        </button>
+        <div class="nav__group">
+          <button class="nav__item nav__item--parent" id="nav-verkauf-toggle">
+            <span class="nav__icon">💊</span>
+            <span>Verkauf</span>
+            <span class="nav__chevron" id="nav-verkauf-chevron">▾</span>
+          </button>
+          <div class="nav__submenu" id="nav-verkauf-submenu">
+            <button class="nav__subitem" data-subview="medikamente">
+              <span class="nav__sub-dot nav__sub-dot--allgemein"></span>
+              Medikamente
+            </button>
+            <button class="nav__subitem" data-subview="verkaufslog">
+              <span class="nav__sub-dot nav__sub-dot--personal"></span>
+              Verkaufslog
+            </button>
+          </div>
+        </div>
         <div class="nav__group">
           <button class="nav__item nav__item--parent" id="nav-notizen-toggle" data-view="notizen">
             <span class="nav__icon">📝</span>
@@ -174,15 +183,17 @@
             </div>
           </div>
 
-          <button class="user-badge" id="user-badge-btn">
-            <div class="user-badge__avatar" id="user-avatar">?</div>
-            <div class="user-badge__info">
-              <span class="user-badge__name" id="user-name">Lädt...</span>
-              <span class="user-badge__role" id="user-role">—</span>
+          <div class="user-badge-wrapper">
+            <button class="user-badge" id="user-badge-btn">
+              <div class="user-badge__avatar" id="user-avatar">?</div>
+              <div class="user-badge__info">
+                <span class="user-badge__name" id="user-name">Lädt...</span>
+                <span class="user-badge__role" id="user-role">—</span>
+              </div>
+            </button>
+            <div class="user-menu" id="user-menu">
+              <button class="user-menu__item" id="btn-logout">Nutzer wechseln</button>
             </div>
-          </button>
-          <div class="user-menu" id="user-menu">
-            <button class="user-menu__item" id="btn-logout">Nutzer wechseln</button>
           </div>
         </div>
       </header>
@@ -239,7 +250,7 @@
           <button class="icon-btn icon-btn--stats" id="btn-verkaufsstatistik" title="Verkaufsstatistik ansehen">ⓘ</button>
         </div>
 
-        <!-- Werkzeugleiste: Suche + Hinzufügen -->
+        <!-- Werkzeugleiste: Suche + Kunde (für den Verkauf) + Hinzufügen -->
         <div class="toolbar">
           <div class="search-field">
             <span class="search-field__icon">🔍</span>
@@ -251,7 +262,22 @@
             />
           </div>
 
+          <div class="search-field search-field--kunde">
+            <span class="search-field__icon">🤠</span>
+            <input
+              type="text"
+              id="med-kunde-input"
+              placeholder="Kunde für den Verkauf (optional)..."
+              list="bekannte-kunden-liste"
+              autocomplete="off"
+            />
+          </div>
+
           <div class="toolbar__buttons">
+            <button class="btn btn--ghost" id="btn-reset-mengen" title="Alle eingetragenen Mengen auf 0 zurücksetzen">
+              <span class="btn__icon">↺</span>
+              Zurücksetzen
+            </button>
             <button class="btn btn--checkout" id="btn-checkout">
               <span class="btn__icon">🧾</span>
               Verkauf abschließen
@@ -297,46 +323,7 @@
       <!-- VIEW: VERKAUFSLOG             -->
       <!-- ============================ -->
       <section class="view" id="view-verkaufslog">
-        <div class="sale-form-card">
-          <h3>🧾 Neuen Verkauf eintragen</h3>
-          <form class="sale-form" id="form-sale-entry">
-            <div class="sale-form__row">
-              <div class="sale-form__field">
-                <label class="field-label" for="sale-kunde">Kunde (Vor- &amp; Nachname)</label>
-                <input type="text" id="sale-kunde" class="field-input" placeholder="z. B. John Marston" autocomplete="off" list="bekannte-kunden-liste" required />
-                <datalist id="bekannte-kunden-liste"></datalist>
-              </div>
-              <div class="sale-form__field sale-form__field--small">
-                <label class="field-label" for="sale-datum">Datum</label>
-                <input type="date" id="sale-datum" class="field-input" required />
-              </div>
-              <div class="sale-form__field">
-                <label class="field-label">Verkäufer</label>
-                <p class="sale-form__verkaeufer" id="sale-form-verkaeufer">—</p>
-              </div>
-            </div>
-
-            <div class="sale-cart-add">
-              <label class="field-label" for="sale-medikament">Artikel zum Verkauf hinzufügen</label>
-              <div class="sale-cart-add__row">
-                <select id="sale-medikament" class="field-input">
-                  <option value="">Medikament auswählen...</option>
-                </select>
-                <input type="number" id="sale-menge" class="field-input" min="1" step="1" value="1" />
-                <button type="button" class="btn btn--ghost" id="btn-add-to-cart">+ Zum Verkauf hinzufügen</button>
-              </div>
-            </div>
-
-            <div class="sale-cart" id="sale-cart">
-              <p class="sale-cart__empty" id="sale-cart-empty">Noch keine Artikel hinzugefügt.</p>
-              <div id="sale-cart-items"></div>
-              <div class="sale-cart__total" id="sale-cart-total" hidden>Zwischensumme: <span id="sale-cart-total-value">0$</span></div>
-            </div>
-
-            <p class="field-error" id="sale-entry-error" hidden></p>
-            <button type="submit" class="btn btn--checkout sale-form__submit">Verkauf eintragen</button>
-          </form>
-        </div>
+        <p class="view-lead">Reine Übersicht &amp; Nachverfolgung – neue Verkäufe werden direkt auf der Medikamente-Seite eingetragen.</p>
 
         <div class="sale-log-search">
           <span class="search-field__icon">🔍</span>
@@ -349,6 +336,9 @@
         <p class="empty-state" id="sales-log-empty" hidden>Noch keine Verkäufe eingetragen.</p>
         <p class="empty-state" id="sales-log-no-results" hidden>Keine Verkäufe gefunden, die zu deiner Suche passen.</p>
       </section>
+
+      <!-- Datalist für Kundennamen-Vorschläge (wird von der Medikamente-Seite genutzt) -->
+      <datalist id="bekannte-kunden-liste"></datalist>
 
       <!-- ============================ -->
       <!-- VIEW: NOTIZEN                 -->
@@ -494,35 +484,6 @@
   </div>
 
   <!-- ============================ -->
-  <!-- MODAL: Kunde für Schnell-Verkauf (aus Medikamentenliste) -->
-  <!-- ============================ -->
-  <div class="modal-overlay" id="modal-checkout-kunde">
-    <div class="modal modal--small">
-      <div class="modal__header">
-        <h3>🧾 Verkauf abschließen</h3>
-        <button class="modal__close" data-close-modal="modal-checkout-kunde">✕</button>
-      </div>
-      <div class="modal__body">
-        <p class="stats-modal__hint" id="checkout-kunde-summe"></p>
-        <label class="field-label" for="checkout-kunde-input">Kunde (optional)</label>
-        <input
-          type="text"
-          id="checkout-kunde-input"
-          class="field-input"
-          placeholder="z. B. John Marston"
-          list="bekannte-kunden-liste"
-          autocomplete="off"
-          style="width: 100%; margin-top: 6px;"
-        />
-      </div>
-      <div class="modal__footer">
-        <button class="btn btn--ghost" data-close-modal="modal-checkout-kunde">Abbrechen</button>
-        <button class="btn btn--checkout" id="btn-checkout-kunde-bestaetigen">Verkauf eintragen</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ============================ -->
   <!-- MODAL: Verkaufsstatistik (versteckt, nur über ⓘ-Button) -->
   <!-- ============================ -->
   <div class="modal-overlay" id="modal-statistik">
@@ -623,7 +584,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=44"></script>
-  <script src="js/app.js?v=44"></script>
+  <script src="js/firebase-config.js?v=47"></script>
+  <script src="js/app.js?v=47"></script>
 </body>
 </html>
