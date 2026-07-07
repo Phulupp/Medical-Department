@@ -78,6 +78,8 @@
   const GATE_PASSWORD_OK = "medicalDepartment.gate.passwordOk";
   const GATE_NAME = "medicalDepartment.gate.name";
   const GATE_ROLLE = "medicalDepartment.gate.rolle";
+  const GATE_LOGIN_ZEIT = "medicalDepartment.gate.loginZeit";
+  const SESSION_DAUER_MS = 24 * 60 * 60 * 1000; // Nach 24h wird ein erneutes Login verlangt
 
   const MEDIKAMENTE_DOC = "department/medikamente";
   const MITARBEITER_DOC = "department/mitarbeiter";
@@ -621,6 +623,7 @@
 
       localStorage.setItem(GATE_NAME, name);
       localStorage.setItem(GATE_ROLLE, rolle);
+      localStorage.setItem(GATE_LOGIN_ZEIT, String(Date.now()));
 
       aktuellerNutzer = { name, rolle };
       aktualisiereAdminStatusVonNutzer();
@@ -673,11 +676,25 @@
   }
 
   // Beim Laden prüfen, ob Passwort & Name schon in diesem Browser hinterlegt
-  // sind -> dann direkt durchstarten, ohne erneut zu fragen.
+  // sind -> dann direkt durchstarten, ohne erneut zu fragen. ABER: Läuft die
+  // Session ab (siehe SESSION_DAUER_MS), wird alles zurückgesetzt und komplett
+  // neu nach Passwort + Name gefragt - damit man nicht wochenlang ungefragt
+  // im selben Nutzer "gefangen" bleibt.
   function pruefeGespeichertenZugang() {
     const passwortOk = localStorage.getItem(GATE_PASSWORD_OK) === "true";
     const gespeicherterName = localStorage.getItem(GATE_NAME);
     const gespeicherteRolle = localStorage.getItem(GATE_ROLLE);
+    const loginZeit = Number(localStorage.getItem(GATE_LOGIN_ZEIT) || 0);
+    const sessionAbgelaufen = loginZeit > 0 && Date.now() - loginZeit > SESSION_DAUER_MS;
+
+    if (sessionAbgelaufen) {
+      localStorage.removeItem(GATE_PASSWORD_OK);
+      localStorage.removeItem(GATE_NAME);
+      localStorage.removeItem(GATE_ROLLE);
+      localStorage.removeItem(GATE_LOGIN_ZEIT);
+      zeigeGateSchritt("password");
+      return;
+    }
 
     if (passwortOk && gespeicherterName) {
       aktuellerNutzer = { name: gespeicherterName, rolle: gespeicherteRolle || "Mitarbeiter" };
@@ -754,7 +771,7 @@
   });
 
   document.addEventListener("click", (event) => {
-    if (!el.userMenu.contains(event.target) && event.target !== el.userBadgeBtn) {
+    if (!el.userMenu.contains(event.target) && !el.userBadgeBtn.contains(event.target)) {
       el.userMenu.classList.remove("user-menu--visible");
     }
     if (!el.onlinePanel.contains(event.target) && event.target !== el.onlineWidgetBtn) {
@@ -766,6 +783,7 @@
     entferneEigenePresence();
     localStorage.removeItem(GATE_NAME);
     localStorage.removeItem(GATE_ROLLE);
+    localStorage.removeItem(GATE_LOGIN_ZEIT);
     // Passwort bleibt bewusst gespeichert, damit man nicht bei jedem
     // Nutzerwechsel erneut das Website-Passwort eintippen muss.
     window.location.reload();
@@ -2717,7 +2735,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 43;
+  const APP_VERSION = 44;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
