@@ -1856,50 +1856,91 @@ h1, h2, h3 {
   width: 100%;
 }
 
-.stations-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 22px;
+.station-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
 }
 
-.station-panel {
+.station-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
-  padding: 20px 22px 22px;
-  border-top: 4px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.station-panel--red {
-  border-top-color: var(--color-red);
+.station-tab:hover {
+  color: var(--color-text);
 }
 
-.station-panel--green {
-  border-top-color: var(--color-mint);
+.station-tab--active.station-tab--green {
+  background: var(--color-mint);
+  border-color: var(--color-mint);
+  color: #ffffff;
 }
 
-.station-panel__header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 14px;
+.station-tab--active.station-tab--red {
+  background: var(--color-red);
+  border-color: var(--color-red);
+  color: #ffffff;
 }
 
-.station-panel__title {
-  font-size: 15px;
-}
-
-.station-panel__count {
+.station-tab__count {
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-text-soft);
+  font-size: 11.5px;
+  font-weight: 600;
+  opacity: 0.85;
 }
 
-.station-panel__grid {
+.station-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* --------------------------------------------------------------------------
+   Hierarchie-Abschnitte: Leitung / Oberärzte / Team - klar unterschiedliche
+   Optik statt nur einem kleinen Symbol
+   -------------------------------------------------------------------------- */
+.hierarchie-abschnitt__titel {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--color-text-soft);
+  margin-bottom: 12px;
+}
+
+.hierarchie-abschnitt--leitung .hierarchie-abschnitt__titel {
+  color: var(--color-peach-text);
+}
+
+.hierarchie-abschnitt--oberarzt .hierarchie-abschnitt__titel {
+  color: var(--color-mint-text);
+}
+
+.hierarchie-abschnitt__grid {
   display: grid;
+  gap: 12px;
+}
+
+.hierarchie-abschnitt__grid--leitung {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.hierarchie-abschnitt__grid--oberarzt {
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+}
+
+.hierarchie-abschnitt__grid--team {
+  grid-template-columns: repeat(4, 1fr);
 }
 
 /* --------------------------------------------------------------------------
@@ -1939,6 +1980,10 @@ h1, h2, h3 {
   border-radius: var(--radius-pill);
 }
 
+.badge-tile__avatar-wrap {
+  position: relative;
+}
+
 .badge-tile__avatar {
   width: 36px;
   height: 36px;
@@ -1965,6 +2010,18 @@ h1, h2, h3 {
   background: var(--color-peach);
 }
 
+.badge-tile__abzeichen {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-size: 13px;
+  line-height: 1;
+  background: var(--color-surface);
+  border-radius: 50%;
+  padding: 2px;
+  box-shadow: 0 0 0 1.5px var(--color-surface);
+}
+
 .badge-tile__name {
   font-family: var(--font-display);
   font-weight: 600;
@@ -1982,9 +2039,40 @@ h1, h2, h3 {
   border-radius: var(--radius-pill);
 }
 
-.badge-tile__rolle--leitung {
-  color: var(--color-peach-text);
+/* Leitungs-Ebene (Chefarzt/Stellv. Chefarzt): deutlich größer & goldakzentuiert */
+.badge-tile--leitung {
   background: var(--color-peach-soft);
+  border: 1px solid rgba(166, 117, 47, 0.25);
+  padding: 20px 14px 16px;
+}
+
+.badge-tile--leitung .badge-tile__avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 17px;
+}
+
+.badge-tile--leitung .badge-tile__name {
+  font-size: 14.5px;
+}
+
+.badge-tile--leitung .badge-tile__rolle {
+  background: var(--color-surface);
+  color: var(--color-peach-text);
+}
+
+/* Oberarzt-Ebene: eigener Ring um den Avatar statt Textsymbol */
+.badge-tile--oberarzt {
+  background: var(--color-mint-soft);
+}
+
+.badge-tile--oberarzt .badge-tile__avatar {
+  box-shadow: 0 0 0 3px var(--color-mint-soft), 0 0 0 4.5px var(--color-mint);
+}
+
+.badge-tile--oberarzt .badge-tile__rolle {
+  background: var(--color-surface);
+  color: var(--color-mint-text);
 }
 
 .badge-tile--edit {

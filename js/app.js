@@ -272,7 +272,7 @@
     medikamente: { title: "Medikamente", subtitle: "Übersicht & Verwaltung des Medikamentenbestands" },
     mitarbeiter: { title: "Personal", subtitle: "Verwaltung des medizinischen Personals" },
     verkaufslog: { title: "Verkaufsliste", subtitle: "Verkäufe eintragen & Historie einsehen" },
-    notizen: { title: "Team-Infos", subtitle: "Gemeinsame Infos des Teams" },
+    notizen: { title: "Infos", subtitle: "Gemeinsame Infos des Teams" },
     infos: { title: "Medizin-Wiki", subtitle: "Wirkung & Einsatzgebiet der Medikamente" },
     einstellungen: { title: "Einstellungen", subtitle: "Konfiguration des Ärztekammer-Systems" },
   };
@@ -746,7 +746,47 @@
     abonniereInfos();
     abonniereAnkuendigungen();
 
+    wendeStartseitenPraeferenzAn();
+
     window.addEventListener("beforeunload", entferneEigenePresence);
+  }
+
+  /* ------------------------------------------------------------------------
+     7b. Einstellung: Standard-Startseite (nur lokal im Browser gespeichert)
+     ------------------------------------------------------------------------ */
+  const STARTSEITE_KEY = "medicalDepartment.settings.startseite";
+
+  function wendeStartseitenPraeferenzAn() {
+    const praeferenz = localStorage.getItem(STARTSEITE_KEY) || "start";
+    if (praeferenz === "start") return; // Start ist ohnehin die Standard-Ansicht
+
+    if (praeferenz === "medikamente" || praeferenz === "verkaufslog") {
+      if (typeof wechsleZuVerkaufAnsicht === "function") wechsleZuVerkaufAnsicht(praeferenz);
+      return;
+    }
+    if (praeferenz === "notizen") {
+      if (typeof wechsleZuNotizenAnsicht === "function") wechsleZuNotizenAnsicht("allgemein");
+      return;
+    }
+    if (praeferenz === "infos-wiki") {
+      const btn = document.querySelector('.nav__item[data-view="infos"]');
+      if (btn) btn.click();
+      return;
+    }
+    if (praeferenz === "mitarbeiter") {
+      const btn = document.querySelector('.nav__item[data-view="mitarbeiter"]');
+      if (btn) btn.click();
+      return;
+    }
+  }
+
+  const startseiteSelect = document.getElementById("startseite-select");
+  if (startseiteSelect) {
+    startseiteSelect.value = localStorage.getItem(STARTSEITE_KEY) || "start";
+    startseiteSelect.addEventListener("change", () => {
+      localStorage.setItem(STARTSEITE_KEY, startseiteSelect.value);
+      zeigeToast("Standard-Startseite gespeichert.");
+    });
   }
 
   function renderBenutzerBadge() {
@@ -921,6 +961,7 @@
      10. Mitarbeiter-Ansicht (bekannte Liste + Online-Status)
      ------------------------------------------------------------------------ */
   let mitarbeiterBearbeitenModus = false; // Erst nach Klick auf "Bearbeiten" sind Felder aktiv
+  let aktiveStationReiter = "rhodes"; // Welche Station (Rhodes/Blackwater) gerade angezeigt wird
 
   function renderMitarbeiterListe() {
     if (!el.staffGrid) return;
@@ -931,7 +972,10 @@
     // mitten drin komplett neu aufgebaut - das würde das Feld/Dropdown
     // zerstören und den Fokus/die Eingabe verlieren. Der nächste Render
     // (z. B. nach dem Verlassen des Feldes) holt den aktuellen Stand nach.
-    if (el.staffGrid.contains(document.activeElement) && document.activeElement !== el.staffGrid) {
+    const aktivesElement = document.activeElement;
+    const istEingabeInBearbeitung =
+      el.staffGrid.contains(aktivesElement) && (aktivesElement.tagName === "INPUT" || aktivesElement.tagName === "SELECT");
+    if (istEingabeInBearbeitung) {
       return;
     }
 
@@ -952,33 +996,38 @@
     // Eine einzelne Person als Ausweis-Kachel. Nur im Bearbeiten-Modus
     // editierbar (Name-Feld + Rang-Dropdown), sonst nur lesbar - egal ob
     // Admin oder nicht.
-    // Zwei Leitungs-Ebenen, jeweils mit einem eigenen, dezenten Symbol
-    // gekennzeichnet - unterschiedliche Form statt nur Anzahl, damit man die
-    // beiden Ebenen auch auf den ersten Blick auseinanderhalten kann.
+    // Drei Hierarchie-Ebenen mit jeweils komplett eigener Optik (nicht nur
+    // ein kleines Symbol): Leitung (Chefarzt/Stellv. Chefarzt) bekommt große,
+    // goldakzentuierte Kacheln mit Kronen-Abzeichen. Oberärzte bekommen einen
+    // farbigen Ring um den Avatar. Der Rest bleibt schlicht.
     const OBERARZT_EBENE = new Set(["Stellv. Oberarzt", "Oberarzt"]);
     const CHEFARZT_EBENE = new Set(["Stellv. Chefarzt", "Chefarzt"]);
 
-    function leitungsSymbol(rolle) {
-      if (CHEFARZT_EBENE.has(rolle)) return "★ ";
-      if (OBERARZT_EBENE.has(rolle)) return "◆ ";
-      return "";
+    function ebeneVon(rolle) {
+      if (CHEFARZT_EBENE.has(rolle)) return "leitung";
+      if (OBERARZT_EBENE.has(rolle)) return "oberarzt";
+      return "team";
     }
 
     function badgeKachel(stationKey, index, slot, farbklasse) {
       const istDirektion = stationKey === "direktion";
       const istDu = aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
       const initiale = slot.name ? slot.name.trim().charAt(0).toUpperCase() : "?";
-      const istLeitung = OBERARZT_EBENE.has(slot.rolle) || CHEFARZT_EBENE.has(slot.rolle);
+      const ebene = ebeneVon(slot.rolle);
+      const abzeichen = ebene === "leitung" ? '<span class="badge-tile__abzeichen">👑</span>' : "";
 
       if (!bearbeitenAktiv) {
         if (!slot.name) {
           return `<div class="badge-tile badge-tile--frei"></div>`;
         }
         return `
-          <div class="badge-tile ${istDu ? "badge-tile--du" : ""}">
-            <span class="badge-tile__avatar badge-tile__avatar--${farbklasse}">${escapeHtml(initiale)}</span>
+          <div class="badge-tile badge-tile--${ebene} ${istDu ? "badge-tile--du" : ""}">
+            <span class="badge-tile__avatar-wrap">
+              <span class="badge-tile__avatar badge-tile__avatar--${farbklasse}">${escapeHtml(initiale)}</span>
+              ${abzeichen}
+            </span>
             <span class="badge-tile__name">${escapeHtml(slot.name)}</span>
-            <span class="badge-tile__rolle ${istLeitung ? "badge-tile__rolle--leitung" : ""}">${leitungsSymbol(slot.rolle)}${escapeHtml(slot.rolle)}</span>
+            <span class="badge-tile__rolle">${escapeHtml(slot.rolle)}</span>
             ${istDu ? '<span class="badge-tile__du">Du</span>' : ""}
           </div>
         `;
@@ -987,12 +1036,15 @@
       const rolleFeld = istDirektion
         ? `<span class="badge-tile__rolle">Ärztliche Direktion</span>`
         : `<select class="badge-tile__rolle-select" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
-            ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${leitungsSymbol(r)}${r}</option>`).join("")}
+            ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${r}</option>`).join("")}
           </select>`;
 
       return `
-        <div class="badge-tile badge-tile--edit">
-          <span class="badge-tile__avatar badge-tile__avatar--${farbklasse}">${escapeHtml(initiale)}</span>
+        <div class="badge-tile badge-tile--edit badge-tile--${ebene}">
+          <span class="badge-tile__avatar-wrap">
+            <span class="badge-tile__avatar badge-tile__avatar--${farbklasse}">${escapeHtml(initiale)}</span>
+            ${abzeichen}
+          </span>
           <input
             type="text"
             class="badge-tile__name-input"
@@ -1007,20 +1059,64 @@
       `;
     }
 
-    function stationsPanel(stationKey) {
-      const info = STATIONEN[stationKey];
+    // Baut einen Hierarchie-Abschnitt (Leitung / Oberärzte / Team) - wird nur
+    // angezeigt, wenn darin auch tatsächlich jemand steht (außer "Team",
+    // das auch die leeren Plätze enthält und daher immer sichtbar ist).
+    function hierarchieAbschnitt(titel, ebeneName, eintraege, farbklasse) {
+      if (eintraege.length === 0) return "";
+      const kacheln = eintraege.map(({ slot, index }) => badgeKachel(eintraege.stationKey, index, slot, farbklasse)).join("");
+      return `
+        <div class="hierarchie-abschnitt hierarchie-abschnitt--${ebeneName}">
+          ${titel ? `<h4 class="hierarchie-abschnitt__titel">${titel}</h4>` : ""}
+          <div class="hierarchie-abschnitt__grid hierarchie-abschnitt__grid--${ebeneName}">${kacheln}</div>
+        </div>
+      `;
+    }
+
+    // Feste Rangfolge fürs Sortieren innerhalb einer Hierarchie-Gruppe -
+    // leere Plätze landen immer ganz am Ende ihrer Gruppe.
+    const RANG_REIHENFOLGE = ["Chefarzt", "Stellv. Chefarzt", "Oberarzt", "Stellv. Oberarzt", "Facharzt", "Assistenzarzt", "Anwärter"];
+    function rangIndex(rolle) {
+      const i = RANG_REIHENFOLGE.indexOf(rolle);
+      return i === -1 ? RANG_REIHENFOLGE.length : i;
+    }
+    function nachRangSortiert(liste) {
+      return [...liste].sort((a, b) => {
+        if (!a.slot.name && b.slot.name) return 1;
+        if (a.slot.name && !b.slot.name) return -1;
+        return rangIndex(a.slot.rolle) - rangIndex(b.slot.rolle);
+      });
+    }
+
+    function stationInhalt(stationKey) {
       const plaetze = stationenDaten[stationKey] || [];
       const farbklasse = stationKey === "rhodes" ? "gruen" : "rot";
-      const besetzt = plaetze.filter((s) => s.name).length;
-      const kacheln = plaetze.map((slot, index) => badgeKachel(stationKey, index, slot, farbklasse)).join("");
+
+      const mitIndex = plaetze.map((slot, index) => ({ slot, index, stationKey }));
+      const leitung = nachRangSortiert(mitIndex.filter((e) => e.slot.name && ebeneVon(e.slot.rolle) === "leitung"));
+      const oberarzt = nachRangSortiert(mitIndex.filter((e) => e.slot.name && ebeneVon(e.slot.rolle) === "oberarzt"));
+      const team = nachRangSortiert(mitIndex.filter((e) => !e.slot.name || ebeneVon(e.slot.rolle) === "team"));
+
+      leitung.stationKey = stationKey;
+      oberarzt.stationKey = stationKey;
+      team.stationKey = stationKey;
+
       return `
-        <div class="station-panel station-panel--${info.farbe}">
-          <div class="station-panel__header">
-            <h3 class="station-panel__title">${stationKey === "rhodes" ? "🟢" : "🔴"} ${escapeHtml(info.label)}</h3>
-            <span class="station-panel__count">${besetzt}/${info.max} besetzt</span>
-          </div>
-          <div class="station-panel__grid">${kacheln}</div>
-        </div>
+        ${hierarchieAbschnitt("👑 Leitung", "leitung", leitung, farbklasse)}
+        ${hierarchieAbschnitt("🎖️ Oberärzte", "oberarzt", oberarzt, farbklasse)}
+        ${hierarchieAbschnitt("Team", "team", team, farbklasse)}
+      `;
+    }
+
+    function stationTab(stationKey) {
+      const info = STATIONEN[stationKey];
+      const besetzt = (stationenDaten[stationKey] || []).filter((s) => s.name).length;
+      const aktiv = aktiveStationReiter === stationKey;
+      return `
+        <button type="button" class="station-tab station-tab--${info.farbe} ${aktiv ? "station-tab--active" : ""}" data-role="station-tab" data-station="${stationKey}">
+          ${stationKey === "rhodes" ? "🟢" : "🔴"} ${escapeHtml(info.label)}
+          <span class="station-tab__count">${besetzt}/${info.max}</span>
+        </button>
       `;
     }
 
@@ -1030,12 +1126,23 @@
       <div class="direction-badge">
         ${badgeKachel("direktion", 0, direktionSlot, "gold")}
       </div>
-      <div class="stations-row">
-        ${stationsPanel("blackwater")}
-        ${stationsPanel("rhodes")}
+      <div class="station-tabs">
+        ${stationTab("rhodes")}
+        ${stationTab("blackwater")}
+      </div>
+      <div class="station-content">
+        ${stationInhalt(aktiveStationReiter)}
       </div>
     `;
   }
+
+  // Klick auf die Rhodes/Blackwater-Reiter
+  document.addEventListener("click", (event) => {
+    const tabBtn = event.target.closest('[data-role="station-tab"]');
+    if (!tabBtn) return;
+    aktiveStationReiter = tabBtn.dataset.station;
+    renderMitarbeiterListe();
+  });
 
   // Bearbeiten-Button: schaltet zwischen reiner Ansicht und editierbaren Feldern um
   const btnToggleMitarbeiterBearbeiten = document.getElementById("btn-toggle-mitarbeiter-bearbeiten");
@@ -1409,7 +1516,7 @@
     document.getElementById("view-notizen").classList.add("view--active");
 
     const kategorieInfo = NOTIZ_KATEGORIEN[kategorie];
-    el.viewTitle.textContent = `Notizen · ${kategorieInfo.label}`;
+    el.viewTitle.textContent = `Infos · ${kategorieInfo.label}`;
     el.viewSubtitle.textContent = "Gemeinsame Notizen des Teams";
 
     aktualisiereKategorieBadge();
@@ -2672,7 +2779,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 47;
+  const APP_VERSION = 50;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=47" />
+  <link rel="stylesheet" href="css/style.css?v=50" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -102,10 +102,6 @@
           <span class="nav__icon">📌</span>
           <span>Start</span>
         </button>
-        <button class="nav__item" data-view="infos">
-          <span class="nav__icon">ℹ️</span>
-          <span>Medizin-Wiki</span>
-        </button>
         <div class="nav__group">
           <button class="nav__item nav__item--parent" id="nav-verkauf-toggle">
             <span class="nav__icon">💊</span>
@@ -123,10 +119,14 @@
             </button>
           </div>
         </div>
+        <button class="nav__item" data-view="infos">
+          <span class="nav__icon">ℹ️</span>
+          <span>Medizin-Wiki</span>
+        </button>
         <div class="nav__group">
           <button class="nav__item nav__item--parent" id="nav-notizen-toggle" data-view="notizen">
             <span class="nav__icon">📝</span>
-            <span>Team-Infos</span>
+            <span>Infos</span>
             <span class="nav__chevron" id="nav-notizen-chevron">▾</span>
           </button>
           <div class="nav__submenu" id="nav-notizen-submenu">
@@ -429,6 +429,19 @@
       <section class="view" id="view-einstellungen">
         <!-- Für alle Mitarbeiter sichtbar -->
         <div class="settings-card">
+          <h3>🏠 Standard-Startseite</h3>
+          <p class="settings-card__hint">Diese Seite öffnet sich automatisch, sobald du dich anmeldest - nur in deinem eigenen Browser gespeichert.</p>
+          <select id="startseite-select" class="field-input" style="max-width: 320px;">
+            <option value="start">📌 Start (Schwarzes Brett)</option>
+            <option value="medikamente">💊 Verkauf – Medikamente</option>
+            <option value="verkaufslog">💊 Verkauf – Verkaufslog</option>
+            <option value="infos-wiki">ℹ️ Medizin-Wiki</option>
+            <option value="notizen">📝 Infos (Allgemein)</option>
+            <option value="mitarbeiter">🧑‍⚕️ Personal</option>
+          </select>
+        </div>
+
+        <div class="settings-card">
           <h3>🎨 Design</h3>
           <p class="settings-card__hint">Diese Einstellung wird nur in deinem eigenen Browser gespeichert und gilt nicht für andere Mitarbeiter.</p>
           <div class="theme-switch">
@@ -584,7 +597,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=47"></script>
-  <script src="js/app.js?v=47"></script>
+  <script src="js/firebase-config.js?v=50"></script>
+  <script src="js/app.js?v=50"></script>
 </body>
 </html>
