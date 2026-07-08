@@ -1799,6 +1799,11 @@ h1, h2, h3 {
   color: var(--color-blue-text);
 }
 
+.icon-btn--copy:hover {
+  background: var(--color-mint-soft);
+  color: var(--color-mint-text);
+}
+
 .icon-btn--stats {
   opacity: 0.55;
   font-size: 14px;

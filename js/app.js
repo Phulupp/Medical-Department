@@ -1712,6 +1712,7 @@
         <span class="kontakt-row__nummer">${escapeHtml(k.nummer)}</span>
         <span class="kontakt-row__name">${escapeHtml(k.name)}</span>
         <span class="kontakt-row__notiz">${k.notiz ? escapeHtml(k.notiz) : "—"}</span>
+        <button type="button" class="icon-btn icon-btn--copy" data-role="copy-kontakt" data-nummer="${escapeHtml(k.nummer)}" title="Nummer kopieren">📋</button>
         ${darfLoeschen ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-kontakt" data-id="${k.id}" title="Kontakt löschen">🗑</button>` : ""}
       `;
       el.kontaktList.appendChild(zeile);
@@ -1781,6 +1782,18 @@
 
   if (el.kontaktList) {
     el.kontaktList.addEventListener("click", (event) => {
+      const copyBtn = event.target.closest('[data-role="copy-kontakt"]');
+      if (copyBtn) {
+        const nummer = copyBtn.dataset.nummer;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(nummer)
+            .then(() => zeigeToast(`„${nummer}“ kopiert.`))
+            .catch(() => zeigeToast("Kopieren fehlgeschlagen."));
+        }
+        return;
+      }
+
       const btn = event.target.closest('[data-role="delete-kontakt"]');
       if (!btn) return;
       const kontakt = letzteKontakte.find((k) => k.id === btn.dataset.id);
@@ -2938,7 +2951,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 51;
+  const APP_VERSION = 52;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
