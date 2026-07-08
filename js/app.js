@@ -88,6 +88,7 @@
   const PRESENCE_COLLECTION = "presence";
   const NOTIZEN_COLLECTION = "notizen";
   const VERKAUFSLOG_COLLECTION = "verkaufslog";
+  const KONTAKTE_COLLECTION = "kontakte";
   const ANKUENDIGUNGEN_COLLECTION = "ankuendigungen";
   const ONLINE_SCHWELLE_MS = 45 * 1000;   // Nach 45s ohne Update gilt jemand als offline
   const HEARTBEAT_INTERVALL_MS = 20 * 1000;
@@ -192,6 +193,15 @@
     notesList: document.getElementById("notes-list"),
     notesEmpty: document.getElementById("notes-empty"),
 
+    formKontakt: document.getElementById("form-kontakt"),
+    kontaktNummerInput: document.getElementById("kontakt-nummer-input"),
+    kontaktNameInput: document.getElementById("kontakt-name-input"),
+    kontaktNotizInput: document.getElementById("kontakt-notiz-input"),
+    kontaktList: document.getElementById("kontakt-list"),
+    kontakteEmpty: document.getElementById("kontakte-empty"),
+    kontakteNoResults: document.getElementById("kontakte-no-results"),
+    kontakteSearch: document.getElementById("kontakte-search"),
+
     btnCheckout: document.getElementById("btn-checkout"),
     salesLogList: document.getElementById("sales-log-list"),
     salesLogEmpty: document.getElementById("sales-log-empty"),
@@ -271,6 +281,7 @@
     start: { title: "Start", subtitle: "Schwarzes Brett – wichtige Ankündigungen" },
     medikamente: { title: "Medikamente", subtitle: "Übersicht & Verwaltung des Medikamentenbestands" },
     mitarbeiter: { title: "Personal", subtitle: "Verwaltung des medizinischen Personals" },
+    kontakte: { title: "Kontakte", subtitle: "Telegramm-Verzeichnis – wer ist wer" },
     verkaufslog: { title: "Verkaufsliste", subtitle: "Verkäufe eintragen & Historie einsehen" },
     notizen: { title: "Infos", subtitle: "Gemeinsame Infos des Teams" },
     infos: { title: "Medizin-Wiki", subtitle: "Wirkung & Einsatzgebiet der Medikamente" },
@@ -745,6 +756,7 @@
     abonniereLoginMitarbeiterliste();
     abonniereInfos();
     abonniereAnkuendigungen();
+    abonniereKontakte();
 
     wendeStartseitenPraeferenzAn();
 
@@ -775,6 +787,11 @@
     }
     if (praeferenz === "mitarbeiter") {
       const btn = document.querySelector('.nav__item[data-view="mitarbeiter"]');
+      if (btn) btn.click();
+      return;
+    }
+    if (praeferenz === "kontakte") {
+      const btn = document.querySelector('.nav__item[data-view="kontakte"]');
       if (btn) btn.click();
       return;
     }
@@ -1634,6 +1651,148 @@
         },
         (fehler) => console.error("Fehler beim Laden der Notizen:", fehler)
       );
+  }
+
+  /* ------------------------------------------------------------------------
+     10a2. Kontakte: Telegramm-Verzeichnis (BW-Nummer + Name + Notiz)
+     ------------------------------------------------------------------------ */
+  let letzteKontakte = [];
+  let kontakteSuchbegriff = "";
+
+  function abonniereKontakte() {
+    db.collection(KONTAKTE_COLLECTION).onSnapshot(
+      (snapshot) => {
+        const kontakte = [];
+        snapshot.forEach((doc) => {
+          const d = doc.data();
+          kontakte.push({
+            id: doc.id,
+            nummer: d.nummer || "",
+            name: d.name || "",
+            notiz: d.notiz || "",
+            autor: d.autor || "",
+            millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
+          });
+        });
+        // Nach der Nummer sortiert (numerisch, wie ein echtes Verzeichnis)
+        kontakte.sort((a, b) => {
+          const na = Number(a.nummer.replace(/\D/g, "")) || 0;
+          const nb = Number(b.nummer.replace(/\D/g, "")) || 0;
+          return na - nb;
+        });
+        letzteKontakte = kontakte;
+        renderKontakte();
+      },
+      (fehler) => console.error("Fehler beim Laden der Kontakte:", fehler)
+    );
+  }
+
+  function renderKontakte() {
+    if (!el.kontaktList) return;
+
+    const begriff = kontakteSuchbegriff.trim().toLowerCase();
+    const gefiltert = letzteKontakte.filter((k) => {
+      if (!begriff) return true;
+      return (
+        k.nummer.toLowerCase().includes(begriff) ||
+        k.name.toLowerCase().includes(begriff) ||
+        k.notiz.toLowerCase().includes(begriff)
+      );
+    });
+
+    el.kontaktList.innerHTML = "";
+    el.kontakteEmpty.hidden = letzteKontakte.length !== 0;
+    el.kontakteNoResults.hidden = !(letzteKontakte.length > 0 && gefiltert.length === 0);
+
+    gefiltert.forEach((k) => {
+      const darfLoeschen = istAdmin() || (aktuellerNutzer && k.autor === aktuellerNutzer.name);
+      const zeile = document.createElement("div");
+      zeile.className = "kontakt-row";
+      zeile.innerHTML = `
+        <span class="kontakt-row__nummer">${escapeHtml(k.nummer)}</span>
+        <span class="kontakt-row__name">${escapeHtml(k.name)}</span>
+        <span class="kontakt-row__notiz">${k.notiz ? escapeHtml(k.notiz) : "—"}</span>
+        ${darfLoeschen ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-kontakt" data-id="${k.id}" title="Kontakt löschen">🗑</button>` : ""}
+      `;
+      el.kontaktList.appendChild(zeile);
+    });
+  }
+
+  // Nummernfeld: nur Ziffern erlauben, "BW-" wird automatisch vorangestellt
+  if (el.kontaktNummerInput) {
+    el.kontaktNummerInput.addEventListener("input", () => {
+      el.kontaktNummerInput.value = el.kontaktNummerInput.value.replace(/\D/g, "");
+    });
+  }
+
+  if (el.formKontakt) {
+    el.formKontakt.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!aktuellerNutzer) return;
+
+      const ziffern = el.kontaktNummerInput.value.trim();
+      const name = el.kontaktNameInput.value.trim();
+      const notiz = el.kontaktNotizInput.value.trim();
+
+      if (!ziffern) {
+        zeigeToast("Bitte eine Telegramm-Nummer eingeben.");
+        return;
+      }
+      if (!name) {
+        zeigeToast("Bitte einen Namen eingeben.");
+        return;
+      }
+
+      const nummer = `BW-${ziffern}`;
+
+      if (letzteKontakte.some((k) => k.nummer === nummer)) {
+        zeigeToast(`„${nummer}“ ist bereits eingetragen.`);
+        return;
+      }
+
+      db.collection(KONTAKTE_COLLECTION)
+        .add({
+          nummer,
+          name,
+          notiz,
+          autor: aktuellerNutzer.name,
+          zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
+        })
+        .then(() => {
+          el.kontaktNummerInput.value = "";
+          el.kontaktNameInput.value = "";
+          el.kontaktNotizInput.value = "";
+          el.kontaktNummerInput.focus();
+          zeigeToast(`„${nummer}“ (${name}) wurde eingetragen.`);
+        })
+        .catch((fehler) => {
+          console.error("Kontakt konnte nicht gespeichert werden:", fehler);
+          zeigeToast("Kontakt konnte nicht gespeichert werden.");
+        });
+    });
+  }
+
+  if (el.kontakteSearch) {
+    el.kontakteSearch.addEventListener("input", (event) => {
+      kontakteSuchbegriff = event.target.value;
+      renderKontakte();
+    });
+  }
+
+  if (el.kontaktList) {
+    el.kontaktList.addEventListener("click", (event) => {
+      const btn = event.target.closest('[data-role="delete-kontakt"]');
+      if (!btn) return;
+      const kontakt = letzteKontakte.find((k) => k.id === btn.dataset.id);
+      db.collection(KONTAKTE_COLLECTION)
+        .doc(btn.dataset.id)
+        .delete()
+        .then(() => zeigeToast(kontakt ? `„${kontakt.nummer}“ wurde gelöscht.` : "Kontakt wurde gelöscht."))
+        .catch((fehler) => {
+          console.error("Kontakt konnte nicht gelöscht werden:", fehler);
+          zeigeToast("Kontakt konnte nicht gelöscht werden.");
+        });
+    });
   }
 
   function renderNotizen() {
@@ -2779,7 +2938,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 50;
+  const APP_VERSION = 51;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
