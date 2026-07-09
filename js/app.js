@@ -2402,7 +2402,6 @@
       tr.innerHTML = `
         <td>
           <div class="med-name">
-            <span class="med-name__dot"></span>
             <span>${escapeHtml(med.name)}</span>
           </div>
         </td>
@@ -3039,7 +3038,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 55;
+  const APP_VERSION = 56;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
