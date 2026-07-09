@@ -2380,7 +2380,8 @@
     const darfVerschieben = darfLoeschen && !suchbegriff.trim();
 
     liste.forEach((med) => {
-      const tr = document.createElement("tr");
+      const row = document.createElement("div");
+      row.className = "med-row";
       const menge = Number(med.menge) || 0;
       const zwischensumme = menge * Number(med.preis);
 
@@ -2399,26 +2400,26 @@
         `;
       }
 
-      tr.innerHTML = `
-        <td>
+      row.innerHTML = `
+        <span>
           <div class="med-name">
             <span>${escapeHtml(med.name)}</span>
           </div>
-        </td>
-        <td class="med-price">${formatiereGeld(med.preis)}</td>
-        <td>
+        </span>
+        <span class="med-price">${formatiereGeld(med.preis)}</span>
+        <span>
           <input type="number" class="qty-input" min="0" step="1" value="${menge}" data-id="${med.id}" data-role="qty" />
-        </td>
-        <td class="subtotal">${formatiereGeld(zwischensumme)}</td>
-        <td>
+        </span>
+        <span class="subtotal">${formatiereGeld(zwischensumme)}</span>
+        <span>
           <div class="row-actions">
             ${verschiebenButtons}
             <button class="icon-btn icon-btn--edit" data-role="edit" data-id="${med.id}" title="Preis bearbeiten">✎</button>
             ${loeschButton}
           </div>
-        </td>
+        </span>
       `;
-      el.tableBody.appendChild(tr);
+      el.tableBody.appendChild(row);
     });
   }
 
@@ -2871,7 +2872,7 @@
   });
 
   function aktualisiereZwischensummeInZeile(inputElement) {
-    const zeile = inputElement.closest("tr");
+    const zeile = inputElement.closest(".med-row");
     if (!zeile) return;
     const med = medikamente.find((m) => m.id === inputElement.dataset.id);
     if (!med) return;
@@ -3038,7 +3039,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 56;
+  const APP_VERSION = 57;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

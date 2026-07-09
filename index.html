@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=56" />
+  <link rel="stylesheet" href="css/style.css?v=57" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -289,29 +289,27 @@
           </div>
         </div>
 
-        <!-- Medikamententabelle -->
+        <!-- Medikamenten-Register (CSS-Grid statt <table>, garantiert saubere Spalten) -->
         <div class="table-card">
-          <table class="med-table">
-            <thead>
-              <tr>
-                <th>Medikament</th>
-                <th>Preis (Stück)</th>
-                <th>Menge</th>
-                <th>Zwischensumme</th>
-                <th class="med-table__actions-col">Aktionen</th>
-              </tr>
-            </thead>
-            <tbody id="med-table-body">
+          <div class="med-table">
+            <div class="med-row med-row--head">
+              <span>Medikament</span>
+              <span>Preis (Stück)</span>
+              <span>Menge</span>
+              <span>Zwischensumme</span>
+              <span class="med-row__actions-col">Aktionen</span>
+            </div>
+
+            <div id="med-table-body">
               <!-- wird per JavaScript befüllt -->
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3" class="med-table__total-label">Gesamtsumme</td>
-                <td class="med-table__total-value" id="table-total">0$</td>
-                <td></td>
-              </tr>
-            </tfoot>
-          </table>
+            </div>
+
+            <div class="med-row med-row--foot">
+              <span class="med-table__total-label">Gesamtsumme</span>
+              <span class="med-table__total-value" id="table-total">0$</span>
+              <span></span>
+            </div>
+          </div>
 
           <p class="empty-state" id="empty-state" hidden>
             Keine Medikamente gefunden. Passe deine Suche an oder füge ein neues Medikament hinzu.
@@ -633,7 +631,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=56"></script>
-  <script src="js/app.js?v=56"></script>
+  <script src="js/firebase-config.js?v=57"></script>
+  <script src="js/app.js?v=57"></script>
 </body>
 </html>

@@ -1245,41 +1245,54 @@ p {
 /* --------------------------------------------------------------------------
    14. Medikamenten-Register (statt klassischer Tabelle)
    -------------------------------------------------------------------------- */
+/* --------------------------------------------------------------------------
+   14. Medikamenten-Register (CSS-Grid statt <table> — garantiert exakt
+       gleiche Spaltenbreiten zwischen Kopf- und Datenzeilen)
+   -------------------------------------------------------------------------- */
 .table-card {
   padding: 6px;
 }
 
 .med-table {
   width: 100%;
-  border-collapse: collapse;
+  display: flex;
+  flex-direction: column;
 }
 
-.med-table thead th {
-  text-align: left;
+.med-row {
+  display: grid;
+  grid-template-columns: 34fr 14fr 14fr 16fr 22fr;
+  align-items: center;
+  column-gap: 12px;
+}
+
+.med-row--head {
+  padding: 14px 20px;
   font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   color: var(--color-text-soft);
-  padding: 16px 22px;
   border-bottom: 1px solid var(--color-hairline);
 }
 
-.med-table__actions-col {
-  text-align: right !important;
+.med-row__actions-col {
+  text-align: right;
 }
 
-.med-table tbody tr {
+#med-table-body .med-row {
+  padding: 13px 20px;
+  font-size: 13.5px;
   border-bottom: 1px solid var(--color-hairline);
   position: relative;
   transition: background 0.15s ease;
 }
 
-.med-table tbody tr:last-child {
+#med-table-body .med-row:last-child {
   border-bottom: none;
 }
 
-.med-table tbody tr::before {
+#med-table-body .med-row::before {
   content: "";
   position: absolute;
   left: 0;
@@ -1290,18 +1303,12 @@ p {
   transition: background 0.15s ease;
 }
 
-.med-table tbody tr:hover {
+#med-table-body .med-row:hover {
   background: var(--color-surface-soft);
 }
 
-.med-table tbody tr:hover::before {
+#med-table-body .med-row:hover::before {
   background: var(--color-brass);
-}
-
-.med-table tbody td {
-  padding: 20px 22px;
-  font-size: 13.5px;
-  vertical-align: middle;
 }
 
 .med-name {
@@ -1319,13 +1326,13 @@ p {
 }
 
 .qty-input {
-  width: 76px;
+  width: 68px;
   border: 1.5px solid var(--color-input-border);
   background: var(--color-surface-raised);
   border-radius: var(--radius-sm);
-  padding: 9px 10px;
+  padding: 7px 10px;
   font-family: var(--font-mono);
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--color-text);
   text-align: center;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -1348,8 +1355,9 @@ p {
   color: var(--color-sage-text);
 }
 
-.med-table tfoot td {
-  padding: 18px 22px;
+.med-row--foot {
+  grid-template-columns: 62fr 16fr 22fr;
+  padding: 15px 20px;
   border-top: 2px solid var(--color-hairline);
 }
 
