@@ -1697,11 +1697,11 @@
             millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
           });
         });
-        // Nach der Nummer sortiert (numerisch, höchste/neueste zuerst)
+        // Nach der Nummer sortiert (numerisch, aufsteigend – niedrigste zuerst)
         kontakte.sort((a, b) => {
           const na = Number(a.nummer.replace(/\D/g, "")) || 0;
           const nb = Number(b.nummer.replace(/\D/g, "")) || 0;
-          return nb - na;
+          return na - nb;
         });
         letzteKontakte = kontakte;
         renderKontakte();
@@ -3039,7 +3039,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 54;
+  const APP_VERSION = 55;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
