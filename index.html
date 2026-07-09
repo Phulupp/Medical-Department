@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ärztekammer Black Wolf | Verwaltung</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%233d7d5b'/%3E%3Cstop offset='1' stop-color='%23234a35'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='26' fill='url(%23g)'/%3E%3Crect x='42' y='18' width='16' height='64' rx='7' fill='white'/%3E%3Crect x='18' y='42' width='64' height='16' rx='7' fill='white'/%3E%3C/svg%3E" />
+  <title>Black Wolf Medical — Ärztliche Registratur</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='14' fill='%2315120F'/%3E%3Crect x='44' y='22' width='12' height='56' rx='2' fill='%23B4915B'/%3E%3Crect x='22' y='44' width='56' height='12' rx='2' fill='%23B4915B'/%3E%3C/svg%3E" />
 
-  <!-- Google Fonts: Outfit (Display) & Inter (Text) -->
+  <!-- Google Fonts: Cormorant Garamond (Display) & Inter (Text) & JetBrains Mono (Daten) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=52" />
+  <link rel="stylesheet" href="css/style.css?v=54" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -28,10 +28,10 @@
   <div class="auth-screen" id="auth-screen">
     <div class="auth-card">
       <div class="auth-card__brand">
-        <div class="sidebar__brand-icon"><svg viewBox="0 0 100 100" width="20" height="20" fill="white"><rect x="42" y="18" width="16" height="64" rx="7"/><rect x="18" y="42" width="64" height="16" rx="7"/></svg></div>
-        <div class="sidebar__brand-text">
-          <span class="sidebar__brand-title">Ärztekammer</span>
-          <span class="sidebar__brand-subtitle">Black Wolf</span>
+        <div class="brand-mark"><svg viewBox="0 0 100 100" width="22" height="22" fill="currentColor"><rect x="42" y="18" width="16" height="64" rx="3"/><rect x="18" y="42" width="64" height="16" rx="3"/></svg></div>
+        <div class="brand-text">
+          <span class="brand-text__title">Black Wolf</span>
+          <span class="brand-text__subtitle">Ärztliche Registratur</span>
         </div>
       </div>
 
@@ -86,21 +86,21 @@
 
   <div class="app" id="app-root" hidden>
     <!-- ============================ -->
-    <!-- SIDEBAR (linke Navigation)   -->
+    <!-- TOP-NAVIGATION                -->
     <!-- ============================ -->
-    <aside class="sidebar">
-      <div class="sidebar__brand">
-        <div class="sidebar__brand-icon" id="easter-egg-trigger"><svg viewBox="0 0 100 100" width="20" height="20" fill="white"><rect x="42" y="18" width="16" height="64" rx="7"/><rect x="18" y="42" width="64" height="16" rx="7"/></svg></div>
-        <div class="sidebar__brand-text">
-          <span class="sidebar__brand-title">Ärztekammer</span>
-          <span class="sidebar__brand-subtitle">Black Wolf</span>
+    <header class="topnav">
+      <div class="topnav__brand">
+        <div class="brand-mark" id="easter-egg-trigger"><svg viewBox="0 0 100 100" width="18" height="18" fill="currentColor"><rect x="42" y="18" width="16" height="64" rx="3"/><rect x="18" y="42" width="64" height="16" rx="3"/></svg></div>
+        <div class="brand-text">
+          <span class="brand-text__title">Black Wolf</span>
+          <span class="brand-text__subtitle">Medical</span>
         </div>
       </div>
 
-      <nav class="sidebar__nav">
+      <nav class="topnav__links">
         <button class="nav__item nav__item--active" data-view="start">
           <span class="nav__icon">📌</span>
-          <span>Start</span>
+          <span>Dashboard</span>
         </button>
         <div class="nav__group">
           <button class="nav__item nav__item--parent" id="nav-verkauf-toggle">
@@ -121,7 +121,7 @@
         </div>
         <button class="nav__item" data-view="infos">
           <span class="nav__icon">ℹ️</span>
-          <span>Medizin-Wiki</span>
+          <span>Wiki</span>
         </button>
         <div class="nav__group">
           <button class="nav__item nav__item--parent" id="nav-notizen-toggle" data-view="notizen">
@@ -158,50 +158,46 @@
         </button>
       </nav>
 
-      <div class="sidebar__footer">
-        <p>Ärztekammer</p>
-        <p class="sidebar__footer-small">Black Wolf Verwaltungssystem</p>
+      <div class="topnav__meta">
+        <span class="topnav__clock" id="topnav-clock"></span>
+
+        <div class="online-widget">
+          <button class="online-widget__btn" id="online-widget-btn">
+            <span class="online-dot"></span>
+            <span id="online-count">0</span> online
+          </button>
+          <div class="online-panel" id="online-panel">
+            <p class="online-panel__title">Gerade online</p>
+            <div id="online-panel-list"></div>
+          </div>
+        </div>
+
+        <div class="user-badge-wrapper">
+          <button class="user-badge" id="user-badge-btn">
+            <div class="user-badge__avatar" id="user-avatar">?</div>
+            <div class="user-badge__info">
+              <span class="user-badge__name" id="user-name">Lädt...</span>
+              <span class="user-badge__role" id="user-role">—</span>
+            </div>
+          </button>
+          <div class="user-menu" id="user-menu">
+            <button class="user-menu__item" id="btn-logout">Nutzer wechseln</button>
+          </div>
+        </div>
       </div>
-    </aside>
+    </header>
 
     <!-- ============================ -->
     <!-- HAUPTBEREICH                 -->
     <!-- ============================ -->
-    <div class="main">
-      <!-- Topbar -->
-      <header class="topbar">
-        <div class="topbar__title">
-          <h1 id="view-title">Start</h1>
-          <p id="view-subtitle">Schwarzes Brett – wichtige Ankündigungen</p>
-        </div>
+    <div class="content-shell">
+      <div class="page-header">
+        <p class="page-header__eyebrow">Black Wolf — Ärztliche Registratur</p>
+        <h1 id="view-title">Start</h1>
+        <p id="view-subtitle">Schwarzes Brett – wichtige Ankündigungen</p>
+      </div>
 
-        <div class="topbar__user">
-          <div class="online-widget">
-            <button class="online-widget__btn" id="online-widget-btn">
-              <span class="online-dot"></span>
-              <span id="online-count">0</span> online
-            </button>
-            <div class="online-panel" id="online-panel">
-              <p class="online-panel__title">Gerade online</p>
-              <div id="online-panel-list"></div>
-            </div>
-          </div>
-
-          <div class="user-badge-wrapper">
-            <button class="user-badge" id="user-badge-btn">
-              <div class="user-badge__avatar" id="user-avatar">?</div>
-              <div class="user-badge__info">
-                <span class="user-badge__name" id="user-name">Lädt...</span>
-                <span class="user-badge__role" id="user-role">—</span>
-              </div>
-            </button>
-            <div class="user-menu" id="user-menu">
-              <button class="user-menu__item" id="btn-logout">Nutzer wechseln</button>
-            </div>
-          </div>
-        </div>
-      </header>
-
+      <div class="main">
       <!-- ============================ -->
       <!-- VIEW: START (Schwarzes Brett) -->
       <!-- ============================ -->
@@ -300,6 +296,7 @@
               <tr>
                 <th>Medikament</th>
                 <th>Preis (Stück)</th>
+                <th>Vorrat</th>
                 <th>Menge</th>
                 <th>Zwischensumme</th>
                 <th class="med-table__actions-col">Aktionen</th>
@@ -310,7 +307,7 @@
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="3" class="med-table__total-label">Gesamtsumme</td>
+                <td colspan="4" class="med-table__total-label">Gesamtsumme</td>
                 <td class="med-table__total-value" id="table-total">0$</td>
                 <td></td>
               </tr>
@@ -527,6 +524,12 @@
           <p>Die Mitarbeiterverwaltung ist nur für Chefarzt und Stellv. Chefärztin sichtbar. Weitere Einstellungen folgen in einem zukünftigen Update.</p>
         </div>
       </section>
+      </div>
+
+      <footer class="page-footer">
+        <p>Black Wolf Medical</p>
+        <p class="page-footer__small">Ärztliche Registratur — Verwaltungssystem</p>
+      </footer>
     </div>
   </div>
 
@@ -631,7 +634,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=52"></script>
-  <script src="js/app.js?v=52"></script>
+  <script src="js/firebase-config.js?v=54"></script>
+  <script src="js/app.js?v=54"></script>
 </body>
 </html>

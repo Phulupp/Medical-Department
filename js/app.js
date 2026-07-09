@@ -824,6 +824,14 @@
     if (!el.onlinePanel.contains(event.target) && event.target !== el.onlineWidgetBtn) {
       el.onlinePanel.classList.remove("online-panel--visible");
     }
+    // Schwebende Dropdown-Menüs (Verkauf/Infos) bei Klick daneben schließen -
+    // wichtig in der Top-Navigation, da sie über dem Inhalt schweben statt
+    // fest in einer Sidebar eingebettet zu sein.
+    document.querySelectorAll(".nav__group--open").forEach((gruppe) => {
+      if (!gruppe.contains(event.target)) {
+        gruppe.classList.remove("nav__group--open");
+      }
+    });
   });
 
   el.btnLogout.addEventListener("click", () => {
@@ -891,6 +899,21 @@
       console.warn("Konnte lokalen Fallback nicht speichern.", fehler);
     }
   }
+
+  /* ------------------------------------------------------------------------
+     8b. Top-Navigation: Uhrzeit-Anzeige (rein kosmetisch, unabhängig)
+     ------------------------------------------------------------------------ */
+  function aktualisiereUhrzeit() {
+    const el2 = document.getElementById("topnav-clock");
+    if (!el2) return;
+    const jetzt = new Date();
+    const wochentag = jetzt.toLocaleDateString("de-DE", { weekday: "short" });
+    const datum = jetzt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const zeit = jetzt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    el2.textContent = `${wochentag}, ${datum} · ${zeit}`;
+  }
+  aktualisiereUhrzeit();
+  setInterval(aktualisiereUhrzeit, 30000);
 
   /* ------------------------------------------------------------------------
      9. Presence: "Wer ist online"
@@ -1674,11 +1697,11 @@
             millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
           });
         });
-        // Nach der Nummer sortiert (numerisch, wie ein echtes Verzeichnis)
+        // Nach der Nummer sortiert (numerisch, höchste/neueste zuerst)
         kontakte.sort((a, b) => {
           const na = Number(a.nummer.replace(/\D/g, "")) || 0;
           const nb = Number(b.nummer.replace(/\D/g, "")) || 0;
-          return na - nb;
+          return nb - na;
         });
         letzteKontakte = kontakte;
         renderKontakte();
@@ -1689,6 +1712,11 @@
 
   function renderKontakte() {
     if (!el.kontaktList) return;
+
+    const aktivesElement = document.activeElement;
+    if (el.kontaktList.contains(aktivesElement) && (aktivesElement.tagName === "INPUT" || aktivesElement.tagName === "SELECT")) {
+      return; // Nicht mitten im Tippen/Bearbeiten neu aufbauen
+    }
 
     const begriff = kontakteSuchbegriff.trim().toLowerCase();
     const gefiltert = letzteKontakte.filter((k) => {
@@ -1705,17 +1733,41 @@
     el.kontakteNoResults.hidden = !(letzteKontakte.length > 0 && gefiltert.length === 0);
 
     gefiltert.forEach((k) => {
-      const darfLoeschen = istAdmin() || (aktuellerNutzer && k.autor === aktuellerNutzer.name);
+      const darfBearbeiten = istAdmin() || (aktuellerNutzer && k.autor === aktuellerNutzer.name);
       const zeile = document.createElement("div");
       zeile.className = "kontakt-row";
       zeile.innerHTML = `
-        <span class="kontakt-row__nummer">${escapeHtml(k.nummer)}</span>
+        <span class="kontakt-row__nummer" data-role="copy-kontakt" data-nummer="${escapeHtml(k.nummer)}" title="Klicken zum Kopieren">${escapeHtml(k.nummer)}</span>
         <span class="kontakt-row__name">${escapeHtml(k.name)}</span>
         <span class="kontakt-row__notiz">${k.notiz ? escapeHtml(k.notiz) : "—"}</span>
-        <button type="button" class="icon-btn icon-btn--copy" data-role="copy-kontakt" data-nummer="${escapeHtml(k.nummer)}" title="Nummer kopieren">📋</button>
-        ${darfLoeschen ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-kontakt" data-id="${k.id}" title="Kontakt löschen">🗑</button>` : ""}
+        ${
+          darfBearbeiten
+            ? `
+              <button type="button" class="icon-btn icon-btn--edit" data-role="toggle-edit-kontakt" data-id="${k.id}" title="Kontakt bearbeiten">✎</button>
+              <button type="button" class="icon-btn icon-btn--delete" data-role="delete-kontakt" data-id="${k.id}" title="Kontakt löschen">🗑</button>
+            `
+            : ""
+        }
       `;
       el.kontaktList.appendChild(zeile);
+
+      if (darfBearbeiten) {
+        const bearbeitenZeile = document.createElement("div");
+        bearbeitenZeile.className = "kontakt-edit-form";
+        bearbeitenZeile.id = `kontakt-edit-${k.id}`;
+        bearbeitenZeile.hidden = true;
+        const ziffernOhnePrefix = k.nummer.replace(/^BW-/, "");
+        bearbeitenZeile.innerHTML = `
+          <div class="kontakt-nummer-field">
+            <span class="kontakt-nummer-field__prefix">BW-</span>
+            <input type="text" inputmode="numeric" value="${escapeHtml(ziffernOhnePrefix)}" data-role="edit-kontakt-nummer" />
+          </div>
+          <input type="text" class="field-input" value="${escapeHtml(k.name)}" placeholder="Name" data-role="edit-kontakt-name" style="flex: 1 1 200px;" />
+          <input type="text" class="field-input" value="${escapeHtml(k.notiz)}" placeholder="Notiz" data-role="edit-kontakt-notiz" style="flex: 1 1 200px;" />
+          <button type="button" class="btn btn--primary" data-role="confirm-edit-kontakt" data-id="${k.id}">Speichern</button>
+        `;
+        el.kontaktList.appendChild(bearbeitenZeile);
+      }
     });
   }
 
@@ -1791,6 +1843,42 @@
             .then(() => zeigeToast(`„${nummer}“ kopiert.`))
             .catch(() => zeigeToast("Kopieren fehlgeschlagen."));
         }
+        return;
+      }
+
+      const toggleBtn = event.target.closest('[data-role="toggle-edit-kontakt"]');
+      if (toggleBtn) {
+        const form = document.getElementById(`kontakt-edit-${toggleBtn.dataset.id}`);
+        if (form) {
+          form.hidden = !form.hidden;
+          if (!form.hidden) form.querySelector('[data-role="edit-kontakt-name"]').focus();
+        }
+        return;
+      }
+
+      const confirmBtn = event.target.closest('[data-role="confirm-edit-kontakt"]');
+      if (confirmBtn) {
+        const form = confirmBtn.closest(".kontakt-edit-form");
+        const ziffern = form.querySelector('[data-role="edit-kontakt-nummer"]').value.replace(/\D/g, "");
+        const name = form.querySelector('[data-role="edit-kontakt-name"]').value.trim();
+        const notiz = form.querySelector('[data-role="edit-kontakt-notiz"]').value.trim();
+
+        if (!ziffern) return zeigeToast("Bitte eine gültige Nummer eingeben.");
+        if (!name) return zeigeToast("Bitte einen Namen eingeben.");
+
+        const neueNummer = `BW-${ziffern}`;
+        if (letzteKontakte.some((k) => k.id !== confirmBtn.dataset.id && k.nummer === neueNummer)) {
+          return zeigeToast(`„${neueNummer}“ ist bereits vergeben.`);
+        }
+
+        db.collection(KONTAKTE_COLLECTION)
+          .doc(confirmBtn.dataset.id)
+          .update({ nummer: neueNummer, name, notiz })
+          .then(() => zeigeToast("Kontakt aktualisiert."))
+          .catch((fehler) => {
+            console.error("Kontakt konnte nicht aktualisiert werden:", fehler);
+            zeigeToast("Kontakt konnte nicht aktualisiert werden.");
+          });
         return;
       }
 
@@ -2951,7 +3039,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 52;
+  const APP_VERSION = 54;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
