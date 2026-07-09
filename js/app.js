@@ -930,7 +930,15 @@
       .set({
         name: aktuellerNutzer.name,
         rolle: aktuellerNutzer.rolle,
-        aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp(),
+        // WICHTIG: bewusst ein normaler Client-Zeitstempel (Date.now()) statt
+        // firebase.firestore.FieldValue.serverTimestamp() - letzteres liefert
+        // beim eigenen, lokalen Update erst einmal "null", bis die Antwort
+        // vom Server zurückkommt. Da unser Live-Listener aber SOFORT mit
+        // diesem lokalen (noch unbestätigten) Stand feuert, wurde die eigene
+        // Präsenz für ein paar Sekunden fälschlich als "veraltet" (offline)
+        // gewertet - das war die Ursache für den verzögerten/fehlenden
+        // Online-Status.
+        aktualisiertAm: Date.now(),
       })
       .catch((fehler) => console.warn("Presence-Update fehlgeschlagen:", fehler));
   }
@@ -946,7 +954,11 @@
         letzterPresenceSnapshot = [];
         snapshot.forEach((doc) => {
           const daten = doc.data();
-          const zeitpunkt = daten.aktualisiertAm && daten.aktualisiertAm.toMillis ? daten.aktualisiertAm.toMillis() : 0;
+          // aktualisiertAm ist jetzt ein normaler Zahlen-Zeitstempel
+          // (Date.now()), kein Firestore-Timestamp-Objekt mehr - daher kein
+          // .toMillis() nötig. Fallback auf 0 nur, falls ein sehr alter/
+          // fehlerhafter Eintrag noch das alte Format hätte.
+          const zeitpunkt = typeof daten.aktualisiertAm === "number" ? daten.aktualisiertAm : 0;
           letzterPresenceSnapshot.push({ name: daten.name, rolle: daten.rolle, aktualisiertAm: zeitpunkt });
         });
         renderOnlineListe();
@@ -1027,162 +1039,130 @@
     const toggleBtn = document.getElementById("btn-toggle-mitarbeiter-bearbeiten");
     if (toolbar) toolbar.hidden = !admin;
     if (toggleBtn) {
-      toggleBtn.innerHTML = bearbeitenAktiv
-        ? '<span class="btn__icon">✓</span> Fertig'
-        : '<span class="btn__icon">✎</span> Bearbeiten';
+      toggleBtn.textContent = bearbeitenAktiv ? "Fertig" : "Bearbeiten";
       toggleBtn.classList.toggle("btn--ghost-active", bearbeitenAktiv);
     }
 
-    // Eine einzelne Person als Ausweis-Kachel. Nur im Bearbeiten-Modus
-    // editierbar (Name-Feld + Rang-Dropdown), sonst nur lesbar - egal ob
-    // Admin oder nicht.
-    // Drei Hierarchie-Ebenen mit jeweils komplett eigener Optik (nicht nur
-    // ein kleines Symbol): Leitung (Chefarzt/Stellv. Chefarzt) bekommt große,
-    // goldakzentuierte Kacheln mit Kronen-Abzeichen. Oberärzte bekommen einen
-    // farbigen Ring um den Avatar. Der Rest bleibt schlicht.
-    const OBERARZT_EBENE = new Set(["Stellv. Oberarzt", "Oberarzt"]);
-    const CHEFARZT_EBENE = new Set(["Stellv. Chefarzt", "Chefarzt"]);
+    // Ausschließlich anhand der VORHANDENEN Ränge gruppiert - keine feste
+    // Namensliste, keine neuen Ränge, keine Umbenennung. "Leitung" fasst alle
+    // Führungsränge zusammen (Ärztliche Direktion, Chefarzt, Stellv.
+    // Chefarzt, Oberarzt, Stellv. Oberarzt), unabhängig von der Station.
+    // Die Reihenfolge folgt exakt der bestehenden Rangordnung.
+    const LEITUNGS_RANGFOLGE = ["Ärztliche Direktion", "Chefarzt", "Stellv. Chefarzt", "Oberarzt", "Stellv. Oberarzt"];
+    const TEAM_RANGFOLGE = ["Facharzt", "Assistenzarzt", "Anwärter"];
+    const ALLE_RAENGE = [...LEITUNGS_RANGFOLGE, ...TEAM_RANGFOLGE];
 
-    function ebeneVon(rolle) {
-      if (CHEFARZT_EBENE.has(rolle)) return "leitung";
-      if (OBERARZT_EBENE.has(rolle)) return "oberarzt";
-      return "team";
+    function rangIndex(rolle) {
+      const i = ALLE_RAENGE.indexOf(rolle);
+      return i === -1 ? ALLE_RAENGE.length : i;
     }
 
-    function badgeKachel(stationKey, index, slot, farbklasse) {
+    function istLeitungsRang(rolle) {
+      return LEITUNGS_RANGFOLGE.includes(rolle);
+    }
+
+    // Eine einzelne Zeile: nur im Bearbeiten-Modus editierbar, sonst reiner Text.
+    function personalZeile(stationKey, index, slot, { leitung } = {}) {
       const istDirektion = stationKey === "direktion";
       const istDu = aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
-      const initiale = slot.name ? slot.name.trim().charAt(0).toUpperCase() : "?";
-      const ebene = ebeneVon(slot.rolle);
-      const abzeichen = ebene === "leitung" ? '<span class="badge-tile__abzeichen">👑</span>' : "";
+      const stationLabel = !istDirektion ? STATIONEN[stationKey].label : "";
 
       if (!bearbeitenAktiv) {
         if (!slot.name) {
-          return `<div class="badge-tile badge-tile--frei"></div>`;
+          return `<div class="personnel-row personnel-row--empty"><span>Unbesetzt</span></div>`;
         }
         return `
-          <div class="badge-tile badge-tile--${ebene} ${istDu ? "badge-tile--du" : ""}">
-            <span class="badge-tile__avatar-wrap">
-              <span class="badge-tile__avatar badge-tile__avatar--${farbklasse}">${escapeHtml(initiale)}</span>
-              ${abzeichen}
-            </span>
-            <span class="badge-tile__name">${escapeHtml(slot.name)}</span>
-            <span class="badge-tile__rolle">${escapeHtml(slot.rolle)}</span>
-            ${istDu ? '<span class="badge-tile__du">Du</span>' : ""}
+          <div class="personnel-row ${leitung ? "personnel-row--leitung" : ""}">
+            <span class="personnel-row__name">${escapeHtml(slot.name)}${istDu ? '<span class="personnel-row__du">Du</span>' : ""}</span>
+            <span class="personnel-row__rang">${escapeHtml(slot.rolle)}</span>
+            <span class="personnel-row__station">${escapeHtml(stationLabel)}</span>
           </div>
         `;
       }
 
-      const rolleFeld = istDirektion
-        ? `<span class="badge-tile__rolle">Ärztliche Direktion</span>`
-        : `<select class="badge-tile__rolle-select" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
+      const rangFeld = istDirektion
+        ? `<span class="personnel-row__rang">Ärztliche Direktion</span>`
+        : `<select class="personnel-row__rang-select" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
             ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${r}</option>`).join("")}
           </select>`;
 
       return `
-        <div class="badge-tile badge-tile--edit badge-tile--${ebene}">
-          <span class="badge-tile__avatar-wrap">
-            <span class="badge-tile__avatar badge-tile__avatar--${farbklasse}">${escapeHtml(initiale)}</span>
-            ${abzeichen}
-          </span>
+        <div class="personnel-row personnel-row--edit ${leitung ? "personnel-row--leitung" : ""}">
           <input
             type="text"
-            class="badge-tile__name-input"
+            class="personnel-row__name-input"
             placeholder="Name eintragen..."
             value="${escapeHtml(slot.name)}"
             data-role="slot-name"
             data-station="${stationKey}"
             data-index="${index}"
           />
-          ${rolleFeld}
+          ${rangFeld}
+          <span class="personnel-row__station">${escapeHtml(stationLabel)}</span>
         </div>
       `;
     }
 
-    // Baut einen Hierarchie-Abschnitt (Leitung / Oberärzte / Team) - wird nur
-    // angezeigt, wenn darin auch tatsächlich jemand steht (außer "Team",
-    // das auch die leeren Plätze enthält und daher immer sichtbar ist).
-    function hierarchieAbschnitt(titel, ebeneName, eintraege, farbklasse) {
-      if (eintraege.length === 0) return "";
-      const kacheln = eintraege.map(({ slot, index }) => badgeKachel(eintraege.stationKey, index, slot, farbklasse)).join("");
-      return `
-        <div class="hierarchie-abschnitt hierarchie-abschnitt--${ebeneName}">
-          ${titel ? `<h4 class="hierarchie-abschnitt__titel">${titel}</h4>` : ""}
-          <div class="hierarchie-abschnitt__grid hierarchie-abschnitt__grid--${ebeneName}">${kacheln}</div>
-        </div>
-      `;
-    }
-
-    // Feste Rangfolge fürs Sortieren innerhalb einer Hierarchie-Gruppe -
-    // leere Plätze landen immer ganz am Ende ihrer Gruppe.
-    const RANG_REIHENFOLGE = ["Chefarzt", "Stellv. Chefarzt", "Oberarzt", "Stellv. Oberarzt", "Facharzt", "Assistenzarzt", "Anwärter"];
-    function rangIndex(rolle) {
-      const i = RANG_REIHENFOLGE.indexOf(rolle);
-      return i === -1 ? RANG_REIHENFOLGE.length : i;
-    }
-    function nachRangSortiert(liste) {
-      return [...liste].sort((a, b) => {
-        if (!a.slot.name && b.slot.name) return 1;
-        if (a.slot.name && !b.slot.name) return -1;
-        return rangIndex(a.slot.rolle) - rangIndex(b.slot.rolle);
+    // Alle Personen aus allen Stationen (inkl. Direktion) in eine gemeinsame,
+    // flache Liste einsammeln - jede Person "weiß", aus welchem
+    // Station+Slot sie stammt (wichtig fürs Bearbeiten).
+    function alleEintraege() {
+      const ergebnis = [];
+      ["direktion", "rhodes", "blackwater"].forEach((stationKey) => {
+        (stationenDaten[stationKey] || []).forEach((slot, index) => {
+          ergebnis.push({ stationKey, index, slot });
+        });
       });
+      return ergebnis;
     }
 
-    function stationInhalt(stationKey) {
-      const plaetze = stationenDaten[stationKey] || [];
-      const farbklasse = stationKey === "rhodes" ? "gruen" : "rot";
+    const eintraege = alleEintraege();
 
-      const mitIndex = plaetze.map((slot, index) => ({ slot, index, stationKey }));
-      const leitung = nachRangSortiert(mitIndex.filter((e) => e.slot.name && ebeneVon(e.slot.rolle) === "leitung"));
-      const oberarzt = nachRangSortiert(mitIndex.filter((e) => e.slot.name && ebeneVon(e.slot.rolle) === "oberarzt"));
-      const team = nachRangSortiert(mitIndex.filter((e) => !e.slot.name || ebeneVon(e.slot.rolle) === "team"));
+    // Leitung: alle besetzten Plätze mit Führungsrang, sortiert nach
+    // bestehender Rangordnung (Direktion zuerst, dann Chefarzt, ...).
+    const leitungsEintraege = eintraege
+      .filter((e) => e.slot.name && istLeitungsRang(e.slot.rolle))
+      .sort((a, b) => rangIndex(a.slot.rolle) - rangIndex(b.slot.rolle));
 
-      leitung.stationKey = stationKey;
-      oberarzt.stationKey = stationKey;
-      team.stationKey = stationKey;
+    const leitungHtml =
+      leitungsEintraege.length === 0
+        ? `<p class="personnel-empty-hint">Noch niemand mit Führungsrang eingetragen.</p>`
+        : leitungsEintraege.map((e) => personalZeile(e.stationKey, e.index, e.slot, { leitung: true })).join("");
 
+    // Übriges Personal: nach Station gruppiert (nötig, weil jede Station
+    // eigene, feste Plätze hat), innerhalb jeder Station nach Rang sortiert.
+    function teamSpalte(stationKey) {
+      const spalte = eintraege
+        .filter((e) => e.stationKey === stationKey && (!e.slot.name || !istLeitungsRang(e.slot.rolle)))
+        .sort((a, b) => {
+          if (!a.slot.name && b.slot.name) return 1;
+          if (a.slot.name && !b.slot.name) return -1;
+          return rangIndex(a.slot.rolle) - rangIndex(b.slot.rolle);
+        });
+      const zeilen = spalte.map((e) => personalZeile(e.stationKey, e.index, e.slot)).join("");
       return `
-        ${hierarchieAbschnitt("👑 Leitung", "leitung", leitung, farbklasse)}
-        ${hierarchieAbschnitt("🎖️ Oberärzte", "oberarzt", oberarzt, farbklasse)}
-        ${hierarchieAbschnitt("Team", "team", team, farbklasse)}
+        <div class="personnel-column">
+          <h3 class="personnel-column__titel">${escapeHtml(STATIONEN[stationKey].label)}</h3>
+          <div class="personnel-list">${zeilen}</div>
+        </div>
       `;
     }
-
-    function stationTab(stationKey) {
-      const info = STATIONEN[stationKey];
-      const besetzt = (stationenDaten[stationKey] || []).filter((s) => s.name).length;
-      const aktiv = aktiveStationReiter === stationKey;
-      return `
-        <button type="button" class="station-tab station-tab--${info.farbe} ${aktiv ? "station-tab--active" : ""}" data-role="station-tab" data-station="${stationKey}">
-          ${stationKey === "rhodes" ? "🟢" : "🔴"} ${escapeHtml(info.label)}
-          <span class="station-tab__count">${besetzt}/${info.max}</span>
-        </button>
-      `;
-    }
-
-    const direktionSlot = (stationenDaten.direktion && stationenDaten.direktion[0]) || { name: "", rolle: "Ärztliche Direktion" };
 
     el.staffGrid.innerHTML = `
-      <div class="direction-badge">
-        ${badgeKachel("direktion", 0, direktionSlot, "gold")}
-      </div>
-      <div class="station-tabs">
-        ${stationTab("rhodes")}
-        ${stationTab("blackwater")}
-      </div>
-      <div class="station-content">
-        ${stationInhalt(aktiveStationReiter)}
-      </div>
+      <section class="personnel-section">
+        <h2 class="personnel-section__titel">Leitung</h2>
+        <div class="personnel-list personnel-list--leitung">${leitungHtml}</div>
+      </section>
+
+      <section class="personnel-section personnel-section--team">
+        <h2 class="personnel-section__titel">Personal</h2>
+        <div class="personnel-columns">
+          ${teamSpalte("rhodes")}
+          ${teamSpalte("blackwater")}
+        </div>
+      </section>
     `;
   }
-
-  // Klick auf die Rhodes/Blackwater-Reiter
-  document.addEventListener("click", (event) => {
-    const tabBtn = event.target.closest('[data-role="station-tab"]');
-    if (!tabBtn) return;
-    aktiveStationReiter = tabBtn.dataset.station;
-    renderMitarbeiterListe();
-  });
 
   // Bearbeiten-Button: schaltet zwischen reiner Ansicht und editierbaren Feldern um
   const btnToggleMitarbeiterBearbeiten = document.getElementById("btn-toggle-mitarbeiter-bearbeiten");
@@ -3039,7 +3019,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 57;
+  const APP_VERSION = 59;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
