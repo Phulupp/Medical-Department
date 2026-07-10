@@ -485,10 +485,12 @@
     return ergebnis.innerHTML;
   }
 
-  // Formatierungsleisten mit den Feldern verbinden. Bei contenteditable-
-  // Rich-Editoren (Notizen/Ankündigungen) wirkt Fett/Unterstrichen/Schriftfarbe
-  // sofort WYSIWYG (kein **/__ mehr). Das Medizin-Wiki-Textfeld ist weiterhin
-  // ein normales Textfeld mit **/__ Markdown.
+  // Formatierungsleisten mit den Feldern verbinden. Alle drei Rich-Editoren
+  // (Ankündigungen, Notizen, Medizin-Wiki) sind contenteditable-Felder -
+  // Fett/Unterstrichen/Schriftfarbe wirken überall sofort WYSIWYG (kein
+  // **/__ mehr). Der **/__-Markdown-Zweig unten bleibt nur noch als
+  // Rückfallebene für den Fall bestehen, dass irgendwo doch noch ein
+  // reines Textfeld mit .format-toolbar verbunden wird.
   document.querySelectorAll(".format-toolbar").forEach((toolbar) => {
     const feld = document.getElementById(toolbar.dataset.target);
     if (!feld) return;
@@ -507,7 +509,9 @@
         return;
       }
 
-      // Altes Verhalten fürs Medizin-Wiki-Textfeld (Markdown-Marker einfügen)
+      // Rückfallebene für reine Textfelder (Markdown-Marker einfügen) - wird
+      // aktuell von keinem Formular mehr genutzt, da auch das Medizin-Wiki
+      // jetzt ein contenteditable-Rich-Editor ist.
       btn.addEventListener("click", () => {
         const marker = btn.dataset.format === "bold" ? "**" : "__";
         const start = feld.selectionStart;
@@ -2788,7 +2792,7 @@
         ${aktionsButtons}
         <span class="info-card__name">${escapeHtml(info.titel)}</span>
         <span class="info-card__kategorie">${escapeHtml(kategorieLabel)}</span>
-        <span class="info-card__text">${formatiereNotizText(info.text)}</span>
+        <span class="info-card__text">${verarbeiteRichInhalt(info.text)}</span>
         ${info.hinweis ? `<span class="info-card__hint">${formatiereNotizText(info.hinweis)}</span>` : ""}
       `;
       el.infosGrid.appendChild(card);
@@ -2814,7 +2818,7 @@
   function setzeInfoFormularZurueck() {
     el.infoEditingId.value = "";
     el.infoTitelInput.value = "";
-    el.infoTextInput.value = "";
+    el.infoTextInput.innerHTML = "";
     el.infoHinweisInput.value = "";
     if (el.infoKategorieInput) el.infoKategorieInput.value = "";
     el.infoFormTitle.textContent = "Neuen Info-Eintrag hinzufügen";
@@ -2828,10 +2832,11 @@
       if (!istAdmin()) return;
 
       const titel = el.infoTitelInput.value.trim();
-      const text = el.infoTextInput.value.trim();
+      const text = el.infoTextInput.innerHTML.trim();
+      const nurText = el.infoTextInput.textContent.trim();
       const hinweis = el.infoHinweisInput.value.trim();
       const kategorie = el.infoKategorieInput ? el.infoKategorieInput.value.trim() : "";
-      if (!titel || !text) return;
+      if (!titel || !nurText) return;
 
       const bearbeiteId = el.infoEditingId.value;
 
@@ -2839,15 +2844,23 @@
         const info = infosListe.find((i) => i.id === bearbeiteId);
         if (info) {
           info.titel = titel;
-          info.text = text;
+          info.text = sanitisiereRichText(text);
           info.hinweis = hinweis || undefined;
           info.kategorie = kategorie || undefined;
         }
         speichereInfos();
+        renderInfos(); // sofort sichtbar, nicht erst beim nächsten Firestore-Update
         zeigeToast(`„${titel}“ wurde aktualisiert.`);
       } else {
-        infosListe.push({ id: erzeugeId(titel), titel, text, hinweis: hinweis || undefined, kategorie: kategorie || undefined });
+        infosListe.push({
+          id: erzeugeId(titel),
+          titel,
+          text: sanitisiereRichText(text),
+          hinweis: hinweis || undefined,
+          kategorie: kategorie || undefined,
+        });
         speichereInfos();
+        renderInfos(); // sofort sichtbar, nicht erst beim nächsten Firestore-Update
         zeigeToast(`„${titel}“ wurde zu den Infos hinzugefügt.`);
       }
 
@@ -2871,6 +2884,7 @@
           () => {
             infosListe = infosListe.filter((i) => i.id !== deleteBtn.dataset.id);
             speichereInfos();
+            renderInfos(); // sofort sichtbar, nicht erst beim nächsten Firestore-Update
             zeigeToast(`„${info.titel}“ wurde entfernt.`);
           }
         );
@@ -2884,7 +2898,7 @@
 
         el.infoEditingId.value = info.id;
         el.infoTitelInput.value = info.titel;
-        el.infoTextInput.value = info.text;
+        el.infoTextInput.innerHTML = verarbeiteRichInhalt(info.text);
         el.infoHinweisInput.value = info.hinweis || "";
         if (el.infoKategorieInput) el.infoKategorieInput.value = info.kategorie || "";
         el.infoFormTitle.textContent = `„${info.titel}“ bearbeiten`;
@@ -3375,7 +3389,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 68;
+  const APP_VERSION = 70;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
