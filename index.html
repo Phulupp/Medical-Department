@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=68" />
+  <link rel="stylesheet" href="css/style.css?v=70" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -432,10 +432,24 @@
             <datalist id="info-kategorien-liste"></datalist>
 
             <div class="format-toolbar" data-target="info-text-input">
-              <button type="button" class="format-btn" data-format="bold" title="Fett im Beschreibungsfeld (markierten Text auswählen)"><strong>F</strong></button>
-              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen im Beschreibungsfeld (markierten Text auswählen)"><u>U</u></button>
+              <button type="button" class="format-btn" data-format="bold" title="Fett (markierten Text auswählen)"><strong>F</strong></button>
+              <button type="button" class="format-btn" data-format="underline" title="Unterstrichen (markierten Text auswählen)"><u>U</u></button>
+              <span class="format-toolbar__divider"></span>
+              <div class="color-picker">
+                <button type="button" class="format-btn color-picker__trigger" data-role="color-trigger" title="Textfarbe">
+                  A<span class="color-picker__underline" data-role="color-underline"></span>
+                </button>
+                <div class="color-picker__popover" data-role="color-popover" hidden>
+                  <button type="button" class="color-picker__option" data-color="#b8860b"><span class="color-picker__dot" style="background:#b8860b"></span>Gold</button>
+                  <button type="button" class="color-picker__option" data-color="#1a7a3c"><span class="color-picker__dot" style="background:#1a7a3c"></span>Grün</button>
+                  <button type="button" class="color-picker__option" data-color="#b71c1c"><span class="color-picker__dot" style="background:#b71c1c"></span>Rot</button>
+                  <button type="button" class="color-picker__option" data-color="#1a56db"><span class="color-picker__dot" style="background:#1a56db"></span>Blau</button>
+                  <div class="color-picker__divider"></div>
+                  <button type="button" class="color-picker__option color-picker__option--reset" data-color="__reset__">Farbe entfernen</button>
+                </div>
+              </div>
             </div>
-            <textarea id="info-text-input" class="field-input" placeholder="Beschreibung / Wirkung..." required></textarea>
+            <div class="rich-editor" id="info-text-input" contenteditable="true" data-placeholder="Beschreibung / Wirkung..."></div>
 
             <div class="info-form-actions">
               <button type="submit" class="btn btn--primary" id="info-form-submit">Hinzufügen</button>
@@ -688,7 +702,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=68"></script>
-  <script src="js/app.js?v=68"></script>
+  <script src="js/firebase-config.js?v=70"></script>
+  <script src="js/app.js?v=70"></script>
 </body>
 </html>
