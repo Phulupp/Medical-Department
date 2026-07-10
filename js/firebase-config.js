@@ -31,6 +31,14 @@ if (typeof firebase !== "undefined") {
   firebase.initializeApp(firebaseConfig);
   auth = firebase.auth();
   db = firebase.firestore();
+  // Sicherheitsnetz: Firestore lehnt "undefined" als Feldwert normalerweise
+  // komplett ab (auch verschachtelt in Arrays/Objekten) und verwirft dann
+  // den GESAMTEN Speichervorgang, nicht nur das betroffene Feld - das hat
+  // z. B. beim Medizin-Wiki dazu geführt, dass Änderungen an Kategorie
+  // scheinbar "nicht gespeichert" wurden. Mit dieser Einstellung werden
+  // undefined-Felder beim Speichern einfach stillschweigend weggelassen,
+  // statt den ganzen Schreibvorgang fehlschlagen zu lassen.
+  db.settings({ ignoreUndefinedProperties: true });
 } else {
   console.warn(
     "Firebase-SDK konnte nicht geladen werden. Bitte Internetverbindung prüfen."
