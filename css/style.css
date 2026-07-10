@@ -1,17 +1,16 @@
 /* ==========================================================================
    BLACK WOLF MEDICAL — Ärztliche Registratur
    ---------------------------------------------------------------------------
-   Konzept: ein exklusives medizinisches Archiv, 1905. Kein Cowboy-Kitsch,
-   sondern die stille Eleganz eines gut geführten Registers — Walnussholz,
-   Messingbeschläge, Ledereinbände, Gaslicht. Zwei Zustände: "bei Tag"
-   (helles Registerpapier) und "bei Lampenlicht" (dunkles Archiv).
+   Konzept: ruhige, hochwertige interne Verwaltungssoftware. Anthrazit statt
+   tiefschwarz, Gold als einzige Akzentfarbe, viel Weißraum, dünne
+   Trennlinien statt großer Boxen/Schatten. Ein einziges Theme (dunkel),
+   horizontale Top-Navigation statt Sidebar.
 
-   Typografie: Cormorant Garamond für Überschriften (graviert, exklusiv),
-   Inter für Fließtext (klar, modern), JetBrains Mono für Zahlen/Daten
-   (Registernummern, Beträge, Zeitstempel).
+   Typografie: Cormorant Garamond für Überschriften, Inter für Fließtext
+   und Zahlen (tabular-nums für saubere Ausrichtung, keine dritte Schrift).
 
-   Signatur-Element: die dünne Messinglinie als Trenner/Unterstreichung,
-   und "N°"-artige Eyebrow-Labels, die an Archivkästen erinnern.
+   Signatur-Element: die dünne Gold-Linie als Trenner/Unterstreichung
+   (z. B. aktiver Nav-Punkt), und "N°"-artige Eyebrow-Labels.
    Reine Desktop-Ansicht (keine mobile Optimierung).
    ========================================================================== */
 
@@ -19,57 +18,58 @@
    1. Design-Tokens
    -------------------------------------------------------------------------- */
 :root {
-  /* Grundflächen — "bei Tag": gealtertes Registerpapier */
-  --color-bg: #e9e1cf;
-  --color-surface: #f6f1e3;
-  --color-surface-soft: #ede4d0;
-  --color-surface-raised: #fbf8ef;
-  --color-hover: #ede4d0;
+  /* Grundflächen — Anthrazit, drei ruhige Ebenen statt Papierschichten */
+  --color-bg: #121212;
+  --color-bg-secondary: #181715;
+  --color-surface: #1d1a17;
+  --color-surface-soft: #221f1b;
+  --color-surface-raised: #201d19;
+  --color-hover: #242019;
 
-  /* Text — warme Tinte auf Papier */
-  --color-text: #2a2019;
-  --color-text-muted: #6b5d48;
-  --color-text-soft: #9c8f78;
+  /* Text — warmes Off-White auf Anthrazit */
+  --color-text: #ece6d9;
+  --color-text-muted: #aca69a;
+  --color-text-soft: #8c8881;
 
-  /* Messing — die eine Markenfarbe */
-  --color-brass: #8a6a34;
-  --color-brass-bright: #a9873f;
-  --color-brass-soft: #e3d7b8;
-  --color-brass-text: #6f5527;
+  /* Gold — die eine Markenfarbe */
+  --color-brass: #c6a15b;
+  --color-brass-bright: #d8bb7d;
+  --color-brass-soft: #2a2216;
+  --color-brass-text: #c6a15b;
 
-  /* Siegellack-Rot — Gefahr/Löschen */
-  --color-oxblood: #7a3b2e;
-  --color-oxblood-soft: #e9d8d1;
-  --color-oxblood-text: #7a3b2e;
+  /* Rot — Gefahr/Löschen, gedämpft */
+  --color-oxblood: #b37363;
+  --color-oxblood-soft: #2a1f1b;
+  --color-oxblood-text: #ce9384;
 
-  /* Waldgrün — zweiter, sehr sparsamer Akzent (Herstellung, Rhodes) */
-  --color-sage: #4f6b3f;
-  --color-sage-soft: #dde3d0;
-  --color-sage-text: #45592f;
+  /* Grün — zweiter, sehr sparsamer Statusakzent (Herstellung, Verkauf) */
+  --color-sage: #8ca377;
+  --color-sage-soft: #1e241a;
+  --color-sage-text: #a3b98c;
 
-  /* Personal-Kategorie: fester Farbcode (Vorgabe) */
-  --color-personal: #4f8ef7;
-  --color-personal-soft: #dbe7fc;
-  --color-personal-text: #2f5fb0;
+  /* Blau — Personal-Kategorie, gedämpft */
+  --color-personal: #7c9bc7;
+  --color-personal-soft: #1b2330;
+  --color-personal-text: #9fbbde;
 
   /* Neutral (Allgemein) */
-  --color-slate: #6b5d48;
-  --color-slate-soft: #ece4d0;
-  --color-slate-text: #574a37;
+  --color-slate: #aca69a;
+  --color-slate-soft: #201c18;
+  --color-slate-text: #c7bca8;
 
-  /* Marken-Messing fürs Emblem */
-  --color-brand-start: #a9873f;
-  --color-brand-end: #6f5527;
+  /* Marken-Gold fürs Emblem */
+  --color-brand-start: #d8bb7d;
+  --color-brand-end: #9c7c3e;
 
-  /* Rahmen */
-  --color-input-border: rgba(42, 32, 25, 0.2);
-  --color-card-border: rgba(42, 32, 25, 0.12);
-  --color-hairline: rgba(42, 32, 25, 0.14);
+  /* Rahmen — ein einziger dünner Linien-Ton */
+  --color-input-border: #2a2723;
+  --color-card-border: #2a2723;
+  --color-hairline: #2a2723;
 
-  /* Schatten — sehr zurückhaltend, wie Papierschichten */
-  --shadow-soft: 0 1px 2px rgba(42, 32, 25, 0.06), 0 6px 16px rgba(42, 32, 25, 0.05);
-  --shadow-medium: 0 10px 26px rgba(42, 32, 25, 0.1);
-  --shadow-modal: 0 30px 70px rgba(42, 32, 25, 0.24);
+  /* Schatten — sehr zurückhaltend, nur für schwebende Ebenen (Modals/Popover) */
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-medium: 0 10px 26px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 30px 70px rgba(0, 0, 0, 0.55);
 
   /* Radien — knapp, architektonisch, kein "App-Bubbly" */
   --radius-sm: 4px;
@@ -78,60 +78,13 @@
   --radius-pill: 999px;
 
   /* Layout */
-  --sidebar-width: 232px;
-  --content-width: 1600px;
+  --content-width: 1480px;
+  --topnav-height: 68px;
 
-  /* Schrift */
+  /* Schrift — nur zwei Familien, keine dritte Mono-Schrift */
   --font-display: "Cormorant Garamond", Georgia, serif;
   --font-body: "Inter", "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", "Courier New", monospace;
-}
-
-/* --------------------------------------------------------------------------
-   1b. Dark Mode — "bei Lampenlicht"
-   -------------------------------------------------------------------------- */
-html[data-theme="dark"] {
-  --color-bg: #151311;
-  --color-surface: #1b1815;
-  --color-surface-soft: #201c18;
-  --color-surface-raised: #201c18;
-  --color-hover: #26211c;
-
-  --color-text: #f4f1ec;
-  --color-text-muted: #a59b8c;
-  --color-text-soft: #7d7466;
-
-  --color-brass: #c9a15c;
-  --color-brass-bright: #ddb877;
-  --color-brass-soft: #2b2419;
-  --color-brass-text: #c9a15c;
-
-  --color-oxblood: #c1786a;
-  --color-oxblood-soft: #2e1f1b;
-  --color-oxblood-text: #dd9a8d;
-
-  --color-sage: #93ab78;
-  --color-sage-soft: #212a1b;
-  --color-sage-text: #a9c18d;
-
-  --color-personal: #7fa6fb;
-  --color-personal-soft: #1b2740;
-  --color-personal-text: #a8c6fb;
-
-  --color-slate: #a59b8c;
-  --color-slate-soft: #201c18;
-  --color-slate-text: #c7bca8;
-
-  --color-brand-start: #ddb877;
-  --color-brand-end: #a1793f;
-
-  --color-input-border: #2e2822;
-  --color-card-border: #2e2822;
-  --color-hairline: #2e2822;
-
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.32);
-  --shadow-medium: 0 12px 30px rgba(0, 0, 0, 0.42);
-  --shadow-modal: 0 34px 80px rgba(0, 0, 0, 0.62);
+  --font-mono: var(--font-body);
 }
 
 /* --------------------------------------------------------------------------
@@ -154,8 +107,8 @@ body {
   font-family: var(--font-body);
   font-size: 14px;
   line-height: 1.5;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
-  transition: background 0.2s ease, color 0.2s ease;
 }
 
 button {
@@ -225,36 +178,42 @@ p {
    -------------------------------------------------------------------------- */
 .app {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   min-height: 100vh;
 }
 
 /* --------------------------------------------------------------------------
-   4. Sidebar
+   4. Topnav — horizontale Navigation, keine Sidebar
    -------------------------------------------------------------------------- */
-.sidebar {
-  width: var(--sidebar-width);
-  flex-shrink: 0;
+.topnav {
   position: sticky;
   top: 0;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-surface);
-  border-right: 1px solid var(--color-hairline);
-  padding: 28px 18px 20px;
+  z-index: 40;
+  flex-shrink: 0;
+  background: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-hairline);
 }
 
-.sidebar__brand {
+.topnav__inner {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  height: var(--topnav-height);
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 0 6px 40px;
+  gap: 44px;
+  padding: 0 48px;
+}
+
+.topnav__brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-shrink: 0;
 }
 
 .brand-mark {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -271,7 +230,7 @@ p {
 .brand-text__title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 17px;
+  font-size: 16.5px;
   letter-spacing: 0.01em;
   color: var(--color-text);
 }
@@ -285,62 +244,66 @@ p {
   color: var(--color-brass-text);
 }
 
-.sidebar__nav {
+.topnav__nav {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
 }
 
 /* --------------------------------------------------------------------------
    5. Navigation
    -------------------------------------------------------------------------- */
 .nav__item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 13.5px;
+  padding: 8px 4px;
+  margin: 0 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--color-text-muted);
-  transition: color 0.15s ease, background 0.15s ease;
+  color: var(--color-text-soft);
+  transition: color 0.15s ease;
   white-space: nowrap;
+}
+
+.nav__item::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--color-brass);
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .nav__item:hover {
   color: var(--color-text);
-  background: var(--color-hover);
 }
 
 .nav__item--active {
-  color: var(--color-brass-text);
+  color: var(--color-text);
   font-weight: 600;
-  background: var(--color-hover);
 }
 
-.nav__icon {
-  width: 17px;
-  height: 17px;
-  flex-shrink: 0;
-  opacity: 0.75;
-  transition: opacity 0.15s ease;
-}
-
-.nav__item--active .nav__icon,
-.nav__item:hover .nav__icon {
+.nav__item--active::after {
   opacity: 1;
+  transform: translateY(0);
 }
 
 /* --------------------------------------------------------------------------
-   6. Sidebar-Fuß: Online-Widget & Nutzer-Badge
+   6. Topnav-Aktionen: Online-Widget & Nutzer-Badge
    -------------------------------------------------------------------------- */
-.sidebar__footer {
-  margin-top: auto;
+.topnav__actions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 6px;
-  padding-top: 16px;
-  border-top: 1px solid var(--color-hairline);
+  flex-shrink: 0;
 }
 
 .online-widget {
@@ -354,19 +317,19 @@ p {
   font-size: 12px;
   font-weight: 500;
   color: var(--color-text-muted);
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  width: 100%;
-  transition: background 0.15s ease;
+  padding: 8px 12px;
+  border-radius: var(--radius-pill);
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .online-widget__btn:hover {
-  background: var(--color-hover);
+  background: var(--color-surface-soft);
+  color: var(--color-text);
 }
 
 .online-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--color-sage);
   flex-shrink: 0;
@@ -375,10 +338,10 @@ p {
 .online-panel {
   display: none;
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
+  top: calc(100% + 10px);
+  right: 0;
   width: 220px;
-  background: var(--color-container, var(--color-surface));
+  background: var(--color-surface);
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-medium);
@@ -416,20 +379,22 @@ p {
 
 .user-badge-wrapper {
   position: relative;
+  padding-left: 6px;
+  margin-left: 4px;
+  border-left: 1px solid var(--color-hairline);
 }
 
 .user-badge {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px;
-  border-radius: var(--radius-sm);
-  width: 100%;
+  padding: 6px 10px 6px 6px;
+  border-radius: var(--radius-pill);
   transition: background 0.15s ease;
 }
 
 .user-badge:hover {
-  background: var(--color-hover);
+  background: var(--color-surface-soft);
 }
 
 .user-badge__avatar {
@@ -452,7 +417,6 @@ p {
   flex-direction: column;
   line-height: 1.25;
   text-align: left;
-  flex: 1;
   min-width: 0;
 }
 
@@ -463,6 +427,7 @@ p {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 150px;
 }
 
 .user-badge__role {
@@ -479,8 +444,8 @@ p {
 .user-menu {
   display: none;
   position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
+  top: calc(100% + 10px);
+  right: 0;
   min-width: 200px;
   background: var(--color-surface);
   border: 1px solid var(--color-card-border);
@@ -516,9 +481,10 @@ p {
   flex: 1;
   display: flex;
   flex-direction: column;
-  max-width: calc(var(--content-width) - var(--sidebar-width));
+  max-width: var(--content-width);
   width: 100%;
   min-width: 0;
+  margin: 0 auto;
 }
 
 .page-header {
@@ -932,7 +898,7 @@ p {
 
 .btn--danger {
   background: var(--color-oxblood);
-  color: #f3ece7;
+  color: var(--color-text);
 }
 
 .btn--danger:hover {
@@ -941,7 +907,7 @@ p {
 
 .btn--checkout {
   background: var(--color-sage);
-  color: #f1f4ec;
+  color: var(--color-text);
   box-shadow: var(--shadow-soft);
 }
 
@@ -1439,17 +1405,24 @@ p {
 .dashboard-hero__info {
   display: flex;
   flex-direction: column;
-  gap: 16px;
   flex-shrink: 0;
-  padding-top: 4px;
+  min-width: 220px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .dashboard-info-item {
   display: grid;
   grid-template-columns: 16px 1fr;
   grid-template-rows: auto auto;
-  column-gap: 10px;
-  min-width: 170px;
+  column-gap: 12px;
+  padding: 13px 20px;
+}
+
+.dashboard-info-item + .dashboard-info-item {
+  border-top: 1px solid var(--color-hairline);
 }
 
 .dashboard-info-item__icon {
@@ -2442,47 +2415,6 @@ p {
 }
 
 /* --------------------------------------------------------------------------
-   21. Einstellungen (Theme-Umschalter)
-   -------------------------------------------------------------------------- */
-.theme-switch {
-  display: flex;
-  gap: 10px;
-}
-
-.theme-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-radius: var(--radius-sm);
-  border: 1.5px solid var(--color-card-border);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.theme-option--active {
-  border-color: var(--color-brass);
-  color: var(--color-text);
-  background: var(--color-brass-soft);
-}
-
-.theme-option__preview {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid var(--color-card-border);
-}
-
-.theme-option__preview--light {
-  background: #e9e1cf;
-}
-
-.theme-option__preview--dark {
-  background: #14110e;
-}
-
-/* --------------------------------------------------------------------------
    22. Statistik-Modal
    -------------------------------------------------------------------------- */
 .modal--stats {
@@ -2538,7 +2470,7 @@ p {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(20, 17, 14, 0.55);
+  background: rgba(8, 7, 6, 0.65);
   backdrop-filter: blur(3px);
   display: none;
   align-items: center;
@@ -2663,7 +2595,7 @@ p {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(20, 17, 14, 0.72);
+  background: rgba(8, 7, 6, 0.78);
   align-items: center;
   justify-content: center;
   z-index: 400;

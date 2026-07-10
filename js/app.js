@@ -10,22 +10,6 @@
   "use strict";
 
   /* ------------------------------------------------------------------------
-     0. Design (Hell/Dunkel) - wird sofort angewendet, noch bevor der Rest
-        der App lädt, damit das Design nicht kurz falsch aufblitzt.
-     ------------------------------------------------------------------------ */
-  const THEME_STORAGE_KEY = "aerztekammer.theme";
-
-  function wendeGespeichertesThemaAn() {
-    const gespeichert = localStorage.getItem(THEME_STORAGE_KEY);
-    // Dunkel ist jetzt die primäre Identität der Seite - neue Besucher
-    // starten damit, bis sie sich bewusst für Hell entscheiden.
-    if (gespeichert !== "light") {
-      document.documentElement.setAttribute("data-theme", "dark");
-    }
-  }
-  wendeGespeichertesThemaAn();
-
-  /* ------------------------------------------------------------------------
      1. Konstanten
      ------------------------------------------------------------------------ */
   // Gemeinsames Zugangspasswort für die Website. Zum Ändern: Wert hier
@@ -72,7 +56,9 @@
   const DEFAULT_STATIONEN = {
     direktion: [{ name: "Chris Moon", rolle: "Ärztliche Direktion" }],
     blackwater: erzeugeLeereStation(8),
-    rhodes: erzeugeLeereStation(8),
+    // Chris Moon führt zusätzlich zu seiner Ärztlichen Direktion auch als
+    // Chefarzt die Station Rhodes - zwei unterschiedliche Rollen, bewusst so.
+    rhodes: [{ name: "Chris Moon", rolle: "Chefarzt" }, ...erzeugeLeereStation(7)],
   };
 
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
@@ -3122,36 +3108,6 @@
   });
 
   /* ------------------------------------------------------------------------
-     20b. Design-Umschalter (Hell/Dunkel) in den Einstellungen
-     ------------------------------------------------------------------------ */
-  (function initThemeSwitch() {
-    const btnLight = document.getElementById("theme-btn-light");
-    const btnDark = document.getElementById("theme-btn-dark");
-    if (!btnLight || !btnDark) return;
-
-    function aktualisiereButtons() {
-      const istDark = document.documentElement.getAttribute("data-theme") === "dark";
-      btnLight.classList.toggle("theme-option--active", !istDark);
-      btnDark.classList.toggle("theme-option--active", istDark);
-    }
-
-    function setzeTheme(theme) {
-      if (theme === "dark") {
-        document.documentElement.setAttribute("data-theme", "dark");
-      } else {
-        document.documentElement.removeAttribute("data-theme");
-      }
-      localStorage.setItem(THEME_STORAGE_KEY, theme);
-      aktualisiereButtons();
-    }
-
-    btnLight.addEventListener("click", () => setzeTheme("light"));
-    btnDark.addEventListener("click", () => setzeTheme("dark"));
-
-    aktualisiereButtons(); // Beim Laden direkt den aktuell aktiven Button markieren
-  })();
-
-  /* ------------------------------------------------------------------------
      21. Geheimes Easter Egg (7x auf das Logo klicken)
      ------------------------------------------------------------------------ */
   (function initEasterEgg() {
@@ -3212,7 +3168,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 64;
+  const APP_VERSION = 65;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
