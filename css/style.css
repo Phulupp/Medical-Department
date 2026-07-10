@@ -2323,6 +2323,16 @@ p {
   align-self: center;
 }
 
+/* Klare, ruhige Trennung zwischen den Standort-Gruppen in der Leitungs-
+   Tabelle (z. B. Rhodes-Leitung vs. Blackwater-Leitung) - die allererste
+   Gruppe direkt unter dem Tabellenkopf bekommt bewusst keine zusätzliche
+   Linie, damit es nicht doppelt wirkt. */
+.staff-table__row--gruppenstart:not(:first-child) {
+  border-top: 1px solid var(--color-card-border);
+  margin-top: 6px;
+  padding-top: 20px;
+}
+
 .org-row__du {
   font-family: var(--font-body);
   font-size: 9.5px;
