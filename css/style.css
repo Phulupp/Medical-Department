@@ -136,9 +136,12 @@ a {
   display: none !important;
 }
 
+/* Bewusst kräftig statt der dezenten --color-brass-soft: Die gedämpfte
+   Variante ist auf den dunklen Flächen kaum vom unmarkierten Text zu
+   unterscheiden - eine Markierung muss aber immer sofort sichtbar sein. */
 ::selection {
-  background: var(--color-brass-soft);
-  color: var(--color-text);
+  background: var(--color-brass);
+  color: var(--color-bg);
 }
 
 ::-webkit-scrollbar {
@@ -826,6 +829,7 @@ p {
 }
 
 .rich-editor {
+  width: 100%;
   border: 1.5px solid var(--color-input-border);
   background: var(--color-surface-raised);
   border-radius: var(--radius-sm);
@@ -1589,8 +1593,12 @@ p {
   gap: 10px;
 }
 
+/* Bewusst KEIN "display: flex" hier: als Flex-Container mit Zeilen-Achse
+   würde das einzelne Kind (der Rich-Editor) nur so breit wie sein Inhalt
+   werden statt die volle Breite auszufüllen - dadurch wirkte das Feld
+   winzig/gequetscht statt wie ein normales, breites Eingabefeld. */
 .notes-form__main {
-  display: flex;
+  display: block;
 }
 
 .notes-form button {
