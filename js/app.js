@@ -17,7 +17,9 @@
 
   function wendeGespeichertesThemaAn() {
     const gespeichert = localStorage.getItem(THEME_STORAGE_KEY);
-    if (gespeichert === "dark") {
+    // Dunkel ist jetzt die primäre Identität der Seite - neue Besucher
+    // starten damit, bis sie sich bewusst für Hell entscheiden.
+    if (gespeichert !== "light") {
       document.documentElement.setAttribute("data-theme", "dark");
     }
   }
@@ -1576,9 +1578,8 @@
     if (navNotizenToggle) navNotizenToggle.classList.add("nav__item--active");
     notizenTabs.forEach((i) => i.classList.toggle("org-tabs__tab--active", i.dataset.kategorie === kategorie));
 
-    // Verkauf-Untermenü schließen (immer nur eine Gruppe gleichzeitig offen)
-    if (navVerkaufGroup) {
-      navVerkaufGroup.classList.remove("nav__group--open");
+    // Verkauf-Aktiv-Status entfernen (immer nur ein Hauptpunkt gleichzeitig aktiv)
+    if (navVerkaufToggle) {
       navVerkaufToggle.classList.remove("nav__item--active");
     }
 
@@ -1606,35 +1607,15 @@
   }
 
   /* ------------------------------------------------------------------------
-     10b2. Verkauf: Sidebar-Untermenü (Medikamente / Verkaufslog)
+     10b2. Verkauf: kein Dropdown mehr - Tabs direkt auf der Seite
      ------------------------------------------------------------------------ */
   let aktiverVerkaufSubview = "medikamente"; // Standard-Unterseite beim Öffnen
 
   const navVerkaufToggle = document.getElementById("nav-verkauf-toggle");
-  const navVerkaufSubmenu = document.getElementById("nav-verkauf-submenu");
-  const navVerkaufGroup = navVerkaufToggle ? navVerkaufToggle.closest(".nav__group") : null;
-  const navVerkaufSubitems = navVerkaufSubmenu ? navVerkaufSubmenu.querySelectorAll(".nav__subitem") : [];
+  const verkaufTabs = document.querySelectorAll(".org-tabs__tab[data-subview]");
 
-  if (navVerkaufToggle) {
-    navVerkaufToggle.addEventListener("click", () => {
-      const istOffen = navVerkaufGroup.classList.contains("nav__group--open");
-      const istAktivePage =
-        document.getElementById("view-medikamente").classList.contains("view--active") ||
-        document.getElementById("view-verkaufslog").classList.contains("view--active");
-
-      if (!istOffen) {
-        navVerkaufGroup.classList.add("nav__group--open");
-      } else if (istAktivePage) {
-        navVerkaufGroup.classList.remove("nav__group--open");
-      }
-
-      wechsleZuVerkaufAnsicht(aktiverVerkaufSubview);
-    });
-  }
-
-  navVerkaufSubitems.forEach((item) => {
-    item.addEventListener("click", (event) => {
-      event.stopPropagation();
+  verkaufTabs.forEach((item) => {
+    item.addEventListener("click", () => {
       wechsleZuVerkaufAnsicht(item.dataset.subview);
     });
   });
@@ -1642,11 +1623,10 @@
   function wechsleZuVerkaufAnsicht(subview) {
     aktiverVerkaufSubview = subview;
 
-    // Topbar: "Verkauf" + passenden Unterpunkt aktiv markieren
+    // Sidebar: "Verkauf" als aktiv markieren
     el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
-    navVerkaufToggle.classList.add("nav__item--active");
-    navVerkaufGroup.classList.add("nav__group--open");
-    navVerkaufSubitems.forEach((i) => i.classList.toggle("nav__subitem--active", i.dataset.subview === subview));
+    if (navVerkaufToggle) navVerkaufToggle.classList.add("nav__item--active");
+    verkaufTabs.forEach((i) => i.classList.toggle("org-tabs__tab--active", i.dataset.subview === subview));
 
     // Hauptansicht wechseln
     el.views.forEach((view) => view.classList.remove("view--active"));
@@ -3062,15 +3042,16 @@
         return;
       }
 
+      // Sonderfall "Verkauf": ebenfalls kein Dropdown mehr - navigiert zur
+      // zuletzt aktiven Unterseite (Medikamente/Verkaufslog), Tabs regeln
+      // den Rest direkt auf der Seite.
+      if (item === navVerkaufToggle) {
+        wechsleZuVerkaufAnsicht(aktiverVerkaufSubview);
+        return;
+      }
+
       el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
       item.classList.add("nav__item--active");
-
-      // Verkauf-Untermenü schließen und dessen Aktiv-Status entfernen, wenn
-      // zu einem anderen Hauptpunkt gewechselt wird
-      if (navVerkaufToggle) {
-        navVerkaufToggle.classList.remove("nav__item--active");
-        navVerkaufGroup.classList.remove("nav__group--open");
-      }
 
       el.views.forEach((view) => view.classList.remove("view--active"));
       document.getElementById(`view-${zielView}`).classList.add("view--active");
@@ -3231,7 +3212,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 63;
+  const APP_VERSION = 64;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
