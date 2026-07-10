@@ -1043,14 +1043,16 @@
       toggleBtn.classList.toggle("btn--ghost-active", bearbeitenAktiv);
     }
 
-    // Ausschließlich anhand der VORHANDENEN Ränge gruppiert - keine feste
-    // Namensliste, keine neuen Ränge, keine Umbenennung. "Leitung" fasst alle
-    // Führungsränge zusammen (Ärztliche Direktion, Chefarzt, Stellv.
-    // Chefarzt, Oberarzt, Stellv. Oberarzt), unabhängig von der Station.
-    // Die Reihenfolge folgt exakt der bestehenden Rangordnung.
+    // Ausschließlich anhand der VORHANDENEN Ränge und Standorte gegliedert -
+    // keine feste Namensliste, keine neuen Ränge/Standorte, keine
+    // Umbenennung. "Leitung" fasst alle Führungsränge zusammen (Ärztliche
+    // Direktion, Chefarzt, Stellv. Chefarzt, Oberarzt, Stellv. Oberarzt),
+    // "Medizinisches Personal" den Rest. Innerhalb beider Kapitel bilden die
+    // vorhandenen Standorte (STATIONEN, ohne "direktion") die Unterabschnitte.
     const LEITUNGS_RANGFOLGE = ["Ärztliche Direktion", "Chefarzt", "Stellv. Chefarzt", "Oberarzt", "Stellv. Oberarzt"];
     const TEAM_RANGFOLGE = ["Facharzt", "Assistenzarzt", "Anwärter"];
     const ALLE_RAENGE = [...LEITUNGS_RANGFOLGE, ...TEAM_RANGFOLGE];
+    const STATIONS_SCHLUESSEL = Object.keys(STATIONEN).filter((k) => k !== "direktion");
 
     function rangIndex(rolle) {
       const i = ALLE_RAENGE.indexOf(rolle);
@@ -1061,36 +1063,36 @@
       return LEITUNGS_RANGFOLGE.includes(rolle);
     }
 
-    // Eine einzelne Zeile: nur im Bearbeiten-Modus editierbar, sonst reiner Text.
+    // Eine einzelne Person als schlichte Registerzeile: Hierarchie entsteht
+    // rein über Typografie (Größe/Schriftschnitt) und Weißraum, bewusst
+    // ohne Farbe, Boxen oder Effekte.
     function personalZeile(stationKey, index, slot, { leitung } = {}) {
       const istDirektion = stationKey === "direktion";
       const istDu = aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
-      const stationLabel = !istDirektion ? STATIONEN[stationKey].label : "";
 
       if (!bearbeitenAktiv) {
         if (!slot.name) {
-          return `<div class="personnel-row personnel-row--empty"><span>Unbesetzt</span></div>`;
+          return `<div class="org-row org-row--empty"><span>Unbesetzt</span></div>`;
         }
         return `
-          <div class="personnel-row ${leitung ? "personnel-row--leitung" : ""}">
-            <span class="personnel-row__name">${escapeHtml(slot.name)}${istDu ? '<span class="personnel-row__du">Du</span>' : ""}</span>
-            <span class="personnel-row__rang">${escapeHtml(slot.rolle)}</span>
-            <span class="personnel-row__station">${escapeHtml(stationLabel)}</span>
+          <div class="org-row ${leitung ? "org-row--leitung" : ""}">
+            <span class="org-row__name">${escapeHtml(slot.name)}${istDu ? '<span class="org-row__du">Du</span>' : ""}</span>
+            <span class="org-row__rang">${escapeHtml(slot.rolle)}</span>
           </div>
         `;
       }
 
       const rangFeld = istDirektion
-        ? `<span class="personnel-row__rang">Ärztliche Direktion</span>`
-        : `<select class="personnel-row__rang-select" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
+        ? `<span class="org-row__rang">Ärztliche Direktion</span>`
+        : `<select class="org-row__rang-select" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
             ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${r}</option>`).join("")}
           </select>`;
 
       return `
-        <div class="personnel-row personnel-row--edit ${leitung ? "personnel-row--leitung" : ""}">
+        <div class="org-row org-row--edit ${leitung ? "org-row--leitung" : ""}">
           <input
             type="text"
-            class="personnel-row__name-input"
+            class="org-row__name-input"
             placeholder="Name eintragen..."
             value="${escapeHtml(slot.name)}"
             data-role="slot-name"
@@ -1098,17 +1100,16 @@
             data-index="${index}"
           />
           ${rangFeld}
-          <span class="personnel-row__station">${escapeHtml(stationLabel)}</span>
         </div>
       `;
     }
 
-    // Alle Personen aus allen Stationen (inkl. Direktion) in eine gemeinsame,
-    // flache Liste einsammeln - jede Person "weiß", aus welchem
-    // Station+Slot sie stammt (wichtig fürs Bearbeiten).
+    // Alle Personen aus allen Stationen (inkl. Direktion) einsammeln - jede
+    // Person "weiß", aus welchem Station+Slot sie stammt (wichtig fürs
+    // Bearbeiten).
     function alleEintraege() {
       const ergebnis = [];
-      ["direktion", "rhodes", "blackwater"].forEach((stationKey) => {
+      ["direktion", ...STATIONS_SCHLUESSEL].forEach((stationKey) => {
         (stationenDaten[stationKey] || []).forEach((slot, index) => {
           ergebnis.push({ stationKey, index, slot });
         });
@@ -1118,49 +1119,67 @@
 
     const eintraege = alleEintraege();
 
-    // Leitung: alle besetzten Plätze mit Führungsrang, sortiert nach
-    // bestehender Rangordnung (Direktion zuerst, dann Chefarzt, ...).
-    const leitungsEintraege = eintraege
-      .filter((e) => e.slot.name && istLeitungsRang(e.slot.rolle))
-      .sort((a, b) => rangIndex(a.slot.rolle) - rangIndex(b.slot.rolle));
+    // Ärztliche Direktion: eigener Bereich ganz oben, über der gesamten
+    // Leitung - repräsentiert die oberste Führung. Erscheint ausschließlich
+    // hier, nirgends sonst.
+    const direktionsEintrag = eintraege.find((e) => e.stationKey === "direktion");
+    const direktionHtml =
+      direktionsEintrag && direktionsEintrag.slot.name
+        ? `
+          <section class="org-chapter org-chapter--direktion">
+            <h2 class="org-chapter__titel">Ärztliche Direktion</h2>
+            ${personalZeile("direktion", 0, direktionsEintrag.slot, { leitung: true })}
+          </section>
+        `
+        : bearbeitenAktiv
+        ? `
+          <section class="org-chapter org-chapter--direktion">
+            <h2 class="org-chapter__titel">Ärztliche Direktion</h2>
+            ${personalZeile("direktion", 0, direktionsEintrag ? direktionsEintrag.slot : { name: "", rolle: "Ärztliche Direktion" }, { leitung: true })}
+          </section>
+        `
+        : "";
 
-    const leitungHtml =
-      leitungsEintraege.length === 0
-        ? `<p class="personnel-empty-hint">Noch niemand mit Führungsrang eingetragen.</p>`
-        : leitungsEintraege.map((e) => personalZeile(e.stationKey, e.index, e.slot, { leitung: true })).join("");
+    // Ein Kapitel (Leitung ODER Medizinisches Personal) aus den Standorten
+    // aufbauen - jeder Standort wird zu einem eigenen Unterabschnitt mit
+    // dezenter Überschrift und feiner Trennlinie. Unbesetzte Plätze werden
+    // nur im Personal-Kapitel gezeigt (dort ist die feste Platzanzahl je
+    // Standort gemeint) - bei der Leitung wäre das irreführend, da es dort
+    // keine festen "Plätze", sondern nur tatsächlich vergebene Ränge gibt.
+    function kapitel(titel, rangFilter, { zeigeLeerePlaetze, zusatzKlasse } = {}) {
+      const standorteHtml = STATIONS_SCHLUESSEL.map((stationKey) => {
+        const zeilenDaten = eintraege
+          .filter((e) => e.stationKey === stationKey)
+          .filter((e) => (e.slot.name ? rangFilter(e.slot.rolle) : zeigeLeerePlaetze))
+          .sort((a, b) => {
+            if (!a.slot.name && b.slot.name) return 1;
+            if (a.slot.name && !b.slot.name) return -1;
+            return rangIndex(a.slot.rolle) - rangIndex(b.slot.rolle);
+          });
 
-    // Übriges Personal: nach Station gruppiert (nötig, weil jede Station
-    // eigene, feste Plätze hat), innerhalb jeder Station nach Rang sortiert.
-    function teamSpalte(stationKey) {
-      const spalte = eintraege
-        .filter((e) => e.stationKey === stationKey && (!e.slot.name || !istLeitungsRang(e.slot.rolle)))
-        .sort((a, b) => {
-          if (!a.slot.name && b.slot.name) return 1;
-          if (a.slot.name && !b.slot.name) return -1;
-          return rangIndex(a.slot.rolle) - rangIndex(b.slot.rolle);
-        });
-      const zeilen = spalte.map((e) => personalZeile(e.stationKey, e.index, e.slot)).join("");
+        if (zeilenDaten.length === 0) return "";
+
+        const zeilenHtml = zeilenDaten.map((e) => personalZeile(e.stationKey, e.index, e.slot)).join("");
+        return `
+          <div class="org-station">
+            <h3 class="org-station__titel">${escapeHtml(STATIONEN[stationKey].label)}</h3>
+            <div class="org-station__list">${zeilenHtml}</div>
+          </div>
+        `;
+      }).join("");
+
       return `
-        <div class="personnel-column">
-          <h3 class="personnel-column__titel">${escapeHtml(STATIONEN[stationKey].label)}</h3>
-          <div class="personnel-list">${zeilen}</div>
-        </div>
+        <section class="org-chapter ${zusatzKlasse || ""}">
+          <h2 class="org-chapter__titel">${escapeHtml(titel)}</h2>
+          <div class="org-stations">${standorteHtml}</div>
+        </section>
       `;
     }
 
     el.staffGrid.innerHTML = `
-      <section class="personnel-section">
-        <h2 class="personnel-section__titel">Leitung</h2>
-        <div class="personnel-list personnel-list--leitung">${leitungHtml}</div>
-      </section>
-
-      <section class="personnel-section personnel-section--team">
-        <h2 class="personnel-section__titel">Personal</h2>
-        <div class="personnel-columns">
-          ${teamSpalte("rhodes")}
-          ${teamSpalte("blackwater")}
-        </div>
-      </section>
+      ${direktionHtml}
+      ${kapitel("Leitung", istLeitungsRang, { zeigeLeerePlaetze: false })}
+      ${kapitel("Medizinisches Personal", (rolle) => !istLeitungsRang(rolle), { zeigeLeerePlaetze: true, zusatzKlasse: "org-chapter--personal" })}
     `;
   }
 
@@ -3019,7 +3038,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 59;
+  const APP_VERSION = 61;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

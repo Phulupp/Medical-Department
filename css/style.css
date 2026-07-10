@@ -1853,156 +1853,188 @@ p {
 .staff-grid {
   display: flex;
   flex-direction: column;
-  gap: 48px;
-  margin-bottom: 26px;
+  gap: 72px;
+  margin-bottom: 32px;
 }
 
-.personnel-section__titel {
-  font-size: 12px;
+/* Ein Kapitel: "Leitung" oder "Medizinisches Personal" - Gold als feste
+   Markenfarbe für die oberste Gliederungsebene der Seite. */
+.org-chapter__titel {
+  font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 27px;
   color: var(--color-brass-text);
-  padding-bottom: 14px;
-  margin-bottom: 4px;
+  margin-bottom: 32px;
+  padding-bottom: 18px;
   border-bottom: 1px solid var(--color-hairline);
 }
 
-.personnel-section--team .personnel-section__titel {
-  color: var(--color-text-soft);
+/* Ärztliche Direktion: eigener, übergeordneter Bereich ganz oben - steht
+   bewusst über der gesamten Leitung. Hervorhebung über Größe, nicht Farbe. */
+.org-direktion {
+  margin-bottom: 8px;
+  padding-bottom: 32px;
+  border-bottom: 1px dashed var(--color-hairline);
 }
 
-.personnel-empty-hint {
-  padding: 18px 4px;
-  font-size: 13px;
-  color: var(--color-text-soft);
-  font-style: italic;
+.org-direktion .org-row {
+  border-bottom: none;
+  padding: 4px 0;
+  transition: none;
 }
 
-.personnel-list {
+.org-direktion .org-row__name {
+  font-size: 25px;
+}
+
+.org-direktion .org-row__rang {
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+}
+
+/* Standorte als elegante Unterabschnitte, dezente Überschrift + Trennlinie */
+.org-stations {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 72px;
+}
+
+.org-stations:has(> :only-child) {
+  grid-template-columns: 1fr;
+  max-width: 560px;
+}
+
+.org-station + .org-station {
+  border-left: 1px solid var(--color-hairline);
+  padding-left: 72px;
+}
+
+.org-station__titel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+  margin-bottom: 4px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.org-station__list {
   display: flex;
   flex-direction: column;
 }
 
-.personnel-row {
+/* Eine einzelne Registerzeile - mit dezenter Microinteraction beim Hover:
+   ein feiner Gold-Akzentstrich blendet sich sanft ein, der Name hellt sich
+   minimal auf. Bewusst keine Fläche/Box, nur ein weicher Übergang. */
+.org-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  align-items: center;
+  grid-template-columns: 2fr 1fr;
+  align-items: baseline;
   gap: 20px;
-  padding: 16px 4px;
+  padding: 15px 0 15px 14px;
   border-bottom: 1px solid var(--color-hairline);
+  border-left: 2px solid transparent;
+  transition: border-color 0.25s ease, padding-left 0.25s ease;
 }
 
-.personnel-list--leitung .personnel-row {
-  padding: 20px 4px;
+.org-station__list .org-row:hover {
+  border-left-color: var(--color-brass);
 }
 
-.personnel-list .personnel-row:last-child {
+.org-station__list .org-row:hover .org-row__name {
+  color: var(--color-brass-text);
+}
+
+.org-row__name {
+  transition: color 0.2s ease;
+}
+
+.org-station__list .org-row:last-child {
   border-bottom: none;
 }
 
-.personnel-row__name {
+.org-row__name {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 16px;
   color: var(--color-text);
 }
 
-.personnel-row--leitung .personnel-row__name {
-  font-size: 19px;
-}
-
-.personnel-row__du {
+.org-row__du {
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-brass-text);
+  color: var(--color-text-soft);
   margin-left: 10px;
 }
 
-.personnel-row__rang {
+.org-row__rang {
   font-size: 12.5px;
   font-weight: 500;
   color: var(--color-text-muted);
-}
-
-.personnel-row--leitung .personnel-row__rang {
-  color: var(--color-brass-text);
-  font-weight: 600;
-}
-
-.personnel-row__station {
-  font-size: 11.5px;
-  color: var(--color-text-soft);
   text-align: right;
-  letter-spacing: 0.02em;
 }
 
-.personnel-row--empty {
+.org-row--empty {
   display: block;
   color: var(--color-text-soft);
-  font-size: 12.5px;
+  font-size: 12px;
   font-style: italic;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-hairline);
 }
 
-.personnel-row--edit {
+.org-station__list .org-row--empty:last-child {
+  border-bottom: none;
+}
+
+.org-row--edit {
   gap: 14px;
 }
 
-.personnel-row__name-input {
-  border: 1.5px solid var(--color-input-border);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
-  padding: 9px 12px;
+.org-row__name-input {
+  border: none;
+  border-bottom: 1.5px solid var(--color-input-border);
+  background: transparent;
+  padding: 4px 0;
   font-family: var(--font-display);
-  font-size: 15px;
   font-weight: 600;
+  font-size: 16px;
   color: var(--color-text);
+  border-radius: 0;
 }
 
-.personnel-row__name-input::placeholder {
+.org-row__name-input::placeholder {
   color: var(--color-text-soft);
   font-weight: 500;
   font-family: var(--font-body);
 }
 
-.personnel-row__name-input:focus {
+.org-row__name-input:focus {
   outline: none;
   border-color: var(--color-brass);
-  box-shadow: 0 0 0 3px var(--color-brass-soft);
 }
 
-.personnel-row__rang-select {
-  border: 1.5px solid var(--color-input-border);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
+.org-row__rang-select {
+  border: none;
+  border-bottom: 1.5px solid var(--color-input-border);
+  background: transparent;
+  padding: 4px 0;
   font-size: 12.5px;
   font-weight: 500;
   color: var(--color-text-muted);
   cursor: pointer;
+  text-align: right;
 }
 
-.personnel-row__rang-select:hover,
-.personnel-row__rang-select:focus {
+.org-row__rang-select:hover,
+.org-row__rang-select:focus {
   outline: none;
   border-color: var(--color-brass);
-}
-
-.personnel-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 56px;
-}
-
-.personnel-column__titel {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 18px;
-  color: var(--color-text);
-  margin-bottom: 14px;
 }
 
 /* --------------------------------------------------------------------------
