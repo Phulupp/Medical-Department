@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=65" />
+  <link rel="stylesheet" href="css/style.css?v=66" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -478,8 +478,12 @@
       <!-- VIEW: MITARBEITER (Platzhalter) -->
       <!-- ============================ -->
       <section class="view" id="view-mitarbeiter">
-        <div class="staff-toolbar" id="staff-toolbar" hidden>
-          <button type="button" class="btn btn--ghost" id="btn-toggle-mitarbeiter-bearbeiten">
+        <div class="staff-toolbar">
+          <div class="search-field staff-search-field">
+            <span class="search-field__icon">🔍</span>
+            <input type="text" id="staff-search-input" placeholder="Mitarbeiter suchen..." autocomplete="off" />
+          </div>
+          <button type="button" class="btn btn--ghost" id="btn-toggle-mitarbeiter-bearbeiten" hidden>
             <span class="btn__icon">✎</span>
             Bearbeiten
           </button>
@@ -684,7 +688,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=65"></script>
-  <script src="js/app.js?v=65"></script>
+  <script src="js/firebase-config.js?v=66"></script>
+  <script src="js/app.js?v=66"></script>
 </body>
 </html>

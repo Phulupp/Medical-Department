@@ -2103,13 +2103,20 @@ p {
 }
 
 /* --------------------------------------------------------------------------
-   19. Personal — Leitung & Team, rang-basiert (keine Reiter, keine Kacheln,
-       keine Profilbilder/Online-Status - reine Register-Optik)
+   19. Personal — Ärztliche Direktion / Leitung (alle Standorte) / Medizinisches
+       Personal (Standort-Reiter + Tabelle), passend zum Mockup. Weiterhin
+       keine Profilbilder/Online-Status - reine, ruhige Register-Optik.
    -------------------------------------------------------------------------- */
 .staff-toolbar {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 8px;
+}
+
+.staff-search-field {
+  max-width: 340px;
 }
 
 .staff-grid {
@@ -2131,89 +2138,189 @@ p {
   border-bottom: 1px solid var(--color-hairline);
 }
 
-/* Ärztliche Direktion: eigener, übergeordneter Bereich ganz oben - steht
+/* Ärztliche Direktion: eigene, herausgehobene Karte ganz oben - steht
    bewusst über der gesamten Leitung. */
-.org-direktion {
-  margin-bottom: 0;
+.direktion-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 22px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.2s ease;
 }
 
-.org-direktion .org-row {
-  border-bottom: none;
-  padding: 14px 0 4px;
-  transition: none;
+.direktion-card:hover {
+  border-color: var(--color-brass);
 }
 
-.org-direktion .org-row__name {
-  font-size: 16px;
+.direktion-card__icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-brass-soft);
+  color: var(--color-brass-text);
+}
+
+.direktion-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.direktion-card__name {
+  font-family: var(--font-display);
   font-weight: 600;
+  font-size: 17px;
+  color: var(--color-text);
 }
 
-.org-direktion .org-row__rang {
+.direktion-card__rang {
   font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
 }
 
-/* Standorte als elegante Unterabschnitte, dezente Überschrift + Trennlinie */
-.org-stations {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 72px;
-  margin-top: 24px;
+.direktion-card__chevron {
+  color: var(--color-text-soft);
+  font-size: 18px;
 }
 
-.org-stations:has(> :only-child) {
-  grid-template-columns: 1fr;
-  max-width: 560px;
+.direktion-card--edit {
+  gap: 18px;
 }
 
-.org-station + .org-station {
-  border-left: 1px solid var(--color-hairline);
-  padding-left: 72px;
+.direktion-card--edit .org-row__name-input {
+  flex: 1;
 }
 
-.org-station__titel {
+.direktion-card--edit .direktion-card__rang {
+  flex: 0 0 auto;
+}
+
+/* Tabellen für Leitung und Medizinisches Personal - dünne Trennlinien statt
+   Zellen-Rahmen, ruhiges Grid-Layout. */
+.staff-table {
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.staff-table__head {
+  padding: 12px 20px;
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-hairline);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-soft);
-  margin-bottom: 4px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--color-hairline);
 }
 
-.org-station__list {
+.staff-table__body {
   display: flex;
   flex-direction: column;
 }
 
-/* Eine einzelne Registerzeile - mit dezenter Microinteraction beim Hover:
-   ein feiner Gold-Akzentstrich blendet sich sanft ein, der Name hellt sich
-   minimal auf. Bewusst keine Fläche/Box, nur ein weicher Übergang. */
-.org-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  align-items: baseline;
-  gap: 20px;
-  padding: 14px 0 14px 14px;
+.staff-table__row {
+  padding: 14px 20px;
   border-bottom: 1px solid var(--color-hairline);
   border-left: 2px solid transparent;
-  transition: border-color 0.25s ease, background 0.2s ease;
+  align-items: center;
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.org-station__list .org-row:hover {
+.staff-table__body .staff-table__row:last-child {
+  border-bottom: none;
+}
+
+.staff-table__body .staff-table__row:not(.staff-table__row--empty):hover {
   border-left-color: var(--color-brass);
+  background: var(--color-surface-raised);
 }
 
-.org-station__list .org-row:hover .org-row__name {
+.staff-table__body .staff-table__row:hover .staff-table__cell--name {
   color: var(--color-brass-text);
 }
 
-.org-row__name {
+.staff-table__row--leitung,
+.staff-table--leitung .staff-table__head {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr 1.2fr 1.4fr 24px;
+  gap: 16px;
+}
+
+.staff-table__row--personal,
+.staff-table--personal .staff-table__head {
+  display: grid;
+  grid-template-columns: 1.5fr 1.2fr 1.4fr 24px;
+  gap: 16px;
+}
+
+.staff-table__cell--name {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 15.5px;
+  font-size: 15px;
   color: var(--color-text);
   transition: color 0.2s ease;
+}
+
+.staff-table__cell--standort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+}
+
+.staff-table__standort-icon {
+  display: inline-flex;
+  color: var(--color-brass-text);
+}
+
+.staff-table__cell--rang {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.staff-table__cell--abteilung {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.staff-table__placeholder {
+  color: var(--color-text-soft);
+}
+
+.staff-table__chevron {
+  color: var(--color-text-soft);
+  font-size: 16px;
+  text-align: right;
+}
+
+.staff-table__row--empty {
+  display: block;
+  color: var(--color-text-soft);
+  font-size: 12.5px;
+  font-style: italic;
+}
+
+.staff-table__row--edit {
+  gap: 14px;
+}
+
+.staff-table__row--edit .staff-table__cell--standort {
+  align-self: center;
 }
 
 .org-row__du {
@@ -2226,34 +2333,6 @@ p {
   margin-left: 10px;
 }
 
-.org-row__rang {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  text-align: right;
-}
-
-.org-row--empty {
-  display: block;
-  color: var(--color-text-soft);
-  font-size: 12px;
-  font-style: italic;
-  padding: 14px 0 14px 14px;
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.org-station__list .org-row--empty:last-child {
-  border-bottom: none;
-}
-
-.org-station__list .org-row:last-child {
-  border-bottom: none;
-}
-
-.org-row--edit {
-  gap: 14px;
-}
-
 .org-row__name-input {
   border: none;
   border-bottom: 1.5px solid var(--color-input-border);
@@ -2261,9 +2340,10 @@ p {
   padding: 4px 0;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 15.5px;
+  font-size: 15px;
   color: var(--color-text);
   border-radius: 0;
+  width: 100%;
 }
 
 .org-row__name-input::placeholder {
@@ -2286,13 +2366,19 @@ p {
   font-weight: 500;
   color: var(--color-text-muted);
   cursor: pointer;
-  text-align: right;
+  width: 100%;
 }
 
 .org-row__rang-select:hover,
 .org-row__rang-select:focus {
   outline: none;
   border-color: var(--color-brass);
+}
+
+/* Standort-Reiter beim Medizinischen Personal (nutzt .org-tabs, hier nur
+   kleinerer Abstand nach unten) */
+.staff-location-tabs {
+  margin-bottom: 24px;
 }
 
 
