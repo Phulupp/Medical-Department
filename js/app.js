@@ -2845,8 +2845,13 @@
         if (info) {
           info.titel = titel;
           info.text = sanitisiereRichText(text);
-          info.hinweis = hinweis || undefined;
-          info.kategorie = kategorie || undefined;
+          // WICHTIG: null statt undefined - Firestore lehnt "undefined" als
+          // Feldwert komplett ab (auch verschachtelt in einem Array!) und
+          // verwirft dann das GESAMTE .set() inkl. aller anderen Änderungen.
+          // Da hinweis/kategorie optional sind, muss ein leeres Feld als
+          // null gespeichert werden, nicht als undefined.
+          info.hinweis = hinweis || null;
+          info.kategorie = kategorie || null;
         }
         speichereInfos();
         renderInfos(); // sofort sichtbar, nicht erst beim nächsten Firestore-Update
@@ -2856,8 +2861,8 @@
           id: erzeugeId(titel),
           titel,
           text: sanitisiereRichText(text),
-          hinweis: hinweis || undefined,
-          kategorie: kategorie || undefined,
+          hinweis: hinweis || null,
+          kategorie: kategorie || null,
         });
         speichereInfos();
         renderInfos(); // sofort sichtbar, nicht erst beim nächsten Firestore-Update
@@ -3389,7 +3394,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 70;
+  const APP_VERSION = 71;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
