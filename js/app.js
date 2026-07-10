@@ -1195,14 +1195,25 @@
        --------------------------------------------------------------------- */
     function leitungZeile(e, { ersteInGruppe }) {
       const { stationKey, index, slot } = e;
-      const standortHtml = ersteInGruppe
-        ? `<span class="staff-table__standort-icon" aria-hidden="true">${ICON_PIN}</span>${escapeHtml(STATIONEN[stationKey].label)}`
-        : "";
+      // Jede neue Standort-Gruppe bekommt eine dezente Trennlinie/Abstand nach
+      // oben, damit z. B. Rhodes-Leitung optisch klar von Blackwater-Leitung
+      // abgesetzt ist (die erste Gruppe im Table bekommt per CSS keine
+      // zusätzliche Linie, damit es nicht direkt unter dem Tabellenkopf hängt).
+      const gruppenStartClass = ersteInGruppe ? " staff-table__row--gruppenstart" : "";
 
       if (bearbeitenAktiv) {
+        // Standort ist im Bearbeiten-Modus ein echtes Auswahlfeld: Beim Wechsel
+        // wird die Person in einen freien Platz der Zielstation verschoben.
+        const standortSelectHtml = `
+          <select class="org-row__rang-select" data-role="slot-standort" data-station="${stationKey}" data-index="${index}">
+            ${STATIONS_SCHLUESSEL.map(
+              (k) => `<option value="${k}" ${k === stationKey ? "selected" : ""}>${escapeHtml(STATIONEN[k].label)}</option>`
+            ).join("")}
+          </select>
+        `;
         return `
-          <div class="staff-table__row staff-table__row--edit staff-table__row--leitung">
-            <span class="staff-table__cell staff-table__cell--standort">${standortHtml}</span>
+          <div class="staff-table__row staff-table__row--edit staff-table__row--leitung${gruppenStartClass}">
+            <span class="staff-table__cell staff-table__cell--standort">${standortSelectHtml}</span>
             <input
               type="text"
               class="org-row__name-input staff-table__cell--name"
@@ -1220,8 +1231,12 @@
         `;
       }
 
+      const standortHtml = ersteInGruppe
+        ? `<span class="staff-table__standort-icon" aria-hidden="true">${ICON_PIN}</span>${escapeHtml(STATIONEN[stationKey].label)}`
+        : "";
+
       return `
-        <div class="staff-table__row staff-table__row--leitung">
+        <div class="staff-table__row staff-table__row--leitung${gruppenStartClass}">
           <span class="staff-table__cell staff-table__cell--standort">${standortHtml}</span>
           <span class="staff-table__cell staff-table__cell--name">${escapeHtml(slot.name)}${istDu(slot) ? '<span class="org-row__du">Du</span>' : ""}</span>
           <span class="staff-table__cell staff-table__cell--rang">${escapeHtml(slot.rolle)}</span>
@@ -1360,8 +1375,13 @@
     document.addEventListener("change", (event) => {
       const target = event.target;
       if (!el.staffGrid || !el.staffGrid.contains(target)) return;
-      if (target.dataset.role !== "slot-rolle") return;
-      aktualisiereSlot(target.dataset.station, Number(target.dataset.index), { rolle: target.value });
+      if (target.dataset.role === "slot-rolle") {
+        aktualisiereSlot(target.dataset.station, Number(target.dataset.index), { rolle: target.value });
+        return;
+      }
+      if (target.dataset.role === "slot-standort") {
+        verschiebeLeitungMitglied(target.dataset.station, Number(target.dataset.index), target.value);
+      }
     });
 
     // Name-Feld: erst beim Verlassen des Feldes speichern (nicht bei jedem Tastendruck)
@@ -1422,6 +1442,39 @@
     if (!stationenDaten[station] || !stationenDaten[station][index]) return;
 
     Object.assign(stationenDaten[station][index], aenderung);
+    speichereMitarbeiterliste();
+  }
+
+  // Verschiebt ein Leitungsmitglied in einen freien Platz einer anderen
+  // Station (Standort-Wechsel über das Dropdown in der Leitungs-Tabelle).
+  // Der alte Platz wird dabei geleert, nicht gelöscht - die feste Platzanzahl
+  // je Station bleibt unverändert.
+  function verschiebeLeitungMitglied(vonStation, vonIndex, nachStation) {
+    if (!istAdmin()) {
+      zeigeToast("Nur Chefarzt, Stellv. Chefarzt & Ärztliche Direktion dürfen die Mitarbeiter-Liste bearbeiten.");
+      renderMitarbeiterListe(); // Auswahl zurücksetzen
+      return;
+    }
+    if (nachStation === vonStation) return;
+    if (!stationenDaten[vonStation] || !stationenDaten[vonStation][vonIndex]) return;
+    if (!Array.isArray(stationenDaten[nachStation])) return;
+
+    const zielIndex = stationenDaten[nachStation].findIndex((platz) => !platz.name);
+    if (zielIndex === -1) {
+      const zielLabel = STATIONEN[nachStation] ? STATIONEN[nachStation].label : nachStation;
+      zeigeToast(`Kein freier Platz mehr in ${zielLabel} - dort zuerst einen Platz freimachen.`);
+      renderMitarbeiterListe(); // Auswahl zurücksetzen
+      return;
+    }
+
+    const person = stationenDaten[vonStation][vonIndex];
+    stationenDaten[nachStation][zielIndex] = {
+      name: person.name,
+      rolle: person.rolle,
+      abteilung: person.abteilung || "",
+    };
+    stationenDaten[vonStation][vonIndex] = { name: "", rolle: "Anwärter", abteilung: "" };
+
     speichereMitarbeiterliste();
   }
 
@@ -3321,7 +3374,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 66;
+  const APP_VERSION = 67;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
