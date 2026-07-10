@@ -1190,8 +1190,8 @@
       `;
 
     /* ---------------------------------------------------------------------
-       Leitung: eine Tabelle über alle Standorte, Standort-Spalte nur auf
-       der jeweils ersten Zeile einer Gruppe beschriftet.
+       Leitung: eine Tabelle über alle Standorte, auf jeder Zeile mit
+       Standort beschriftet, Gruppen zusätzlich per Trennlinie abgesetzt.
        --------------------------------------------------------------------- */
     function leitungZeile(e, { ersteInGruppe }) {
       const { stationKey, index, slot } = e;
@@ -1231,9 +1231,10 @@
         `;
       }
 
-      const standortHtml = ersteInGruppe
-        ? `<span class="staff-table__standort-icon" aria-hidden="true">${ICON_PIN}</span>${escapeHtml(STATIONEN[stationKey].label)}`
-        : "";
+      // Standort wird bewusst auf JEDER Zeile angezeigt (nicht nur bei der
+      // ersten einer Gruppe) - zusammen mit der Trennlinie oben ist so auf
+      // einen Blick klar, wer zu welchem Standort gehört.
+      const standortHtml = `<span class="staff-table__standort-icon" aria-hidden="true">${ICON_PIN}</span>${escapeHtml(STATIONEN[stationKey].label)}`;
 
       return `
         <div class="staff-table__row staff-table__row--leitung${gruppenStartClass}">
@@ -3374,7 +3375,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 67;
+  const APP_VERSION = 68;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
