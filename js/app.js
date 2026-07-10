@@ -520,7 +520,24 @@
 
     if (!istRichEditor) return;
 
-    // Schriftfarb-Buttons (nur bei Rich-Editoren vorhanden)
+    // Popover öffnen/schließen (Klick auf den "A"-Auslöser)
+    const trigger = toolbar.querySelector('[data-role="color-trigger"]');
+    const popover = toolbar.querySelector('[data-role="color-popover"]');
+    const underline = toolbar.querySelector('[data-role="color-underline"]');
+
+    if (trigger && popover) {
+      trigger.addEventListener("mousedown", (event) => event.preventDefault()); // Fokus im Editor behalten
+      trigger.addEventListener("click", (event) => {
+        event.stopPropagation();
+        // Alle anderen offenen Farb-Popover schließen (nur eins gleichzeitig)
+        document.querySelectorAll('[data-role="color-popover"]').forEach((p) => {
+          if (p !== popover) p.hidden = true;
+        });
+        popover.hidden = !popover.hidden;
+      });
+    }
+
+    // Schriftfarb-Buttons (jetzt im Popover)
     toolbar.querySelectorAll("[data-color]").forEach((btn) => {
       btn.addEventListener("mousedown", (event) => {
         event.preventDefault();
@@ -530,10 +547,22 @@
           // zurück (abhängig vom Hell-/Dunkel-Modus)
           const standardFarbe = getComputedStyle(feld).color;
           document.execCommand("foreColor", false, standardFarbe);
+          if (underline) underline.style.background = "transparent";
         } else {
           document.execCommand("foreColor", false, btn.dataset.color);
+          if (underline) underline.style.background = btn.dataset.color;
         }
+        if (popover) popover.hidden = true;
       });
+    });
+  });
+
+  // Farb-Popover bei Klick außerhalb schließen
+  document.addEventListener("click", (event) => {
+    document.querySelectorAll('[data-role="color-popover"]').forEach((popover) => {
+      if (!popover.hidden && !popover.contains(event.target) && event.target.dataset.role !== "color-trigger") {
+        popover.hidden = true;
+      }
     });
   });
 
@@ -1087,25 +1116,6 @@
     // Eine einzelne Person als schlichte Registerzeile: Hierarchie entsteht
     // rein über Typografie (Größe/Schriftschnitt) und Weißraum, bewusst
     // ohne Farbe, Boxen oder Effekte.
-    const onlineNamenSet = new Set(ermittleOnlineListe().map((p) => p.name.toLowerCase()));
-
-    function bildFeld(slot, stationKey, index) {
-      const bildInhalt = slot.bild ? `<img src="${slot.bild}" alt="" />` : "";
-      if (!bearbeitenAktiv) {
-        return `<div class="org-row__foto">${bildInhalt}</div>`;
-      }
-      return `
-        <div class="org-row__foto org-row__foto--edit">
-          ${bildInhalt}
-          <label class="org-row__foto-upload" title="Profilbild hochladen/ersetzen">
-            <input type="file" accept="image/*" data-role="slot-bild" data-station="${stationKey}" data-index="${index}" hidden />
-            ✎
-          </label>
-          ${slot.bild ? `<button type="button" class="org-row__foto-remove" data-role="slot-bild-entfernen" data-station="${stationKey}" data-index="${index}" title="Profilbild entfernen">✕</button>` : ""}
-        </div>
-      `;
-    }
-
     function personalZeile(stationKey, index, slot, { leitung } = {}) {
       const istDirektion = stationKey === "direktion";
       const istDu = aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
@@ -1114,15 +1124,10 @@
         if (!slot.name) {
           return `<div class="org-row org-row--empty"><span>Unbesetzt</span></div>`;
         }
-        const istOnline = onlineNamenSet.has(slot.name.toLowerCase());
         return `
           <div class="org-row ${leitung ? "org-row--leitung" : ""}">
-            ${bildFeld(slot, stationKey, index)}
             <span class="org-row__name">${escapeHtml(slot.name)}${istDu ? '<span class="org-row__du">Du</span>' : ""}</span>
             <span class="org-row__rang">${escapeHtml(slot.rolle)}</span>
-            <span class="org-row__status ${istOnline ? "org-row__status--online" : "org-row__status--abwesend"}">
-              <span class="org-row__status-dot"></span>${istOnline ? "Online" : "Abwesend"}
-            </span>
           </div>
         `;
       }
@@ -1135,7 +1140,6 @@
 
       return `
         <div class="org-row org-row--edit ${leitung ? "org-row--leitung" : ""}">
-          ${bildFeld(slot, stationKey, index)}
           <input
             type="text"
             class="org-row__name-input"
@@ -1265,46 +1269,6 @@
       const target = event.target;
       if (!el.staffGrid || !el.staffGrid.contains(target)) return;
       if (target.dataset.role === "slot-name") target.blur();
-    });
-
-    // Profilbild hochladen: Datei wird clientseitig auf ein kleines Quadrat
-    // verkleinert und als JPEG-Data-URI gespeichert (keine eigene
-    // Firebase-Storage-Anbindung nötig, funktioniert direkt in Firestore).
-    document.addEventListener("change", (event) => {
-      const target = event.target;
-      if (!el.staffGrid || !el.staffGrid.contains(target)) return;
-      if (target.dataset.role !== "slot-bild") return;
-
-      const datei = target.files && target.files[0];
-      if (!datei) return;
-
-      const bildLeser = new FileReader();
-      bildLeser.onload = () => {
-        const bild = new Image();
-        bild.onload = () => {
-          const ZIEL_GROESSE = 128;
-          const canvas = document.createElement("canvas");
-          canvas.width = ZIEL_GROESSE;
-          canvas.height = ZIEL_GROESSE;
-          const ctx = canvas.getContext("2d");
-          // Zentrierter Bildausschnitt (Quadrat), damit Gesichter nicht verzerrt werden
-          const kleinsteSeite = Math.min(bild.width, bild.height);
-          const sx = (bild.width - kleinsteSeite) / 2;
-          const sy = (bild.height - kleinsteSeite) / 2;
-          ctx.drawImage(bild, sx, sy, kleinsteSeite, kleinsteSeite, 0, 0, ZIEL_GROESSE, ZIEL_GROESSE);
-          const dataUri = canvas.toDataURL("image/jpeg", 0.82);
-          aktualisiereSlot(target.dataset.station, Number(target.dataset.index), { bild: dataUri });
-        };
-        bild.src = bildLeser.result;
-      };
-      bildLeser.readAsDataURL(datei);
-    });
-
-    document.addEventListener("click", (event) => {
-      const target = event.target.closest('[data-role="slot-bild-entfernen"]');
-      if (!target) return;
-      if (!el.staffGrid || !el.staffGrid.contains(target)) return;
-      aktualisiereSlot(target.dataset.station, Number(target.dataset.index), { bild: "" });
     });
   }
 
@@ -3267,7 +3231,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 62;
+  const APP_VERSION = 63;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

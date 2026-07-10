@@ -866,22 +866,75 @@ p {
   margin: 0 3px;
 }
 
-.format-btn--swatch {
-  border: 2px solid var(--color-card-border);
+.color-picker {
+  position: relative;
 }
 
-.format-btn--swatch:hover {
-  transform: scale(1.1);
+.color-picker__trigger {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
 }
 
-.format-btn--clear {
-  font-size: 11px;
+.color-picker__underline {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 5px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.color-picker__popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 150px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-medium);
+  padding: 6px;
+  z-index: 60;
+}
+
+.color-picker__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-text);
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.color-picker__option:hover {
+  background: var(--color-surface-soft);
+}
+
+.color-picker__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.color-picker__divider {
+  height: 1px;
+  background: var(--color-hairline);
+  margin: 5px 4px;
+}
+
+.color-picker__option--reset {
   color: var(--color-text-soft);
-}
-
-.format-btn--clear:hover {
-  background: var(--color-oxblood-soft);
-  color: var(--color-oxblood-text);
+  font-style: italic;
 }
 
 .rich-editor {
@@ -1470,9 +1523,19 @@ p {
 }
 
 .dashboard-info-item {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
   min-width: 170px;
+}
+
+.dashboard-info-item__icon {
+  grid-row: 1 / 3;
+  align-self: center;
+  width: 16px;
+  height: 16px;
+  color: var(--color-brass-text);
 }
 
 .dashboard-info-item__label {
@@ -1507,7 +1570,7 @@ p {
 
 .dashboard-quicklink {
   text-align: left;
-  padding: 22px 22px 20px;
+  padding: 24px 22px 22px;
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-md);
   background: var(--color-surface);
@@ -1517,6 +1580,14 @@ p {
 .dashboard-quicklink:hover {
   border-color: var(--color-brass);
   transform: translateY(-2px);
+}
+
+.dashboard-quicklink__icon {
+  display: block;
+  width: 24px;
+  height: 24px;
+  color: var(--color-brass-text);
+  margin-bottom: 16px;
 }
 
 .dashboard-quicklink__titel {
@@ -1718,20 +1789,25 @@ p {
 .wiki-search {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   background: var(--color-surface);
   border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  padding: 16px 20px;
+  border-radius: var(--radius-lg);
+  padding: 20px 26px;
   box-shadow: var(--shadow-soft);
-  margin-bottom: 32px;
+  margin-bottom: 40px;
+  transition: border-color 0.2s ease;
+}
+
+.wiki-search:focus-within {
+  border-color: var(--color-brass);
 }
 
 .wiki-search input {
   border: none;
   outline: none;
   background: transparent;
-  font-size: 15px;
+  font-size: 16.5px;
   width: 100%;
   color: var(--color-text);
   font-family: inherit;
@@ -1739,6 +1815,10 @@ p {
 
 .wiki-search input::placeholder {
   color: var(--color-text-soft);
+}
+
+.wiki-search .search-field__icon {
+  font-size: 17px;
 }
 
 .wiki-search .search-field__icon {
@@ -1837,14 +1917,14 @@ p {
 .info-panel__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 22px;
 }
 
 .info-card {
   background: var(--color-surface);
   border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  padding: 20px 20px 18px;
+  border-radius: var(--radius-lg);
+  padding: 26px 26px 24px;
   box-shadow: var(--shadow-soft);
   position: relative;
   transition: border-color 0.2s ease, transform 0.2s ease;
@@ -1859,23 +1939,23 @@ p {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: var(--radius-sm);
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-md);
   background: var(--color-surface-soft);
   color: var(--color-brass-text);
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .info-card__icon svg {
-  width: 22px;
-  height: 22px;
+  width: 23px;
+  height: 23px;
 }
 
 .info-card__edit {
   position: absolute;
-  top: 14px;
-  right: 46px;
+  top: 18px;
+  right: 50px;
   width: 26px;
   height: 26px;
   font-size: 11px;
@@ -1883,8 +1963,8 @@ p {
 
 .info-card__delete {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 18px;
+  right: 18px;
   width: 26px;
   height: 26px;
   font-size: 11px;
@@ -1894,8 +1974,8 @@ p {
   display: block;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 16.5px;
-  margin-bottom: 3px;
+  font-size: 18px;
+  margin-bottom: 4px;
   padding-right: 22px;
 }
 
@@ -1905,14 +1985,14 @@ p {
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--color-text-soft);
-  margin-bottom: 10px;
+  margin-bottom: 13px;
 }
 
 .info-card__text {
   display: block;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--color-text-muted);
-  line-height: 1.55;
+  line-height: 1.65;
 }
 
 .info-card__hint {
@@ -2128,54 +2208,53 @@ p {
 }
 
 /* --------------------------------------------------------------------------
-   19. Personal — Leitung & Team, rang-basiert (keine Reiter, keine Kacheln)
+   19. Personal — Leitung & Team, rang-basiert (keine Reiter, keine Kacheln,
+       keine Profilbilder/Online-Status - reine Register-Optik)
    -------------------------------------------------------------------------- */
 .staff-toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 
 .staff-grid {
   display: flex;
   flex-direction: column;
-  gap: 72px;
+  gap: 56px;
   margin-bottom: 32px;
 }
 
-/* Ein Kapitel: "Leitung" oder "Medizinisches Personal" - Gold als feste
-   Markenfarbe für die oberste Gliederungsebene der Seite. */
+/* Ein Kapitel: "Ärztliche Direktion" / "Leitung" / "Medizinisches Personal" -
+   dezente Gold-Labels, keine großen Displaytitel, keine Versalien. */
 .org-chapter__titel {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 27px;
+  font-size: 17px;
   color: var(--color-brass-text);
-  margin-bottom: 32px;
-  padding-bottom: 18px;
+  margin-bottom: 6px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--color-hairline);
 }
 
 /* Ärztliche Direktion: eigener, übergeordneter Bereich ganz oben - steht
-   bewusst über der gesamten Leitung. Hervorhebung über Größe, nicht Farbe. */
+   bewusst über der gesamten Leitung. */
 .org-direktion {
-  margin-bottom: 8px;
-  padding-bottom: 32px;
-  border-bottom: 1px dashed var(--color-hairline);
+  margin-bottom: 0;
 }
 
 .org-direktion .org-row {
   border-bottom: none;
-  padding: 4px 0;
+  padding: 14px 0 4px;
   transition: none;
 }
 
 .org-direktion .org-row__name {
-  font-size: 25px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .org-direktion .org-row__rang {
   font-size: 12.5px;
-  letter-spacing: 0.04em;
 }
 
 /* Standorte als elegante Unterabschnitte, dezente Überschrift + Trennlinie */
@@ -2183,6 +2262,7 @@ p {
   display: grid;
   grid-template-columns: 1fr 1fr;
   column-gap: 72px;
+  margin-top: 24px;
 }
 
 .org-stations:has(> :only-child) {
@@ -2216,102 +2296,13 @@ p {
    minimal auf. Bewusst keine Fläche/Box, nur ein weicher Übergang. */
 .org-row {
   display: grid;
-  grid-template-columns: 38px 2fr 1fr 92px;
-  align-items: center;
-  gap: 16px;
-  padding: 13px 0 13px 14px;
+  grid-template-columns: 2fr 1fr;
+  align-items: baseline;
+  gap: 20px;
+  padding: 14px 0 14px 14px;
   border-bottom: 1px solid var(--color-hairline);
   border-left: 2px solid transparent;
-  transition: border-color 0.25s ease, padding-left 0.25s ease;
-}
-
-.org-row__foto {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-card-border);
-  overflow: hidden;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.org-row__foto img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.org-direktion .org-row__foto {
-  width: 56px;
-  height: 56px;
-}
-
-.org-row__foto-upload {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  color: var(--color-text-soft);
-  background: rgba(0, 0, 0, 0.25);
-  opacity: 0;
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-
-.org-row__foto--edit:hover .org-row__foto-upload {
-  opacity: 1;
-}
-
-.org-row__foto-remove {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: var(--color-oxblood);
-  color: #f3ece7;
-  font-size: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-
-.org-row__status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 500;
-  justify-self: end;
-  white-space: nowrap;
-}
-
-.org-row__status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.org-row__status--online {
-  color: var(--color-sage-text);
-}
-
-.org-row__status--online .org-row__status-dot {
-  background: var(--color-sage);
-}
-
-.org-row__status--abwesend {
-  color: var(--color-text-soft);
-}
-
-.org-row__status--abwesend .org-row__status-dot {
-  background: var(--color-text-soft);
+  transition: border-color 0.25s ease, background 0.2s ease;
 }
 
 .org-station__list .org-row:hover {
@@ -2323,18 +2314,11 @@ p {
 }
 
 .org-row__name {
-  transition: color 0.2s ease;
-}
-
-.org-station__list .org-row:last-child {
-  border-bottom: none;
-}
-
-.org-row__name {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15.5px;
   color: var(--color-text);
+  transition: color 0.2s ease;
 }
 
 .org-row__du {
@@ -2359,11 +2343,15 @@ p {
   color: var(--color-text-soft);
   font-size: 12px;
   font-style: italic;
-  padding: 12px 0;
+  padding: 14px 0 14px 14px;
   border-bottom: 1px solid var(--color-hairline);
 }
 
 .org-station__list .org-row--empty:last-child {
+  border-bottom: none;
+}
+
+.org-station__list .org-row:last-child {
   border-bottom: none;
 }
 
@@ -2378,7 +2366,7 @@ p {
   padding: 4px 0;
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 16px;
+  font-size: 15.5px;
   color: var(--color-text);
   border-radius: 0;
 }
@@ -2411,6 +2399,7 @@ p {
   outline: none;
   border-color: var(--color-brass);
 }
+
 
 /* --------------------------------------------------------------------------
    20. Kontakte (Telegramm-Verzeichnis)

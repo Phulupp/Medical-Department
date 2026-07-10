@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=62" />
+  <link rel="stylesheet" href="css/style.css?v=63" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -194,14 +194,17 @@
           </div>
           <div class="dashboard-hero__info">
             <div class="dashboard-info-item">
+              <svg class="dashboard-info-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
               <span class="dashboard-info-item__label">Datum</span>
               <span class="dashboard-info-item__value" id="dashboard-datum">—</span>
             </div>
             <div class="dashboard-info-item">
+              <svg class="dashboard-info-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
               <span class="dashboard-info-item__label">Uhrzeit</span>
               <span class="dashboard-info-item__value" id="dashboard-uhrzeit">—</span>
             </div>
             <div class="dashboard-info-item">
+              <svg class="dashboard-info-item__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.3"/><path d="M21 20c0-2.6-1.8-4.8-4-5.6"/></svg>
               <span class="dashboard-info-item__label">Online</span>
               <span class="dashboard-info-item__value" id="dashboard-online">0 Mitglieder online</span>
             </div>
@@ -211,18 +214,22 @@
         <p class="dashboard-section-titel">Schnellzugriff</p>
         <div class="dashboard-quicklinks">
           <button type="button" class="dashboard-quicklink" data-quicklink="medikamente">
+            <svg class="dashboard-quicklink__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3h4v3.5l2 2.5v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V9l2-2.5z"/><line x1="10" y1="3" x2="14" y2="3"/><line x1="8" y1="13" x2="16" y2="13"/></svg>
             <span class="dashboard-quicklink__titel">Medikamente</span>
             <span class="dashboard-quicklink__text">Verwalte alle Medikamente</span>
           </button>
           <button type="button" class="dashboard-quicklink" data-quicklink="infos">
+            <svg class="dashboard-quicklink__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H12v17H6.5A2.5 2.5 0 0 0 4 22.5z"/><path d="M20 5.5A2.5 2.5 0 0 0 17.5 3H12v17h5.5a2.5 2.5 0 0 1 2.5 2.5z"/></svg>
             <span class="dashboard-quicklink__titel">Wiki</span>
             <span class="dashboard-quicklink__text">Wirkung & Einsatzgebiete</span>
           </button>
           <button type="button" class="dashboard-quicklink" data-quicklink="mitarbeiter">
+            <svg class="dashboard-quicklink__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.3"/><path d="M21 20c0-2.6-1.8-4.8-4-5.6"/></svg>
             <span class="dashboard-quicklink__titel">Personal</span>
             <span class="dashboard-quicklink__text">Verzeichnis aller Mitglieder</span>
           </button>
           <button type="button" class="dashboard-quicklink" data-quicklink="kontakte">
+            <svg class="dashboard-quicklink__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h3l1.5 4.5-2 1.5a11 11 0 0 0 5.5 5.5l1.5-2L20 14v3a2 2 0 0 1-2 2C10.8 19 5 13.2 5 6a2 2 0 0 1 1-3z"/></svg>
             <span class="dashboard-quicklink__titel">Kontakte</span>
             <span class="dashboard-quicklink__text">Externe & interne Kontakte</span>
           </button>
@@ -246,11 +253,19 @@
               <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
               <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
               <span class="format-toolbar__divider"></span>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#b8860b" style="background:#b8860b" title="Gelb/Gold"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#1a7a3c" style="background:#1a7a3c" title="Grün"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#b71c1c" style="background:#b71c1c" title="Rot"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#1a56db" style="background:#1a56db" title="Blau"></button>
-              <button type="button" class="format-btn format-btn--clear" data-color="__reset__" title="Farbe entfernen">✕</button>
+              <div class="color-picker">
+                <button type="button" class="format-btn color-picker__trigger" data-role="color-trigger" title="Textfarbe">
+                  A<span class="color-picker__underline" data-role="color-underline"></span>
+                </button>
+                <div class="color-picker__popover" data-role="color-popover" hidden>
+                  <button type="button" class="color-picker__option" data-color="#b8860b"><span class="color-picker__dot" style="background:#b8860b"></span>Gold</button>
+                  <button type="button" class="color-picker__option" data-color="#1a7a3c"><span class="color-picker__dot" style="background:#1a7a3c"></span>Grün</button>
+                  <button type="button" class="color-picker__option" data-color="#b71c1c"><span class="color-picker__dot" style="background:#b71c1c"></span>Rot</button>
+                  <button type="button" class="color-picker__option" data-color="#1a56db"><span class="color-picker__dot" style="background:#1a56db"></span>Blau</button>
+                  <div class="color-picker__divider"></div>
+                  <button type="button" class="color-picker__option color-picker__option--reset" data-color="__reset__">Farbe entfernen</button>
+                </div>
+              </div>
             </div>
             <div class="rich-editor" id="ankuendigung-input" contenteditable="true" data-placeholder="Wichtige Info für alle eintragen..."></div>
             <div class="info-form-actions">
@@ -388,11 +403,19 @@
               <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
               <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
               <span class="format-toolbar__divider"></span>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#b8860b" style="background:#b8860b" title="Gelb/Gold"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#1a7a3c" style="background:#1a7a3c" title="Grün"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#b71c1c" style="background:#b71c1c" title="Rot"></button>
-              <button type="button" class="format-btn format-btn--swatch" data-color="#1a56db" style="background:#1a56db" title="Blau"></button>
-              <button type="button" class="format-btn format-btn--clear" data-color="__reset__" title="Farbe entfernen">✕</button>
+              <div class="color-picker">
+                <button type="button" class="format-btn color-picker__trigger" data-role="color-trigger" title="Textfarbe">
+                  A<span class="color-picker__underline" data-role="color-underline"></span>
+                </button>
+                <div class="color-picker__popover" data-role="color-popover" hidden>
+                  <button type="button" class="color-picker__option" data-color="#b8860b"><span class="color-picker__dot" style="background:#b8860b"></span>Gold</button>
+                  <button type="button" class="color-picker__option" data-color="#1a7a3c"><span class="color-picker__dot" style="background:#1a7a3c"></span>Grün</button>
+                  <button type="button" class="color-picker__option" data-color="#b71c1c"><span class="color-picker__dot" style="background:#b71c1c"></span>Rot</button>
+                  <button type="button" class="color-picker__option" data-color="#1a56db"><span class="color-picker__dot" style="background:#1a56db"></span>Blau</button>
+                  <div class="color-picker__divider"></div>
+                  <button type="button" class="color-picker__option color-picker__option--reset" data-color="__reset__">Farbe entfernen</button>
+                </div>
+              </div>
             </div>
             <div class="notes-form__main">
               <div class="rich-editor" id="note-input" contenteditable="true" data-placeholder="Notiz eintragen..."></div>
@@ -696,7 +719,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=62"></script>
-  <script src="js/app.js?v=62"></script>
+  <script src="js/firebase-config.js?v=63"></script>
+  <script src="js/app.js?v=63"></script>
 </body>
 </html>
