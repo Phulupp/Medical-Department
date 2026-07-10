@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=61" />
+  <link rel="stylesheet" href="css/style.css?v=62" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -121,32 +121,12 @@
           </div>
         </div>
         <button class="nav__item" data-view="infos">
-          <span class="nav__icon">ℹ️</span>
           <span>Wiki</span>
         </button>
-        <div class="nav__group">
-          <button class="nav__item nav__item--parent" id="nav-notizen-toggle" data-view="notizen">
-            <span class="nav__icon">📝</span>
-            <span>Infos</span>
-            <span class="nav__chevron" id="nav-notizen-chevron">▾</span>
-          </button>
-          <div class="nav__submenu" id="nav-notizen-submenu">
-            <button class="nav__subitem" data-kategorie="allgemein">
-              <span class="nav__sub-dot nav__sub-dot--allgemein"></span>
-              Allgemeine Infos
-            </button>
-            <button class="nav__subitem" data-kategorie="personal">
-              <span class="nav__sub-dot nav__sub-dot--personal"></span>
-              Personal
-            </button>
-            <button class="nav__subitem" data-kategorie="herstellung">
-              <span class="nav__sub-dot nav__sub-dot--herstellung"></span>
-              Herstellung
-            </button>
-          </div>
-        </div>
+        <button class="nav__item" id="nav-notizen-toggle" data-view="notizen">
+          <span>Infos</span>
+        </button>
         <button class="nav__item" data-view="mitarbeiter">
-          <span class="nav__icon">🧑‍⚕️</span>
           <span>Personal</span>
         </button>
         <button class="nav__item" data-view="kontakte">
@@ -192,7 +172,7 @@
     <!-- HAUPTBEREICH                 -->
     <!-- ============================ -->
     <div class="content-shell">
-      <div class="page-header">
+      <div class="page-header" id="page-header" hidden>
         <p class="page-header__eyebrow">
           <svg class="page-header__icon" viewBox="0 0 100 100" width="13" height="13" fill="none"><rect x="46" y="8" width="8" height="84" rx="4" fill="currentColor"/><path d="M28 82 C28 71 72 71 72 60 C72 49 28 49 28 38 C28 27 66 25 66 16" stroke="currentColor" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M66 16 C71 9 69 1 59 2 C51 3 49 10 54 15 C58 18 63 18 66 16 Z" fill="currentColor"/></svg>
           Black Wolf Medical
@@ -206,9 +186,61 @@
       <!-- VIEW: START (Schwarzes Brett) -->
       <!-- ============================ -->
       <section class="view view--active" id="view-start">
-        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
+        <div class="dashboard-hero">
+          <div class="dashboard-hero__greeting">
+            <p class="dashboard-hero__zeit" id="dashboard-greeting">Guten Tag,</p>
+            <h1 id="dashboard-name">—</h1>
+            <p class="dashboard-hero__sub">Willkommen bei der Black Wolf Medical Registratur.</p>
+          </div>
+          <div class="dashboard-hero__info">
+            <div class="dashboard-info-item">
+              <span class="dashboard-info-item__label">Datum</span>
+              <span class="dashboard-info-item__value" id="dashboard-datum">—</span>
+            </div>
+            <div class="dashboard-info-item">
+              <span class="dashboard-info-item__label">Uhrzeit</span>
+              <span class="dashboard-info-item__value" id="dashboard-uhrzeit">—</span>
+            </div>
+            <div class="dashboard-info-item">
+              <span class="dashboard-info-item__label">Online</span>
+              <span class="dashboard-info-item__value" id="dashboard-online">0 Mitglieder online</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="dashboard-section-titel">Schnellzugriff</p>
+        <div class="dashboard-quicklinks">
+          <button type="button" class="dashboard-quicklink" data-quicklink="medikamente">
+            <span class="dashboard-quicklink__titel">Medikamente</span>
+            <span class="dashboard-quicklink__text">Verwalte alle Medikamente</span>
+          </button>
+          <button type="button" class="dashboard-quicklink" data-quicklink="infos">
+            <span class="dashboard-quicklink__titel">Wiki</span>
+            <span class="dashboard-quicklink__text">Wirkung & Einsatzgebiete</span>
+          </button>
+          <button type="button" class="dashboard-quicklink" data-quicklink="mitarbeiter">
+            <span class="dashboard-quicklink__titel">Personal</span>
+            <span class="dashboard-quicklink__text">Verzeichnis aller Mitglieder</span>
+          </button>
+          <button type="button" class="dashboard-quicklink" data-quicklink="kontakte">
+            <span class="dashboard-quicklink__titel">Kontakte</span>
+            <span class="dashboard-quicklink__text">Externe & interne Kontakte</span>
+          </button>
+        </div>
+
+        <div class="dashboard-board-header">
+          <p class="dashboard-section-titel">Schwarzes Brett</p>
+          <button type="button" class="btn btn--primary" id="btn-neue-ankuendigung" hidden>Neue Ankündigung</button>
+        </div>
+
+        <div class="board-list" id="board-list">
+          <!-- wird per JavaScript befüllt -->
+        </div>
+        <p class="empty-state" id="board-empty" hidden>Noch keine Ankündigungen vorhanden.</p>
+
+        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar, standardmäßig eingeklappt -->
         <div class="board-card" id="board-admin-form" hidden>
-          <h3>📌 Neue Ankündigung</h3>
+          <h3>Neue Ankündigung</h3>
           <form class="notes-form" id="form-ankuendigung">
             <div class="format-toolbar" data-target="ankuendigung-input">
               <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
@@ -221,14 +253,12 @@
               <button type="button" class="format-btn format-btn--clear" data-color="__reset__" title="Farbe entfernen">✕</button>
             </div>
             <div class="rich-editor" id="ankuendigung-input" contenteditable="true" data-placeholder="Wichtige Info für alle eintragen..."></div>
-            <button type="submit" class="btn btn--primary">Veröffentlichen</button>
+            <div class="info-form-actions">
+              <button type="submit" class="btn btn--primary">Veröffentlichen</button>
+              <button type="button" class="btn btn--ghost" id="btn-ankuendigung-abbrechen">Abbrechen</button>
+            </div>
           </form>
         </div>
-
-        <div class="board-list" id="board-list">
-          <!-- wird per JavaScript befüllt -->
-        </div>
-        <p class="empty-state" id="board-empty" hidden>Noch keine Ankündigungen vorhanden.</p>
       </section>
 
       <!-- ============================ -->
@@ -346,7 +376,11 @@
       <!-- VIEW: NOTIZEN                 -->
       <!-- ============================ -->
       <section class="view" id="view-notizen">
-        <div class="notes-kategorie-badge" id="notes-kategorie-badge"></div>
+        <div class="org-tabs">
+          <button class="org-tabs__tab org-tabs__tab--active" data-kategorie="allgemein">Allgemeine Infos</button>
+          <button class="org-tabs__tab" data-kategorie="personal">Personal</button>
+          <button class="org-tabs__tab" data-kategorie="herstellung">Herstellung</button>
+        </div>
 
         <div class="notes-card">
           <form class="notes-form" id="form-note">
@@ -378,19 +412,21 @@
       </section>
 
       <!-- ============================ -->
-      <!-- VIEW: INFOS                   -->
+      <!-- VIEW: INFOS (Medizin-Wiki)    -->
       <!-- ============================ -->
       <section class="view" id="view-infos">
         <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
         <div class="notes-card" id="infos-admin-form" hidden>
-          <h3 id="info-form-title">ℹ️ Neuen Info-Eintrag hinzufügen</h3>
+          <h3 id="info-form-title">Neuen Info-Eintrag hinzufügen</h3>
           <form id="form-add-info">
             <input type="hidden" id="info-editing-id" value="" />
 
             <div class="info-form-row">
               <input type="text" id="info-titel-input" class="field-input info-form-row__compact" placeholder="Titel, z. B. Medikamentenname" required />
+              <input type="text" id="info-kategorie-input" class="field-input info-form-row__compact" placeholder="Kategorie (optional, z. B. Notfall)" list="info-kategorien-liste" autocomplete="off" />
               <input type="text" id="info-hinweis-input" class="field-input info-form-row__compact" placeholder="Zusatz-Hinweis (optional)" />
             </div>
+            <datalist id="info-kategorien-liste"></datalist>
 
             <div class="format-toolbar" data-target="info-text-input">
               <button type="button" class="format-btn" data-format="bold" title="Fett im Beschreibungsfeld (markierten Text auswählen)"><strong>F</strong></button>
@@ -405,8 +441,33 @@
           </form>
         </div>
 
-        <div class="info-panel__grid" id="infos-grid">
-          <!-- wird per JavaScript befüllt -->
+        <div class="wiki-search">
+          <span class="search-field__icon">🔍</span>
+          <input type="text" id="infos-search" placeholder="Medikament suchen..." autocomplete="off" />
+        </div>
+
+        <div class="wiki-layout">
+          <aside class="wiki-sidebar">
+            <p class="wiki-sidebar__titel">Kategorien</p>
+            <div class="wiki-kategorien" id="wiki-kategorien-liste">
+              <!-- wird per JavaScript befüllt -->
+            </div>
+          </aside>
+
+          <div class="wiki-main">
+            <div class="wiki-main__header">
+              <h3 id="wiki-main-titel">Alle Medikamente</h3>
+              <select id="wiki-sortierung" class="wiki-sort-select">
+                <option value="az">Sortieren: A – Z</option>
+                <option value="za">Sortieren: Z – A</option>
+              </select>
+            </div>
+
+            <div class="info-panel__grid" id="infos-grid">
+              <!-- wird per JavaScript befüllt -->
+            </div>
+            <p class="empty-state" id="infos-empty" hidden>Keine Einträge gefunden.</p>
+          </div>
         </div>
       </section>
 
@@ -635,7 +696,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=61"></script>
-  <script src="js/app.js?v=61"></script>
+  <script src="js/firebase-config.js?v=62"></script>
+  <script src="js/app.js?v=62"></script>
 </body>
 </html>

@@ -229,6 +229,7 @@
     infoTitelInput: document.getElementById("info-titel-input"),
     infoTextInput: document.getElementById("info-text-input"),
     infoHinweisInput: document.getElementById("info-hinweis-input"),
+    infoKategorieInput: document.getElementById("info-kategorie-input"),
     infosGrid: document.getElementById("infos-grid"),
 
     einstellungenAdmin: document.getElementById("einstellungen-admin"),
@@ -758,6 +759,7 @@
     abonniereAnkuendigungen();
     abonniereKontakte();
 
+    aktualisiereUhrzeit();
     wendeStartseitenPraeferenzAn();
 
     window.addEventListener("beforeunload", entferneEigenePresence);
@@ -905,12 +907,26 @@
      ------------------------------------------------------------------------ */
   function aktualisiereUhrzeit() {
     const el2 = document.getElementById("topnav-clock");
-    if (!el2) return;
     const jetzt = new Date();
     const wochentag = jetzt.toLocaleDateString("de-DE", { weekday: "short" });
     const datum = jetzt.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
     const zeit = jetzt.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
-    el2.textContent = `${wochentag}, ${datum} · ${zeit}`;
+    if (el2) el2.textContent = `${wochentag}, ${datum} · ${zeit}`;
+
+    // Dashboard: Begrüßung + Datum/Uhrzeit (rein kosmetisch, unabhängig vom Login)
+    const stunde = jetzt.getHours();
+    const tageszeit = stunde < 5 ? "Gute Nacht" : stunde < 11 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend";
+    const greetingEl = document.getElementById("dashboard-greeting");
+    const nameEl = document.getElementById("dashboard-name");
+    if (greetingEl) greetingEl.textContent = `${tageszeit},`;
+    if (nameEl) nameEl.textContent = aktuellerNutzer ? `${aktuellerNutzer.name}.` : "—";
+
+    const datumVollEl = document.getElementById("dashboard-datum");
+    const uhrzeitEl = document.getElementById("dashboard-uhrzeit");
+    if (datumVollEl) {
+      datumVollEl.textContent = jetzt.toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+    }
+    if (uhrzeitEl) uhrzeitEl.textContent = `${zeit} Uhr`;
   }
   aktualisiereUhrzeit();
   setInterval(aktualisiereUhrzeit, 30000);
@@ -989,6 +1005,11 @@
     const online = ermittleOnlineListe();
     el.onlineCount.textContent = online.length;
 
+    const dashboardOnline = document.getElementById("dashboard-online");
+    if (dashboardOnline) {
+      dashboardOnline.textContent = online.length === 1 ? "1 Mitglied online" : `${online.length} Mitglieder online`;
+    }
+
     el.onlinePanelList.innerHTML = "";
     if (online.length === 0) {
       el.onlinePanelList.innerHTML = `<p class="online-panel__empty">Niemand ist gerade online.</p>`;
@@ -1066,6 +1087,25 @@
     // Eine einzelne Person als schlichte Registerzeile: Hierarchie entsteht
     // rein über Typografie (Größe/Schriftschnitt) und Weißraum, bewusst
     // ohne Farbe, Boxen oder Effekte.
+    const onlineNamenSet = new Set(ermittleOnlineListe().map((p) => p.name.toLowerCase()));
+
+    function bildFeld(slot, stationKey, index) {
+      const bildInhalt = slot.bild ? `<img src="${slot.bild}" alt="" />` : "";
+      if (!bearbeitenAktiv) {
+        return `<div class="org-row__foto">${bildInhalt}</div>`;
+      }
+      return `
+        <div class="org-row__foto org-row__foto--edit">
+          ${bildInhalt}
+          <label class="org-row__foto-upload" title="Profilbild hochladen/ersetzen">
+            <input type="file" accept="image/*" data-role="slot-bild" data-station="${stationKey}" data-index="${index}" hidden />
+            ✎
+          </label>
+          ${slot.bild ? `<button type="button" class="org-row__foto-remove" data-role="slot-bild-entfernen" data-station="${stationKey}" data-index="${index}" title="Profilbild entfernen">✕</button>` : ""}
+        </div>
+      `;
+    }
+
     function personalZeile(stationKey, index, slot, { leitung } = {}) {
       const istDirektion = stationKey === "direktion";
       const istDu = aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
@@ -1074,10 +1114,15 @@
         if (!slot.name) {
           return `<div class="org-row org-row--empty"><span>Unbesetzt</span></div>`;
         }
+        const istOnline = onlineNamenSet.has(slot.name.toLowerCase());
         return `
           <div class="org-row ${leitung ? "org-row--leitung" : ""}">
+            ${bildFeld(slot, stationKey, index)}
             <span class="org-row__name">${escapeHtml(slot.name)}${istDu ? '<span class="org-row__du">Du</span>' : ""}</span>
             <span class="org-row__rang">${escapeHtml(slot.rolle)}</span>
+            <span class="org-row__status ${istOnline ? "org-row__status--online" : "org-row__status--abwesend"}">
+              <span class="org-row__status-dot"></span>${istOnline ? "Online" : "Abwesend"}
+            </span>
           </div>
         `;
       }
@@ -1090,6 +1135,7 @@
 
       return `
         <div class="org-row org-row--edit ${leitung ? "org-row--leitung" : ""}">
+          ${bildFeld(slot, stationKey, index)}
           <input
             type="text"
             class="org-row__name-input"
@@ -1219,6 +1265,46 @@
       const target = event.target;
       if (!el.staffGrid || !el.staffGrid.contains(target)) return;
       if (target.dataset.role === "slot-name") target.blur();
+    });
+
+    // Profilbild hochladen: Datei wird clientseitig auf ein kleines Quadrat
+    // verkleinert und als JPEG-Data-URI gespeichert (keine eigene
+    // Firebase-Storage-Anbindung nötig, funktioniert direkt in Firestore).
+    document.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!el.staffGrid || !el.staffGrid.contains(target)) return;
+      if (target.dataset.role !== "slot-bild") return;
+
+      const datei = target.files && target.files[0];
+      if (!datei) return;
+
+      const bildLeser = new FileReader();
+      bildLeser.onload = () => {
+        const bild = new Image();
+        bild.onload = () => {
+          const ZIEL_GROESSE = 128;
+          const canvas = document.createElement("canvas");
+          canvas.width = ZIEL_GROESSE;
+          canvas.height = ZIEL_GROESSE;
+          const ctx = canvas.getContext("2d");
+          // Zentrierter Bildausschnitt (Quadrat), damit Gesichter nicht verzerrt werden
+          const kleinsteSeite = Math.min(bild.width, bild.height);
+          const sx = (bild.width - kleinsteSeite) / 2;
+          const sy = (bild.height - kleinsteSeite) / 2;
+          ctx.drawImage(bild, sx, sy, kleinsteSeite, kleinsteSeite, 0, 0, ZIEL_GROESSE, ZIEL_GROESSE);
+          const dataUri = canvas.toDataURL("image/jpeg", 0.82);
+          aktualisiereSlot(target.dataset.station, Number(target.dataset.index), { bild: dataUri });
+        };
+        bild.src = bildLeser.result;
+      };
+      bildLeser.readAsDataURL(datei);
+    });
+
+    document.addEventListener("click", (event) => {
+      const target = event.target.closest('[data-role="slot-bild-entfernen"]');
+      if (!target) return;
+      if (!el.staffGrid || !el.staffGrid.contains(target)) return;
+      aktualisiereSlot(target.dataset.station, Number(target.dataset.index), { bild: "" });
     });
   }
 
@@ -1508,28 +1594,10 @@
   let notizenSuche = "";
 
   const navNotizenToggle = document.getElementById("nav-notizen-toggle");
-  const navNotizenSubmenu = document.getElementById("nav-notizen-submenu");
-  const navNotizenGroup = navNotizenToggle ? navNotizenToggle.closest(".nav__group") : null;
-  const navSubitems = navNotizenSubmenu ? navNotizenSubmenu.querySelectorAll(".nav__subitem") : [];
+  const notizenTabs = document.querySelectorAll(".org-tabs__tab[data-kategorie]");
 
-  if (navNotizenToggle) {
-    navNotizenToggle.addEventListener("click", () => {
-      const istOffen = navNotizenGroup.classList.contains("nav__group--open");
-
-      if (!istOffen) {
-        navNotizenGroup.classList.add("nav__group--open");
-      } else if (el.viewTitle && document.getElementById("view-notizen").classList.contains("view--active")) {
-        // Schon offen und schon auf der Notizen-Seite -> beim erneuten Klick zuklappen
-        navNotizenGroup.classList.remove("nav__group--open");
-      }
-
-      wechsleZuNotizenAnsicht(aktiveNotizKategorie);
-    });
-  }
-
-  navSubitems.forEach((item) => {
-    item.addEventListener("click", (event) => {
-      event.stopPropagation();
+  notizenTabs.forEach((item) => {
+    item.addEventListener("click", () => {
       wechsleZuNotizenAnsicht(item.dataset.kategorie);
     });
   });
@@ -1537,12 +1605,12 @@
   function wechsleZuNotizenAnsicht(kategorie) {
     aktiveNotizKategorie = kategorie;
 
-    // Sidebar: "Notizen" + passenden Unterpunkt aktiv markieren, alle
-    // anderen Hauptpunkte deaktivieren
+    // Topbar: "Infos" als aktiv markieren, alle anderen Hauptpunkte
+    // deaktivieren. Die Kategorie selbst wird direkt auf der Seite über
+    // Tabs gesteuert (kein Dropdown mehr).
     el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
-    navNotizenToggle.classList.add("nav__item--active");
-    navNotizenGroup.classList.add("nav__group--open");
-    navSubitems.forEach((i) => i.classList.toggle("nav__subitem--active", i.dataset.kategorie === kategorie));
+    if (navNotizenToggle) navNotizenToggle.classList.add("nav__item--active");
+    notizenTabs.forEach((i) => i.classList.toggle("org-tabs__tab--active", i.dataset.kategorie === kategorie));
 
     // Verkauf-Untermenü schließen (immer nur eine Gruppe gleichzeitig offen)
     if (navVerkaufGroup) {
@@ -1554,11 +1622,13 @@
     el.views.forEach((view) => view.classList.remove("view--active"));
     document.getElementById("view-notizen").classList.add("view--active");
 
-    const kategorieInfo = NOTIZ_KATEGORIEN[kategorie];
-    el.viewTitle.textContent = `Infos · ${kategorieInfo.label}`;
-    el.viewSubtitle.textContent = "Gemeinsame Notizen des Teams";
+    const pageHeader = document.getElementById("page-header");
+    if (pageHeader) pageHeader.hidden = false;
 
-    aktualisiereKategorieBadge();
+    const kategorieInfo = NOTIZ_KATEGORIEN[kategorie];
+    el.viewTitle.textContent = "Infos";
+    el.viewSubtitle.textContent = "Interne Informationen & Dokumente";
+
     aktualisierePlatzhalterNotizfeld();
     renderNotizen();
   }
@@ -1608,21 +1678,18 @@
   function wechsleZuVerkaufAnsicht(subview) {
     aktiverVerkaufSubview = subview;
 
-    // Sidebar: "Verkauf" + passenden Unterpunkt aktiv markieren
+    // Topbar: "Verkauf" + passenden Unterpunkt aktiv markieren
     el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
     navVerkaufToggle.classList.add("nav__item--active");
     navVerkaufGroup.classList.add("nav__group--open");
     navVerkaufSubitems.forEach((i) => i.classList.toggle("nav__subitem--active", i.dataset.subview === subview));
 
-    // Team-Infos-Untermenü schließen (immer nur eine Gruppe gleichzeitig offen)
-    if (navNotizenGroup) {
-      navNotizenGroup.classList.remove("nav__group--open");
-      navNotizenToggle.classList.remove("nav__item--active");
-    }
-
     // Hauptansicht wechseln
     el.views.forEach((view) => view.classList.remove("view--active"));
     document.getElementById(`view-${subview}`).classList.add("view--active");
+
+    const pageHeader = document.getElementById("page-header");
+    if (pageHeader) pageHeader.hidden = false;
 
     const meta = VIEW_META[subview];
     if (meta) {
@@ -2471,6 +2538,29 @@
     );
   }
 
+  // Einfache, wiederverwendbare Symbol-Sets (rein SVG, eine Akzentfarbe) -
+  // rein visuelle Kategorisierungshilfe, keine willkürliche Deko.
+  const WIKI_ICONS = {
+    spritze: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="9" width="10" height="6" rx="1"/><line x1="16" y1="12" x2="21" y2="12"/><line x1="6" y1="9" x2="3" y2="6"/><line x1="8" y1="9" x2="8" y2="6.5"/><line x1="10" y1="9" x2="10" y2="6.5"/><line x1="4" y1="18" x2="8" y2="14"/></svg>`,
+    verband: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/></svg>`,
+    flasche: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3h4v3.5l2 2.5v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V9l2-2.5z"/><line x1="10" y1="3" x2="14" y2="3"/><line x1="8" y1="13" x2="16" y2="13"/></svg>`,
+    kapsel: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg>`,
+    generisch: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="4" width="10" height="4" rx="1"/><path d="M8 8h8v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/></svg>`,
+  };
+
+  function symbolFuerInfo(titel) {
+    const t = (titel || "").toLowerCase();
+    if (t.includes("spritze") || t.includes("injekt")) return WIKI_ICONS.spritze;
+    if (t.includes("salbe") || t.includes("verband") || t.includes("bandage") || t.includes("schiene")) return WIKI_ICONS.verband;
+    if (t.includes("gift") || t.includes("trank") || t.includes("saft") || t.includes("cola") || t.includes("tee")) return WIKI_ICONS.flasche;
+    if (t.includes("tablette") || t.includes("kapsel") || t.includes("pille") || t.includes("vitamin")) return WIKI_ICONS.kapsel;
+    return WIKI_ICONS.generisch;
+  }
+
+  let infosSuchbegriff = "";
+  let aktiveInfoKategorie = "__alle__";
+  let infoSortierung = "az";
+
   function speichereInfos() {
     docRef(INFOS_DOC)
       .set({ liste: infosListe, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
@@ -2484,14 +2574,72 @@
     if (!el.infosGrid) return;
     el.infosAdminForm.hidden = !istAdmin();
 
-    // Wie ein Karteikartenkatalog: alphabetisch sortiert
-    const sortiert = [...infosListe].sort((a, b) => a.titel.localeCompare(b.titel, "de"));
+    // Kategorien rein dynamisch aus den vorhandenen Einträgen ableiten -
+    // keine feste Liste im Code. Einträge ohne eigene Kategorie zählen zu
+    // "Sonstiges", damit nichts unsichtbar wird.
+    const kategorieZaehlung = {};
+    infosListe.forEach((info) => {
+      const k = (info.kategorie || "").trim() || "Sonstiges";
+      kategorieZaehlung[k] = (kategorieZaehlung[k] || 0) + 1;
+    });
+    const kategorien = Object.keys(kategorieZaehlung).sort((a, b) => a.localeCompare(b, "de"));
+
+    const kategorienListeEl = document.getElementById("wiki-kategorien-liste");
+    if (kategorienListeEl) {
+      const alleAktiv = aktiveInfoKategorie === "__alle__";
+      kategorienListeEl.innerHTML = `
+        <button type="button" class="wiki-kategorie ${alleAktiv ? "wiki-kategorie--active" : ""}" data-kategorie="__alle__">
+          <span>Alle Medikamente</span><span class="wiki-kategorie__count">${infosListe.length}</span>
+        </button>
+        ${kategorien
+          .map(
+            (k) => `
+              <button type="button" class="wiki-kategorie ${k === aktiveInfoKategorie ? "wiki-kategorie--active" : ""}" data-kategorie="${escapeHtml(k)}">
+                <span>${escapeHtml(k)}</span><span class="wiki-kategorie__count">${kategorieZaehlung[k]}</span>
+              </button>
+            `
+          )
+          .join("")}
+      `;
+      kategorienListeEl.querySelectorAll(".wiki-kategorie").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          aktiveInfoKategorie = btn.dataset.kategorie;
+          renderInfos();
+        });
+      });
+    }
+
+    // Datalist fürs Kategorie-Eingabefeld im Admin-Formular aktuell halten
+    const datalist = document.getElementById("info-kategorien-liste");
+    if (datalist) datalist.innerHTML = kategorien.map((k) => `<option value="${escapeHtml(k)}"></option>`).join("");
+
+    // Filtern: Kategorie + Suche
+    const begriff = infosSuchbegriff.trim().toLowerCase();
+    let gefiltert = infosListe.filter((info) => {
+      const k = (info.kategorie || "").trim() || "Sonstiges";
+      const kategoriePasst = aktiveInfoKategorie === "__alle__" || k === aktiveInfoKategorie;
+      if (!kategoriePasst) return false;
+      if (!begriff) return true;
+      return (
+        info.titel.toLowerCase().includes(begriff) ||
+        info.text.toLowerCase().includes(begriff) ||
+        (info.hinweis || "").toLowerCase().includes(begriff) ||
+        k.toLowerCase().includes(begriff)
+      );
+    });
+
+    gefiltert.sort((a, b) => (infoSortierung === "za" ? b.titel.localeCompare(a.titel, "de") : a.titel.localeCompare(b.titel, "de")));
+
+    const mainTitel = document.getElementById("wiki-main-titel");
+    if (mainTitel) mainTitel.textContent = aktiveInfoKategorie === "__alle__" ? "Alle Medikamente" : aktiveInfoKategorie;
 
     el.infosGrid.innerHTML = "";
-    sortiert.forEach((info) => {
+    document.getElementById("infos-empty").hidden = gefiltert.length !== 0;
+
+    gefiltert.forEach((info) => {
       const card = document.createElement("div");
       card.className = "info-card";
-      const anfangsbuchstabe = (info.titel || "?").trim().charAt(0).toUpperCase();
+      const kategorieLabel = (info.kategorie || "").trim() || "Sonstiges";
       const aktionsButtons = istAdmin()
         ? `
           <button type="button" class="icon-btn icon-btn--edit info-card__edit" data-role="edit-info" data-id="${info.id}" title="Eintrag bearbeiten">✎</button>
@@ -2499,13 +2647,30 @@
         `
         : "";
       card.innerHTML = `
-        <span class="info-card__letter">${escapeHtml(anfangsbuchstabe)}</span>
+        <span class="info-card__icon">${symbolFuerInfo(info.titel)}</span>
         ${aktionsButtons}
         <span class="info-card__name">${escapeHtml(info.titel)}</span>
+        <span class="info-card__kategorie">${escapeHtml(kategorieLabel)}</span>
         <span class="info-card__text">${formatiereNotizText(info.text)}</span>
         ${info.hinweis ? `<span class="info-card__hint">${formatiereNotizText(info.hinweis)}</span>` : ""}
       `;
       el.infosGrid.appendChild(card);
+    });
+  }
+
+  const infosSearchInput = document.getElementById("infos-search");
+  if (infosSearchInput) {
+    infosSearchInput.addEventListener("input", (event) => {
+      infosSuchbegriff = event.target.value;
+      renderInfos();
+    });
+  }
+
+  const wikiSortSelect = document.getElementById("wiki-sortierung");
+  if (wikiSortSelect) {
+    wikiSortSelect.addEventListener("change", () => {
+      infoSortierung = wikiSortSelect.value;
+      renderInfos();
     });
   }
 
@@ -2514,7 +2679,8 @@
     el.infoTitelInput.value = "";
     el.infoTextInput.value = "";
     el.infoHinweisInput.value = "";
-    el.infoFormTitle.textContent = "ℹ️ Neuen Info-Eintrag hinzufügen";
+    if (el.infoKategorieInput) el.infoKategorieInput.value = "";
+    el.infoFormTitle.textContent = "Neuen Info-Eintrag hinzufügen";
     el.infoFormSubmit.textContent = "Hinzufügen";
     el.infoFormCancel.hidden = true;
   }
@@ -2527,6 +2693,7 @@
       const titel = el.infoTitelInput.value.trim();
       const text = el.infoTextInput.value.trim();
       const hinweis = el.infoHinweisInput.value.trim();
+      const kategorie = el.infoKategorieInput ? el.infoKategorieInput.value.trim() : "";
       if (!titel || !text) return;
 
       const bearbeiteId = el.infoEditingId.value;
@@ -2537,11 +2704,12 @@
           info.titel = titel;
           info.text = text;
           info.hinweis = hinweis || undefined;
+          info.kategorie = kategorie || undefined;
         }
         speichereInfos();
         zeigeToast(`„${titel}“ wurde aktualisiert.`);
       } else {
-        infosListe.push({ id: erzeugeId(titel), titel, text, hinweis: hinweis || undefined });
+        infosListe.push({ id: erzeugeId(titel), titel, text, hinweis: hinweis || undefined, kategorie: kategorie || undefined });
         speichereInfos();
         zeigeToast(`„${titel}“ wurde zu den Infos hinzugefügt.`);
       }
@@ -2581,7 +2749,8 @@
         el.infoTitelInput.value = info.titel;
         el.infoTextInput.value = info.text;
         el.infoHinweisInput.value = info.hinweis || "";
-        el.infoFormTitle.textContent = `✎ „${info.titel}“ bearbeiten`;
+        if (el.infoKategorieInput) el.infoKategorieInput.value = info.kategorie || "";
+        el.infoFormTitle.textContent = `„${info.titel}“ bearbeiten`;
         el.infoFormSubmit.textContent = "Speichern";
         el.infoFormCancel.hidden = false;
         el.infoTitelInput.focus();
@@ -2617,7 +2786,21 @@
   }
 
   function renderAnkuendigungen(eintraege) {
-    el.boardAdminForm.hidden = !istAdmin();
+    const admin = istAdmin();
+    const btnNeu = document.getElementById("btn-neue-ankuendigung");
+    // Nur die Sichtbarkeit des Auslöser-Buttons hängt vom Admin-Status ab -
+    // ob das Formular selbst offen ist, entscheidet ausschließlich der
+    // Toggle-Klick (siehe unten), damit ein Neu-Rendern (z. B. durch einen
+    // neuen Eintrag) ein bereits geöffnetes/geschlossenes Formular nicht
+    // wieder zurücksetzt.
+    if (btnNeu && el.boardAdminForm.hidden) {
+      btnNeu.hidden = !admin;
+    }
+    if (!admin) {
+      el.boardAdminForm.hidden = true;
+      if (btnNeu) btnNeu.hidden = true;
+    }
+
     el.boardEmpty.hidden = eintraege.length !== 0;
     el.boardList.innerHTML = "";
 
@@ -2653,6 +2836,9 @@
         .add({ text: sanitisiereRichText(text), autor: aktuellerNutzer.name, zeitpunkt: firebase.firestore.FieldValue.serverTimestamp() })
         .then(() => {
           el.ankuendigungInput.innerHTML = "";
+          el.boardAdminForm.hidden = true;
+          const btnNeu = document.getElementById("btn-neue-ankuendigung");
+          if (btnNeu) btnNeu.hidden = false;
         })
         .catch((fehler) => {
           console.error("Ankündigung konnte nicht gespeichert werden:", fehler);
@@ -2904,15 +3090,19 @@
     item.addEventListener("click", () => {
       const zielView = item.dataset.view;
 
+      // Sonderfall "Infos": kein Dropdown mehr, sondern normaler Menüpunkt -
+      // navigiert zur zuletzt aktiven Kategorie (Tabs regeln den Rest direkt
+      // auf der Seite).
+      if (zielView === "notizen") {
+        wechsleZuNotizenAnsicht(aktiveNotizKategorie);
+        return;
+      }
+
       el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
       item.classList.add("nav__item--active");
 
-      // Notizen- und Verkauf-Untermenü schließen und deren Aktiv-Status
-      // entfernen, wenn zu einem anderen Hauptpunkt gewechselt wird
-      if (navNotizenToggle) {
-        navNotizenToggle.classList.remove("nav__item--active");
-        navNotizenGroup.classList.remove("nav__group--open");
-      }
+      // Verkauf-Untermenü schließen und dessen Aktiv-Status entfernen, wenn
+      // zu einem anderen Hauptpunkt gewechselt wird
       if (navVerkaufToggle) {
         navVerkaufToggle.classList.remove("nav__item--active");
         navVerkaufGroup.classList.remove("nav__group--open");
@@ -2920,6 +3110,11 @@
 
       el.views.forEach((view) => view.classList.remove("view--active"));
       document.getElementById(`view-${zielView}`).classList.add("view--active");
+
+      // Start-Seite zeigt ihre eigene, persönliche Begrüßung statt des
+      // gemeinsamen Seitenkopfs - der wird für diese eine Seite ausgeblendet.
+      const pageHeader = document.getElementById("page-header");
+      if (pageHeader) pageHeader.hidden = zielView === "start";
 
       const meta = VIEW_META[zielView];
       if (meta) {
@@ -2934,6 +3129,40 @@
       if (zielView === "einstellungen") renderLoginVerwaltung();
     });
   });
+
+  // Schnellzugriff-Kacheln auf dem Dashboard - navigieren einfach zum
+  // jeweiligen Hauptpunkt der Topbar (kein eigener Navigations-Code nötig).
+  document.querySelectorAll(".dashboard-quicklink").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const ziel = btn.dataset.quicklink;
+      if (ziel === "medikamente") {
+        wechsleZuVerkaufAnsicht("medikamente");
+        return;
+      }
+      const navBtn = document.querySelector(`.nav__item[data-view="${ziel}"]`);
+      if (navBtn) navBtn.click();
+    });
+  });
+
+  // "Neue Ankündigung"-Button blendet das Formular ein/aus (steht jetzt
+  // standardmäßig eingeklappt - erst Informationen sehen, dann erstellen).
+  const btnNeueAnkuendigung = document.getElementById("btn-neue-ankuendigung");
+  const btnAnkuendigungAbbrechen = document.getElementById("btn-ankuendigung-abbrechen");
+  if (btnNeueAnkuendigung) {
+    btnNeueAnkuendigung.addEventListener("click", () => {
+      el.boardAdminForm.hidden = false;
+      btnNeueAnkuendigung.hidden = true;
+      el.boardAdminForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.ankuendigungInput.focus();
+    });
+  }
+  if (btnAnkuendigungAbbrechen) {
+    btnAnkuendigungAbbrechen.addEventListener("click", () => {
+      el.boardAdminForm.hidden = true;
+      if (btnNeueAnkuendigung) btnNeueAnkuendigung.hidden = false;
+      el.ankuendigungInput.innerHTML = "";
+    });
+  }
 
   /* ------------------------------------------------------------------------
      20. Enter-Taste bestätigt Dialoge
@@ -3038,7 +3267,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 61;
+  const APP_VERSION = 62;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {

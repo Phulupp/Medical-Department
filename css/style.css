@@ -648,6 +648,42 @@ p {
   display: block;
 }
 
+/* Elegante Tabs (ersetzen das alte Dropdown-Menü, z. B. bei "Infos") */
+.org-tabs {
+  display: flex;
+  gap: 36px;
+  border-bottom: 1px solid var(--color-hairline);
+  margin-bottom: 32px;
+}
+
+.org-tabs__tab {
+  padding: 0 0 16px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.org-tabs__tab:hover {
+  color: var(--color-text);
+}
+
+.org-tabs__tab--active {
+  color: var(--color-brass-text);
+  font-weight: 600;
+}
+
+.org-tabs__tab--active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--color-brass);
+}
+
 .page-footer {
   padding: 24px 48px 36px;
   border-top: 1px solid var(--color-hairline);
@@ -1395,6 +1431,121 @@ p {
 }
 
 /* --------------------------------------------------------------------------
+   14b. Start-Dashboard: Begrüßung, Info-Leiste, Schnellzugriff
+   -------------------------------------------------------------------------- */
+.dashboard-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 56px 0 44px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.dashboard-hero__zeit {
+  font-size: 15px;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.dashboard-hero__greeting h1 {
+  font-size: 38px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+
+.dashboard-hero__sub {
+  font-size: 13.5px;
+  color: var(--color-text-soft);
+}
+
+.dashboard-hero__info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.dashboard-info-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+}
+
+.dashboard-info-item__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+  margin-bottom: 3px;
+}
+
+.dashboard-info-item__value {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--color-text);
+}
+
+.dashboard-section-titel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+  margin: 40px 0 18px;
+}
+
+.dashboard-quicklinks {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.dashboard-quicklink {
+  text-align: left;
+  padding: 22px 22px 20px;
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-quicklink:hover {
+  border-color: var(--color-brass);
+  transform: translateY(-2px);
+}
+
+.dashboard-quicklink__titel {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16.5px;
+  color: var(--color-text);
+  margin-bottom: 5px;
+}
+
+.dashboard-quicklink__text {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-soft);
+}
+
+.dashboard-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 40px;
+}
+
+.dashboard-board-header .dashboard-section-titel {
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------------
    15. Schwarzes Brett (Ankündigungen)
    -------------------------------------------------------------------------- */
 .board-list {
@@ -1563,42 +1714,168 @@ p {
   margin-top: 14px;
 }
 
+/* Prominente Suche über der ganzen Breite */
+.wiki-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 32px;
+}
+
+.wiki-search input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  width: 100%;
+  color: var(--color-text);
+  font-family: inherit;
+}
+
+.wiki-search input::placeholder {
+  color: var(--color-text-soft);
+}
+
+.wiki-search .search-field__icon {
+  font-size: 15px;
+  opacity: 0.6;
+}
+
+/* Zwei-Spalten-Layout: Kategorien links, Ergebnisse rechts */
+.wiki-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 48px;
+  align-items: start;
+}
+
+.wiki-sidebar__titel {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+  margin-bottom: 14px;
+}
+
+.wiki-kategorien {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wiki-kategorie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.wiki-kategorie:hover {
+  background: var(--color-surface-soft);
+  color: var(--color-text);
+}
+
+.wiki-kategorie--active {
+  background: var(--color-brass-soft);
+  color: var(--color-brass-text);
+  font-weight: 600;
+}
+
+.wiki-kategorie__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-soft);
+}
+
+.wiki-kategorie--active .wiki-kategorie__count {
+  color: var(--color-brass-text);
+}
+
+.wiki-main__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.wiki-main__header h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 19px;
+}
+
+.wiki-sort-select {
+  border: 1.5px solid var(--color-input-border);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.wiki-sort-select:hover,
+.wiki-sort-select:focus {
+  outline: none;
+  border-color: var(--color-brass);
+}
+
 .info-panel__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  gap: 16px;
 }
 
 .info-card {
   background: var(--color-surface);
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-md);
-  padding: 16px 18px 16px 52px;
+  padding: 20px 20px 18px;
   box-shadow: var(--shadow-soft);
   position: relative;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
-.info-card__letter {
-  position: absolute;
-  left: 14px;
-  top: 16px;
-  width: 25px;
-  height: 25px;
-  border-radius: 50%;
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
+.info-card:hover {
+  border-color: var(--color-brass);
+  transform: translateY(-2px);
+}
+
+.info-card__icon {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+  color: var(--color-brass-text);
+  margin-bottom: 14px;
+}
+
+.info-card__icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 .info-card__edit {
   position: absolute;
-  top: 10px;
-  right: 42px;
+  top: 14px;
+  right: 46px;
   width: 26px;
   height: 26px;
   font-size: 11px;
@@ -1606,8 +1883,8 @@ p {
 
 .info-card__delete {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 14px;
+  right: 14px;
   width: 26px;
   height: 26px;
   font-size: 11px;
@@ -1617,9 +1894,18 @@ p {
   display: block;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 16px;
-  margin-bottom: 5px;
+  font-size: 16.5px;
+  margin-bottom: 3px;
   padding-right: 22px;
+}
+
+.info-card__kategorie {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--color-text-soft);
+  margin-bottom: 10px;
 }
 
 .info-card__text {
@@ -1631,7 +1917,7 @@ p {
 
 .info-card__hint {
   display: inline-block;
-  margin-top: 9px;
+  margin-top: 12px;
   font-family: var(--font-mono);
   font-size: 10.5px;
   font-weight: 600;
@@ -1930,13 +2216,102 @@ p {
    minimal auf. Bewusst keine Fläche/Box, nur ein weicher Übergang. */
 .org-row {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  align-items: baseline;
-  gap: 20px;
-  padding: 15px 0 15px 14px;
+  grid-template-columns: 38px 2fr 1fr 92px;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 0 13px 14px;
   border-bottom: 1px solid var(--color-hairline);
   border-left: 2px solid transparent;
   transition: border-color 0.25s ease, padding-left 0.25s ease;
+}
+
+.org-row__foto {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-card-border);
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.org-row__foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.org-direktion .org-row__foto {
+  width: 56px;
+  height: 56px;
+}
+
+.org-row__foto-upload {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--color-text-soft);
+  background: rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.org-row__foto--edit:hover .org-row__foto-upload {
+  opacity: 1;
+}
+
+.org-row__foto-remove {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--color-oxblood);
+  color: #f3ece7;
+  font-size: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.org-row__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.org-row__status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.org-row__status--online {
+  color: var(--color-sage-text);
+}
+
+.org-row__status--online .org-row__status-dot {
+  background: var(--color-sage);
+}
+
+.org-row__status--abwesend {
+  color: var(--color-text-soft);
+}
+
+.org-row__status--abwesend .org-row__status-dot {
+  background: var(--color-text-soft);
 }
 
 .org-station__list .org-row:hover {
