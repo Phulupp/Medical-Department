@@ -45,14 +45,25 @@
     '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"></line><circle cx="12" cy="4.5" r="1.5" fill="currentColor" stroke="none"></circle><path d="M6 8c2.5 1.5 2.5 3.5 0 5 2.5 1.5 2.5 3.5 0 5"></path><path d="M18 8c-2.5 1.5-2.5 3.5 0 5-2.5 1.5-2.5 3.5 0 5"></path></svg>';
   const ICON_PIN =
     '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6.5-5.7-6.5-11A6.5 6.5 0 0 1 12 3.5 6.5 6.5 0 0 1 18.5 10c0 5.3-6.5 11-6.5 11Z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>';
+  // Weitere zurückhaltende Strich-Icons für kleine Aktions-Buttons
+  // (Bearbeiten/Löschen/Gesperrt) - ersetzen die vorher genutzten Emojis.
+  const ICON_EDIT =
+    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
+  const ICON_TRASH =
+    '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M9 7V4.5A1.5 1.5 0 0 1 10.5 3h3A1.5 1.5 0 0 1 15 4.5V7"></path><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+  const ICON_LOCK =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="1.5"></rect><path d="M8 11V7.5a4 4 0 0 1 8 0V11"></path></svg>';
+  // Greif-Punkt-Icon für Drag & Drop (Reihenfolge der Medikamente per Maus verschieben)
+  const ICON_DRAG =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="9" cy="6" r="1.4"></circle><circle cx="15" cy="6" r="1.4"></circle><circle cx="9" cy="12" r="1.4"></circle><circle cx="15" cy="12" r="1.4"></circle><circle cx="9" cy="18" r="1.4"></circle><circle cx="15" cy="18" r="1.4"></circle></svg>';
 
   // Standard-LOGIN-Liste (komplett unabhängig von der Mitarbeiter-/Stations-
   // Liste unten!). Bestimmt einzig und allein, wer sich beim Betreten der
   // Seite anmelden kann. "geschuetzt: true" bedeutet: Für die Anmeldung mit
   // diesem Namen ist der ADMIN_PIN nötig.
   const DEFAULT_LOGIN_MITARBEITER = [
-    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt", geschuetzt: true, avatar: "🫏" },
-    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefarzt", geschuetzt: true, avatar: "🦦" },
+    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt", geschuetzt: true },
+    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefarzt", geschuetzt: true },
   ];
 
   // Standard-Mitarbeiter-/Stationsliste: FESTE Anzahl Plätze je Station
@@ -131,6 +142,8 @@
      ------------------------------------------------------------------------ */
   let medikamente = [];
   let suchbegriff = "";
+  let medikamenteSortierModus = false; // Erst nach Klick auf "Reihenfolge bearbeiten" per Drag & Drop sortierbar
+  let ziehId = null;                   // ID des Medikaments, das gerade per Drag & Drop verschoben wird
   let aktivesMedikamentId = null;
   let aktuellerNutzer = null;       // { name, rolle }
   let unsubMedikamente = null;
@@ -720,7 +733,7 @@
     loginMitarbeiterListe.forEach((person) => {
       const option = document.createElement("option");
       option.value = person.name;
-      option.textContent = `${person.name} (${person.rolle})${person.geschuetzt ? " 🔒" : ""}`;
+      option.textContent = `${person.name} (${person.rolle})${person.geschuetzt ? " · PIN" : ""}`;
       el.gateNameSelect.insertBefore(option, el.gateNameSelect.lastElementChild);
     });
   }
@@ -1440,7 +1453,7 @@
 
   function aktualisiereSlot(station, index, aenderung) {
     if (!istAdmin()) {
-      zeigeToast("Nur Chefarzt, Stellv. Chefarzt & Ärztliche Direktion dürfen die Mitarbeiter-Liste bearbeiten.");
+      zeigeToast("Nur Admins dürfen die Mitarbeiter-Liste bearbeiten.");
       renderMitarbeiterListe(); // Eingabe zurücksetzen
       return;
     }
@@ -1456,7 +1469,7 @@
   // je Station bleibt unverändert.
   function verschiebeLeitungMitglied(vonStation, vonIndex, nachStation) {
     if (!istAdmin()) {
-      zeigeToast("Nur Chefarzt, Stellv. Chefarzt & Ärztliche Direktion dürfen die Mitarbeiter-Liste bearbeiten.");
+      zeigeToast("Nur Admins dürfen die Mitarbeiter-Liste bearbeiten.");
       renderMitarbeiterListe(); // Auswahl zurücksetzen
       return;
     }
@@ -1700,9 +1713,9 @@
         <span>
           <span class="settings-list__name">${escapeHtml(person.name)}</span>
           <span class="settings-list__role">${escapeHtml(person.rolle)}</span>
-          ${person.geschuetzt ? '<span class="settings-list__protected">🔒 PIN-geschützt · Admin</span>' : ""}
+          ${person.geschuetzt ? '<span class="settings-list__protected">PIN-geschützt · Admin</span>' : ""}
         </span>
-        <button type="button" class="icon-btn icon-btn--delete" data-role="remove-login" data-id="${person.id}" title="Entfernen">🗑</button>
+        <button type="button" class="icon-btn icon-btn--delete" data-role="remove-login" data-id="${person.id}" title="Entfernen">${ICON_TRASH}</button>
       `;
       el.loginVerwaltungListe.appendChild(zeile);
     });
@@ -1747,9 +1760,9 @@
      10b. Notizen: Sidebar-Untermenü (Allgemein / Personal / Herstellung)
      ------------------------------------------------------------------------ */
   const NOTIZ_KATEGORIEN = {
-    allgemein: { label: "Allgemeine Infos", icon: "📄" },
-    personal: { label: "Personal", icon: "🧑‍⚕️" },
-    herstellung: { label: "Herstellung", icon: "🧪" },
+    allgemein: { label: "Allgemeine Infos" },
+    personal: { label: "Personal" },
+    herstellung: { label: "Herstellung" },
   };
 
   let aktiveNotizKategorie = "allgemein"; // Standard-Kategorie beim Öffnen der Seite
@@ -1820,6 +1833,13 @@
   function wechsleZuVerkaufAnsicht(subview) {
     aktiverVerkaufSubview = subview;
 
+    // Sicherheitshalber immer mit ausgeschaltetem Sortiermodus starten, wenn
+    // die Seite (neu) betreten wird.
+    if (subview === "medikamente" && medikamenteSortierModus) {
+      medikamenteSortierModus = false;
+      renderTabelle();
+    }
+
     // Sidebar: "Verkauf" als aktiv markieren
     el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
     if (navVerkaufToggle) navVerkaufToggle.classList.add("nav__item--active");
@@ -1844,7 +1864,7 @@
     if (!badge) return;
     const kategorieInfo = NOTIZ_KATEGORIEN[aktiveNotizKategorie];
     badge.className = `notes-kategorie-badge notes-kategorie-badge--${aktiveNotizKategorie}`;
-    badge.textContent = `${kategorieInfo.icon} ${kategorieInfo.label}`;
+    badge.textContent = kategorieInfo.label;
   }
 
   function aktualisierePlatzhalterNotizfeld() {
@@ -1950,8 +1970,8 @@
         ${
           darfBearbeiten
             ? `
-              <button type="button" class="icon-btn icon-btn--edit" data-role="toggle-edit-kontakt" data-id="${k.id}" title="Kontakt bearbeiten">✎</button>
-              <button type="button" class="icon-btn icon-btn--delete" data-role="delete-kontakt" data-id="${k.id}" title="Kontakt löschen">🗑</button>
+              <button type="button" class="icon-btn icon-btn--edit" data-role="toggle-edit-kontakt" data-id="${k.id}" title="Kontakt bearbeiten">${ICON_EDIT}</button>
+              <button type="button" class="icon-btn icon-btn--delete" data-role="delete-kontakt" data-id="${k.id}" title="Kontakt löschen">${ICON_TRASH}</button>
             `
             : ""
         }
@@ -2127,7 +2147,7 @@
     notizen.forEach((notiz) => {
       const darfLoeschen = istAdmin() || (aktuellerNutzer && aktuellerNutzer.name === notiz.autor);
       const loeschButton = darfLoeschen
-        ? `<button type="button" class="icon-btn icon-btn--delete note-item__delete" data-role="delete-notiz" data-id="${notiz.id}" title="Notiz löschen">🗑</button>`
+        ? `<button type="button" class="icon-btn icon-btn--delete note-item__delete" data-role="delete-notiz" data-id="${notiz.id}" title="Notiz löschen">${ICON_TRASH}</button>`
         : "";
       const rolleText = notiz.rolle ? ` (${escapeHtml(notiz.rolle)})` : "";
 
@@ -2413,7 +2433,7 @@
             <span class="sale-item__kunde-name">${kundeName}</span>
             <div class="sale-item__header-right">
               <span class="sale-item__time">${zeitText}</span>
-              <button type="button" class="icon-btn icon-btn--edit sale-item__edit-kunde-btn" data-role="toggle-edit-datum" data-id="${verkauf.id}" title="Datum bearbeiten">✎</button>
+              <button type="button" class="icon-btn icon-btn--edit sale-item__edit-kunde-btn" data-role="toggle-edit-datum" data-id="${verkauf.id}" title="Datum bearbeiten">${ICON_EDIT}</button>
             </div>
           </div>
           <div class="sale-item__verkaeufer">verkauft von ${escapeHtml(verkauf.mitarbeiter)} · ${escapeHtml(verkauf.rolle || "")}</div>
@@ -2422,7 +2442,7 @@
             <div class="sale-item__total">GESAMT <span>${formatiereGeld(verkauf.gesamtsumme)}</span></div>
             <div class="sale-item__actions">
               <button type="button" class="btn btn--ghost sale-item__add-btn" data-role="toggle-add-item" data-id="${verkauf.id}">+ Artikel hinzufügen</button>
-              ${darfLoeschen ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-verkauf" data-id="${verkauf.id}" title="Verkauf löschen">🗑</button>` : ""}
+              ${darfLoeschen ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-verkauf" data-id="${verkauf.id}" title="Verkauf löschen">${ICON_TRASH}</button>` : ""}
             </div>
           </div>
           <div class="sale-item__add-form" id="edit-datum-form-${verkauf.id}" hidden>
@@ -2581,31 +2601,35 @@
     el.emptyState.hidden = liste.length !== 0;
 
     const darfLoeschen = istAdmin();
-    // Verschieben nur möglich, wenn die Gesamtliste (unsortiert/ungefiltert)
-    // angezeigt wird - bei aktiver Suche wäre "nach oben/unten" verwirrend,
-    // da die Reihenfolge sich immer auf die komplette Medikamentenliste bezieht.
+    // Reihenfolge ändern nur möglich, wenn die Gesamtliste (unsortiert/
+    // ungefiltert) angezeigt wird - bei aktiver Suche wäre Drag & Drop
+    // verwirrend, da die Reihenfolge sich immer auf die komplette
+    // Medikamentenliste bezieht.
     const darfVerschieben = darfLoeschen && !suchbegriff.trim();
+    const sortierAktiv = darfVerschieben && medikamenteSortierModus;
+
+    // "Reihenfolge bearbeiten"-Button: nur für Admins sichtbar, nur nutzbar
+    // ohne aktive Suche.
+    const toggleSortierBtn = document.getElementById("btn-toggle-med-sortierung");
+    if (toggleSortierBtn) {
+      toggleSortierBtn.hidden = !darfVerschieben;
+      toggleSortierBtn.textContent = sortierAktiv ? "Fertig" : "Reihenfolge bearbeiten";
+      toggleSortierBtn.classList.toggle("btn--ghost-active", sortierAktiv);
+    }
 
     liste.forEach((med) => {
       const row = document.createElement("div");
-      row.className = "med-row";
+      row.className = "med-row" + (sortierAktiv ? " med-row--sortierbar" : "");
       const menge = Number(med.menge) || 0;
       const zwischensumme = menge * Number(med.preis);
 
       const loeschButton = darfLoeschen
-        ? `<button class="icon-btn icon-btn--delete" data-role="delete" data-id="${med.id}" title="Medikament löschen">🗑</button>`
-        : `<button class="icon-btn icon-btn--locked" disabled title="Nur Chefarzt & Stellv. Chefärztin dürfen löschen">🔒</button>`;
+        ? `<button class="icon-btn icon-btn--delete" data-role="delete" data-id="${med.id}" title="Medikament löschen">${ICON_TRASH}</button>`
+        : `<button class="icon-btn icon-btn--locked" disabled title="Nur Admins dürfen löschen">${ICON_LOCK}</button>`;
 
-      let verschiebenButtons = "";
-      if (darfVerschieben) {
-        const echterIndex = medikamente.findIndex((m) => m.id === med.id);
-        const istErste = echterIndex === 0;
-        const istLetzte = echterIndex === medikamente.length - 1;
-        verschiebenButtons = `
-          <button class="icon-btn icon-btn--move" data-role="move-up" data-id="${med.id}" title="Nach oben verschieben" ${istErste ? "disabled" : ""}>▲</button>
-          <button class="icon-btn icon-btn--move" data-role="move-down" data-id="${med.id}" title="Nach unten verschieben" ${istLetzte ? "disabled" : ""}>▼</button>
-        `;
-      }
+      const ziehGriff = sortierAktiv
+        ? `<span class="icon-btn icon-btn--drag" data-role="zieh-griff" title="Zum Verschieben halten und ziehen">${ICON_DRAG}</span>`
+        : "";
 
       row.innerHTML = `
         <span>
@@ -2615,36 +2639,41 @@
         </span>
         <span class="med-price">${formatiereGeld(med.preis)}</span>
         <span>
-          <input type="number" class="qty-input" min="0" step="1" value="${menge}" data-id="${med.id}" data-role="qty" />
+          <input type="number" class="qty-input" min="0" step="1" value="${menge}" data-id="${med.id}" data-role="qty" ${sortierAktiv ? "disabled" : ""} />
         </span>
         <span class="subtotal">${formatiereGeld(zwischensumme)}</span>
         <span>
           <div class="row-actions">
-            ${verschiebenButtons}
-            <button class="icon-btn icon-btn--edit" data-role="edit" data-id="${med.id}" title="Preis bearbeiten">✎</button>
-            ${loeschButton}
+            ${ziehGriff}
+            ${sortierAktiv ? "" : `<button class="icon-btn icon-btn--edit" data-role="edit" data-id="${med.id}" title="Preis bearbeiten">${ICON_EDIT}</button>${loeschButton}`}
           </div>
         </span>
       `;
+
+      if (sortierAktiv) {
+        row.draggable = true;
+        row.dataset.id = med.id;
+      }
+
       el.tableBody.appendChild(row);
     });
   }
 
-  function verschiebeMedikament(id, richtung) {
+  // Verschiebt ein Medikament an eine neue Position in der Gesamtliste
+  // (per Drag & Drop im Sortier-Modus) und speichert die neue Reihenfolge.
+  function verschiebeMedikamentAn(id, zielId) {
     if (!istAdmin()) {
-      zeigeToast("Nur Chefarzt & Stellv. Chefärztin dürfen die Reihenfolge ändern.");
+      zeigeToast("Nur Admins dürfen die Reihenfolge ändern.");
       return;
     }
+    if (id === zielId) return;
 
-    const index = medikamente.findIndex((m) => m.id === id);
-    if (index === -1) return;
+    const vonIndex = medikamente.findIndex((m) => m.id === id);
+    const zielIndex = medikamente.findIndex((m) => m.id === zielId);
+    if (vonIndex === -1 || zielIndex === -1) return;
 
-    const zielIndex = richtung === "up" ? index - 1 : index + 1;
-    if (zielIndex < 0 || zielIndex >= medikamente.length) return;
-
-    const temp = medikamente[index];
-    medikamente[index] = medikamente[zielIndex];
-    medikamente[zielIndex] = temp;
+    const [verschobenes] = medikamente.splice(vonIndex, 1);
+    medikamente.splice(zielIndex, 0, verschobenes);
 
     speichereMedikamenteInFirestore();
     renderTabelle();
@@ -2783,8 +2812,8 @@
       const kategorieLabel = (info.kategorie || "").trim() || "Sonstiges";
       const aktionsButtons = istAdmin()
         ? `
-          <button type="button" class="icon-btn icon-btn--edit info-card__edit" data-role="edit-info" data-id="${info.id}" title="Eintrag bearbeiten">✎</button>
-          <button type="button" class="icon-btn icon-btn--delete info-card__delete" data-role="delete-info" data-id="${info.id}" title="Eintrag löschen">🗑</button>
+          <button type="button" class="icon-btn icon-btn--edit info-card__edit" data-role="edit-info" data-id="${info.id}" title="Eintrag bearbeiten">${ICON_EDIT}</button>
+          <button type="button" class="icon-btn icon-btn--delete info-card__delete" data-role="delete-info" data-id="${info.id}" title="Eintrag löschen">${ICON_TRASH}</button>
         `
         : "";
       card.innerHTML = `
@@ -2962,13 +2991,13 @@
 
     eintraege.forEach((eintrag) => {
       const loeschButton = istAdmin()
-        ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-ankuendigung" data-id="${eintrag.id}" title="Löschen">🗑</button>`
+        ? `<button type="button" class="icon-btn icon-btn--delete" data-role="delete-ankuendigung" data-id="${eintrag.id}" title="Löschen">${ICON_TRASH}</button>`
         : "";
 
       const karte = document.createElement("div");
       karte.className = "board-item";
       karte.innerHTML = `
-        <span class="board-item__pin">📌</span>
+        <span class="board-item__pin">${ICON_PIN}</span>
         <div class="board-item__text">${verarbeiteRichInhalt(eintrag.text)}</div>
         <div class="board-item__meta">
           <span>— ${escapeHtml(eintrag.autor)} · ${formatiereZeitstempel(eintrag.millis)} Uhr</span>
@@ -3176,7 +3205,7 @@
       `Möchtest du „${med.name}“ wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`,
       () => {
         if (!istAdmin()) {
-          zeigeToast("Nur Chefarzt & Stellv. Chefärztin dürfen löschen.");
+          zeigeToast("Nur Admins dürfen löschen.");
           return;
         }
         medikamente = medikamente.filter((m) => m.id !== id);
@@ -3227,8 +3256,54 @@
 
     if (btn.dataset.role === "edit") oeffnePreisBearbeitenModal(btn.dataset.id);
     else if (btn.dataset.role === "delete") oeffneLoeschenModal(btn.dataset.id);
-    else if (btn.dataset.role === "move-up") verschiebeMedikament(btn.dataset.id, "up");
-    else if (btn.dataset.role === "move-down") verschiebeMedikament(btn.dataset.id, "down");
+  });
+
+  // "Reihenfolge bearbeiten"-Umschalter: aktiviert/deaktiviert den Drag-&-
+  // Drop-Sortiermodus für die Medikamentenliste.
+  const btnToggleMedSortierung = document.getElementById("btn-toggle-med-sortierung");
+  if (btnToggleMedSortierung) {
+    btnToggleMedSortierung.addEventListener("click", () => {
+      if (!istAdmin()) return;
+      medikamenteSortierModus = !medikamenteSortierModus;
+      renderTabelle();
+    });
+  }
+
+  // Drag & Drop: Zeile per Maus halten und an neue Position ziehen. Die
+  // gehaltene Maustaste + Bewegung wird vom Browser selbst als "Drag"
+  // erkannt (kein eigenes Mousemove-Tracking nötig) - dabei zeigt der
+  // Browser automatisch ein Vorschaubild der gezogenen Zeile an.
+  el.tableBody.addEventListener("dragstart", (event) => {
+    const zeile = event.target.closest(".med-row--sortierbar");
+    if (!zeile) return;
+    ziehId = zeile.dataset.id;
+    zeile.classList.add("med-row--wird-gezogen");
+    event.dataTransfer.effectAllowed = "move";
+  });
+
+  el.tableBody.addEventListener("dragend", (event) => {
+    const zeile = event.target.closest(".med-row--sortierbar");
+    if (zeile) zeile.classList.remove("med-row--wird-gezogen");
+    el.tableBody.querySelectorAll(".med-row--drueber").forEach((z) => z.classList.remove("med-row--drueber"));
+    ziehId = null;
+  });
+
+  el.tableBody.addEventListener("dragover", (event) => {
+    const zeile = event.target.closest(".med-row--sortierbar");
+    if (!zeile || !ziehId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    if (zeile.dataset.id !== ziehId) {
+      el.tableBody.querySelectorAll(".med-row--drueber").forEach((z) => z.classList.remove("med-row--drueber"));
+      zeile.classList.add("med-row--drueber");
+    }
+  });
+
+  el.tableBody.addEventListener("drop", (event) => {
+    const zeile = event.target.closest(".med-row--sortierbar");
+    if (!zeile || !ziehId) return;
+    event.preventDefault();
+    verschiebeMedikamentAn(ziehId, zeile.dataset.id);
   });
 
   /* ------------------------------------------------------------------------
@@ -3394,7 +3469,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 71;
+  const APP_VERSION = 75;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
