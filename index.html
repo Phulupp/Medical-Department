@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=71" />
+  <link rel="stylesheet" href="css/style.css?v=75" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -70,7 +70,7 @@
       </form>
 
       <p class="auth-hint" id="auth-config-hint" hidden>
-        ⚠️ Firebase ist noch nicht konfiguriert. Trage deine Projektdaten in
+        Firebase ist noch nicht konfiguriert. Trage deine Projektdaten in
         <code>js/firebase-config.js</code> ein, damit die Seite funktioniert.
       </p>
     </div>
@@ -81,7 +81,7 @@
   <!-- ============================ -->
   <!-- Update-Banner: erscheint automatisch, wenn eine neuere Version online ist -->
   <div class="update-banner" id="update-banner" hidden>
-    <span>🔄 Eine neue Version ist verfügbar. Danach ist eine erneute Anmeldung nötig.</span>
+    <span>Eine neue Version ist verfügbar. Danach ist eine erneute Anmeldung nötig.</span>
     <button type="button" class="btn btn--primary" id="update-banner-btn">Jetzt aktualisieren</button>
   </div>
 
@@ -215,7 +215,7 @@
         </div>
         <p class="empty-state" id="board-empty" hidden>Noch keine Ankündigungen vorhanden.</p>
 
-        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar, standardmäßig eingeklappt -->
+        <!-- Nur für Admins sichtbar, standardmäßig eingeklappt -->
         <div class="board-card" id="board-admin-form" hidden>
           <h3>Neue Ankündigung</h3>
           <form class="notes-form" id="form-ankuendigung">
@@ -277,7 +277,6 @@
         <!-- Werkzeugleiste: Suche + Kunde (für den Verkauf) + Hinzufügen -->
         <div class="toolbar">
           <div class="search-field">
-            <span class="search-field__icon">🔍</span>
             <input
               type="text"
               id="search-input"
@@ -287,7 +286,6 @@
           </div>
 
           <div class="search-field search-field--kunde">
-            <span class="search-field__icon">🤠</span>
             <input
               type="text"
               id="med-kunde-input"
@@ -298,12 +296,13 @@
           </div>
 
           <div class="toolbar__buttons">
+            <button class="btn btn--ghost" id="btn-toggle-med-sortierung" title="Reihenfolge der Medikamente per Drag &amp; Drop ändern" hidden>
+              Reihenfolge bearbeiten
+            </button>
             <button class="btn btn--ghost" id="btn-reset-mengen" title="Alle eingetragenen Mengen auf 0 zurücksetzen">
-              <span class="btn__icon">↺</span>
               Zurücksetzen
             </button>
             <button class="btn btn--checkout" id="btn-checkout">
-              <span class="btn__icon">🧾</span>
               Verkauf abschließen
             </button>
             <button class="btn btn--primary" id="btn-add-medikament">
@@ -353,7 +352,6 @@
         <p class="view-lead">Reine Übersicht &amp; Nachverfolgung – neue Verkäufe werden direkt auf der Medikamente-Seite eingetragen.</p>
 
         <div class="sale-log-search">
-          <span class="search-field__icon">🔍</span>
           <input type="text" id="sales-log-search" placeholder="Nach Kunde, Verkäufer oder Medikament suchen..." autocomplete="off" />
         </div>
 
@@ -404,7 +402,6 @@
           </form>
         </div>
         <div class="sale-log-search">
-          <span class="search-field__icon">🔍</span>
           <input type="text" id="notes-search" placeholder="Notizen durchsuchen..." autocomplete="off" />
         </div>
 
@@ -418,7 +415,7 @@
       <!-- VIEW: INFOS (Medizin-Wiki)    -->
       <!-- ============================ -->
       <section class="view" id="view-infos">
-        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
+        <!-- Nur für Admins sichtbar -->
         <div class="notes-card" id="infos-admin-form" hidden>
           <h3 id="info-form-title">Neuen Info-Eintrag hinzufügen</h3>
           <form id="form-add-info">
@@ -459,7 +456,6 @@
         </div>
 
         <div class="wiki-search">
-          <span class="search-field__icon">🔍</span>
           <input type="text" id="infos-search" placeholder="Medikament suchen..." autocomplete="off" />
         </div>
 
@@ -494,11 +490,9 @@
       <section class="view" id="view-mitarbeiter">
         <div class="staff-toolbar">
           <div class="search-field staff-search-field">
-            <span class="search-field__icon">🔍</span>
             <input type="text" id="staff-search-input" placeholder="Mitarbeiter suchen..." autocomplete="off" />
           </div>
           <button type="button" class="btn btn--ghost" id="btn-toggle-mitarbeiter-bearbeiten" hidden>
-            <span class="btn__icon">✎</span>
             Bearbeiten
           </button>
         </div>
@@ -512,7 +506,7 @@
       <!-- ============================ -->
       <section class="view" id="view-kontakte">
         <div class="notes-card">
-          <h3>📞 Neuen Kontakt eintragen</h3>
+          <h3>Neuen Kontakt eintragen</h3>
           <form class="kontakt-form" id="form-kontakt">
             <div class="kontakt-nummer-field">
               <span class="kontakt-nummer-field__prefix">BW-</span>
@@ -525,7 +519,6 @@
         </div>
 
         <div class="sale-log-search">
-          <span class="search-field__icon">🔍</span>
           <input type="text" id="kontakte-search" placeholder="Nach Nummer, Name oder Notiz suchen..." autocomplete="off" />
         </div>
 
@@ -542,23 +535,23 @@
       <section class="view" id="view-einstellungen">
         <!-- Für alle Mitarbeiter sichtbar -->
         <div class="settings-card">
-          <h3>🏠 Standard-Startseite</h3>
+          <h3>Standard-Startseite</h3>
           <p class="settings-card__hint">Diese Seite öffnet sich automatisch, sobald du dich anmeldest - nur in deinem eigenen Browser gespeichert.</p>
           <select id="startseite-select" class="field-input" style="max-width: 320px;">
-            <option value="start">📌 Start (Schwarzes Brett)</option>
-            <option value="medikamente">💊 Verkauf – Medikamente</option>
-            <option value="verkaufslog">💊 Verkauf – Verkaufslog</option>
+            <option value="start">Start (Schwarzes Brett)</option>
+            <option value="medikamente">Verkauf – Medikamente</option>
+            <option value="verkaufslog">Verkauf – Verkaufslog</option>
             <option value="infos-wiki">ℹ️ Medizin-Wiki</option>
-            <option value="notizen">📝 Infos (Allgemein)</option>
-            <option value="mitarbeiter">🧑‍⚕️ Personal</option>
-            <option value="kontakte">📞 Kontakte</option>
+            <option value="notizen">Infos (Allgemein)</option>
+            <option value="mitarbeiter">Personal</option>
+            <option value="kontakte">Kontakte</option>
           </select>
         </div>
 
-        <!-- Nur für Chefarzt & Stellv. Chefärztin sichtbar -->
+        <!-- Nur für Admins sichtbar -->
         <div id="einstellungen-admin" hidden>
           <div class="settings-card">
-            <h3>🔑 Login verwalten</h3>
+            <h3>Login verwalten</h3>
             <p class="settings-card__hint">Bestimmt, wer sich mit welchem Namen auf der Login-Seite anmelden kann. Die Personal-Liste (Rhodes/Blackwater) wird direkt auf der Personal-Seite bearbeitet, nicht hier. <strong>Mit PIN geschützt = Admin-Rechte</strong> (Login-Liste verwalten, Personal-Liste bearbeiten, Medikamente löschen) - unabhängig vom Rang, der hier nur für die Anzeige (z. B. bei Notizen) gilt.</p>
 
             <form class="settings-form" id="form-add-login" style="flex-wrap: wrap;">
@@ -571,10 +564,11 @@
                 <option value="Oberarzt">Oberarzt</option>
                 <option value="Stellv. Chefarzt">Stellv. Chefarzt</option>
                 <option value="Chefarzt">Chefarzt</option>
+                <option value="Ärztliche Direktion">Ärztliche Direktion</option>
               </select>
               <label class="mitarbeiter-pin-toggle">
                 <input type="checkbox" id="login-geschuetzt-input" checked />
-                🔒 Mit PIN schützen (= Admin-Rechte)
+                Mit PIN schützen (= Admin-Rechte)
               </label>
               <button type="submit" class="btn btn--primary">Hinzufügen</button>
             </form>
@@ -587,9 +581,8 @@
 
         <!-- Für Nicht-Admins: Platzhalter (statt Mitarbeiterverwaltung) -->
         <div id="einstellungen-locked" class="placeholder-card" hidden>
-          <div class="placeholder-card__icon">⚙️</div>
           <h2>Weitere Einstellungen</h2>
-          <p>Die Mitarbeiterverwaltung ist nur für Chefarzt und Stellv. Chefärztin sichtbar. Weitere Einstellungen folgen in einem zukünftigen Update.</p>
+          <p>Die Mitarbeiterverwaltung ist nur für Admins sichtbar. Weitere Einstellungen folgen in einem zukünftigen Update.</p>
         </div>
       </section>
       </div>
@@ -607,7 +600,7 @@
   <div class="modal-overlay" id="modal-statistik">
     <div class="modal modal--stats">
       <div class="modal__header">
-        <h3>📊 Verkaufsstatistik</h3>
+        <h3>Verkaufsstatistik</h3>
         <button class="modal__close" data-close-modal="modal-statistik">✕</button>
       </div>
       <div class="modal__body">
@@ -702,7 +695,7 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=71"></script>
-  <script src="js/app.js?v=71"></script>
+  <script src="js/firebase-config.js?v=75"></script>
+  <script src="js/app.js?v=75"></script>
 </body>
 </html>
