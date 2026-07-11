@@ -951,15 +951,6 @@ p {
   color: var(--color-oxblood-text);
 }
 
-.icon-btn--move {
-  font-size: 10px;
-}
-
-.icon-btn--move:hover {
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-}
-
 .icon-btn--locked {
   opacity: 0.4;
   cursor: not-allowed;
@@ -1278,6 +1269,32 @@ p {
   text-align: right;
 }
 
+/* Sortier-Modus: Zeile per Halten + Ziehen an neue Position verschieben */
+.med-row--sortierbar {
+  cursor: grab;
+}
+
+.med-row--sortierbar:active {
+  cursor: grabbing;
+}
+
+.med-row--wird-gezogen {
+  opacity: 0.4;
+}
+
+.med-row--drueber {
+  box-shadow: inset 0 2px 0 var(--color-brass), inset 0 -2px 0 var(--color-brass);
+}
+
+.icon-btn--drag {
+  cursor: grab;
+  color: var(--color-text-soft);
+}
+
+.icon-btn--drag:active {
+  cursor: grabbing;
+}
+
 #med-table-body .med-row {
   padding: 13px 20px;
   font-size: 13.5px;
@@ -1538,7 +1555,8 @@ p {
   position: absolute;
   top: -9px;
   left: 18px;
-  font-size: 15px;
+  display: inline-flex;
+  color: var(--color-brass);
   background: var(--color-surface);
   padding: 0 4px;
 }
