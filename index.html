@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=83" />
+  <link rel="stylesheet" href="css/style.css?v=85" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -608,10 +608,15 @@
       </section>
 
       <!-- ============================ -->
-      <!-- VIEW: ADMIN (nur für Admins - der Reiter selbst ist für alle
-           anderen unsichtbar, siehe nav-admin-toggle oben) -->
+      <!-- VIEW: ADMIN – Benutzer (nur für Admins - der Reiter selbst ist für
+           alle anderen unsichtbar, siehe nav-admin-toggle oben) -->
       <!-- ============================ -->
       <section class="view" id="view-admin">
+        <div class="org-tabs">
+          <button class="org-tabs__tab org-tabs__tab--active" data-admin-subview="admin">Benutzer</button>
+          <button class="org-tabs__tab" data-admin-subview="admin-log">Aktivitäts-Log</button>
+        </div>
+
         <div class="settings-card">
           <h3>Benutzerverwaltung</h3>
           <p class="settings-card__hint">Hier verwaltest du alle Accounts: Registrierungsanfragen freigeben oder ablehnen, Rang und Admin-Rechte vergeben, Benutzer sperren (dauerhaft oder für eine bestimmte Zeit)/entsperren/löschen/umbenennen und interne Notizen hinterlegen. <strong>Admin-Rechte</strong> sind unabhängig vom Rang und werden separat über den Schalter je Benutzer vergeben.</p>
@@ -640,6 +645,17 @@
           <div class="settings-list" id="benutzerverwaltung-liste">
             <!-- wird per JavaScript befüllt -->
           </div>
+        </div>
+      </section>
+
+      <!-- ============================ -->
+      <!-- VIEW: ADMIN – Aktivitäts-Log (nur für Admins - eigene Unterseite,
+           damit man dafür nicht an der Benutzerliste vorbeiscrollen muss) -->
+      <!-- ============================ -->
+      <section class="view" id="view-admin-log">
+        <div class="org-tabs">
+          <button class="org-tabs__tab" data-admin-subview="admin">Benutzer</button>
+          <button class="org-tabs__tab org-tabs__tab--active" data-admin-subview="admin-log">Aktivitäts-Log</button>
         </div>
 
         <div class="settings-card" id="admin-log-card">
@@ -834,10 +850,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=83"></script>
-  <script src="js/app.js?v=83"></script>
+  <script src="js/firebase-config.js?v=85"></script>
+  <script src="js/app.js?v=85"></script>
   <!-- Login-/Benutzersystem: eigenes ES-Modul mit dem modernen Firebase
        Modular SDK (siehe js/auth.js für den ausführlich kommentierten Code) -->
-  <script type="module" src="js/auth.js?v=83"></script>
+  <script type="module" src="js/auth.js?v=85"></script>
 </body>
 </html>
