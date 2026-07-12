@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=77" />
+  <link rel="stylesheet" href="css/style.css?v=78" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -23,7 +23,7 @@
 </head>
 <body>
   <!-- ============================ -->
-  <!-- ZUGANGSSPERRE: Passwort + Name (kein klassischer Login) -->
+  <!-- ZUGANGSSPERRE: echtes Login-/Benutzersystem (js/auth.js) -->
   <!-- ============================ -->
   <div class="auth-screen" id="auth-screen">
     <svg class="auth-screen__watermark" viewBox="0 0 100 100" fill="none" aria-hidden="true"><rect x="46" y="8" width="8" height="84" rx="4" fill="currentColor"/><path d="M28 82 C28 71 72 71 72 60 C72 49 28 49 28 38 C28 27 66 25 66 16" stroke="currentColor" stroke-width="7" stroke-linecap="round" fill="none"/><path d="M66 16 C71 9 69 1 59 2 C51 3 49 10 54 15 C58 18 63 18 66 16 Z" fill="currentColor"/></svg>
@@ -36,38 +36,75 @@
         </div>
       </div>
 
-      <!-- Schritt 1: Website-Passwort -->
-      <form class="auth-form auth-form--active" id="form-gate-password">
-        <label class="field-label" for="gate-password">Zugangspasswort</label>
-        <input type="password" id="gate-password" class="field-input" placeholder="Passwort eingeben..." autocomplete="off" required />
+      <!-- Login mit E-Mail/Passwort oder Google -->
+      <form class="auth-form auth-form--active" id="form-login">
+        <label class="field-label" for="login-email">E-Mail-Adresse</label>
+        <input type="email" id="login-email" class="field-input" placeholder="deine@email.de" autocomplete="username" required />
 
-        <p class="field-error" id="gate-password-error" hidden></p>
+        <label class="field-label" for="login-password">Passwort</label>
+        <input type="password" id="login-password" class="field-input" placeholder="Passwort eingeben..." autocomplete="current-password" required />
+
+        <p class="field-error" id="login-error" hidden></p>
+
+        <button type="submit" class="btn btn--primary auth-submit">Anmelden</button>
+        <button type="button" class="btn btn--ghost auth-submit" id="btn-google-login">Mit Google anmelden</button>
+
+        <div class="auth-links">
+          <button type="button" class="auth-link" id="link-forgot-password">Passwort vergessen?</button>
+          <button type="button" class="auth-link" id="link-show-register">Noch keinen Account? Registrieren</button>
+        </div>
+      </form>
+
+      <!-- Registrierung: Benutzername -> E-Mail -> Passwort -> Passwort wiederholen -->
+      <form class="auth-form" id="form-register">
+        <label class="field-label" for="register-username">Benutzername (RP-/Ingame-Name)</label>
+        <input type="text" id="register-username" class="field-input" placeholder="z. B. Grete Hornhausen" autocomplete="off" required />
+
+        <label class="field-label" for="register-email">E-Mail-Adresse</label>
+        <input type="email" id="register-email" class="field-input" placeholder="deine@email.de" autocomplete="email" required />
+
+        <label class="field-label" for="register-password">Passwort</label>
+        <input type="password" id="register-password" class="field-input" placeholder="Mind. 6 Zeichen" autocomplete="new-password" required minlength="6" />
+
+        <label class="field-label" for="register-password2">Passwort wiederholen</label>
+        <input type="password" id="register-password2" class="field-input" placeholder="Passwort wiederholen" autocomplete="new-password" required minlength="6" />
+
+        <p class="field-error" id="register-error" hidden></p>
+
+        <button type="submit" class="btn btn--primary auth-submit">Account erstellen</button>
+
+        <div class="auth-links">
+          <button type="button" class="auth-link" id="link-show-login">Schon einen Account? Anmelden</button>
+        </div>
+      </form>
+
+      <!-- Nur beim allerersten Google-Login: Benutzernamen wählen -->
+      <form class="auth-form" id="form-google-username">
+        <label class="field-label" for="google-username-input">Wähle deinen Benutzernamen (RP-/Ingame-Name)</label>
+        <input type="text" id="google-username-input" class="field-input" placeholder="z. B. Grete Hornhausen" autocomplete="off" required />
+
+        <p class="field-error" id="google-username-error" hidden></p>
 
         <button type="submit" class="btn btn--primary auth-submit">Weiter</button>
       </form>
 
-      <!-- Schritt 2: Name auswählen -->
-      <form class="auth-form" id="form-gate-name">
-        <label class="field-label" for="gate-name-select">Wer bist du?</label>
-        <select id="gate-name-select" class="field-input">
-          <option value="">Bitte auswählen...</option>
-          <option value="__andere__">Andere Person...</option>
-        </select>
+      <!-- Status: Account wartet auf Freigabe durch einen Administrator -->
+      <div class="auth-status" id="auth-status-pending">
+        <p class="auth-status__text">Ihr Account wurde erfolgreich erstellt und wartet derzeit auf die Freigabe durch einen Administrator.</p>
+        <button type="button" class="btn btn--ghost auth-submit" id="btn-pending-logout">Abmelden</button>
+      </div>
 
-        <div id="gate-name-custom-wrapper" hidden>
-          <label class="field-label" for="gate-name-custom">Dein Name</label>
-          <input type="text" id="gate-name-custom" class="field-input" placeholder="z. B. Grete" />
-        </div>
+      <!-- Status: Account wurde abgelehnt -->
+      <div class="auth-status" id="auth-status-rejected">
+        <p class="auth-status__text">Deine Registrierung wurde leider abgelehnt. Bitte wende dich an einen Administrator.</p>
+        <button type="button" class="btn btn--ghost auth-submit" id="btn-rejected-logout">Abmelden</button>
+      </div>
 
-        <div id="gate-pin-wrapper" hidden>
-          <label class="field-label" for="gate-pin">Dieser Name ist geschützt – PIN eingeben</label>
-          <input type="password" id="gate-pin" class="field-input" placeholder="PIN" inputmode="numeric" autocomplete="off" />
-        </div>
-
-        <p class="field-error" id="gate-name-error" hidden></p>
-
-        <button type="submit" class="btn btn--primary auth-submit">Betreten</button>
-      </form>
+      <!-- Status: Account wurde gesperrt -->
+      <div class="auth-status" id="auth-status-locked">
+        <p class="auth-status__text">Dein Account wurde gesperrt. Bitte wende dich an einen Administrator.</p>
+        <button type="button" class="btn btn--ghost auth-submit" id="btn-locked-logout">Abmelden</button>
+      </div>
 
       <p class="auth-hint" id="auth-config-hint" hidden>
         Firebase ist noch nicht konfiguriert. Trage deine Projektdaten in
@@ -131,7 +168,7 @@
               <span class="user-badge__chevron">›</span>
             </button>
             <div class="user-menu" id="user-menu">
-              <button class="user-menu__item" id="btn-logout">Nutzer wechseln</button>
+              <button class="user-menu__item" id="btn-logout">Abmelden</button>
             </div>
           </div>
         </div>
@@ -551,12 +588,13 @@
         <!-- Nur für Admins sichtbar -->
         <div id="einstellungen-admin" hidden>
           <div class="settings-card">
-            <h3>Login verwalten</h3>
-            <p class="settings-card__hint">Bestimmt, wer sich mit welchem Namen auf der Login-Seite anmelden kann. Die Personal-Liste (Rhodes/Blackwater) wird direkt auf der Personal-Seite bearbeitet, nicht hier. <strong>Mit PIN geschützt = Admin-Rechte</strong> (Login-Liste verwalten, Personal-Liste bearbeiten, Medikamente löschen) - unabhängig vom Rang, der hier nur für die Anzeige (z. B. bei Notizen) gilt.</p>
+            <h3>Benutzerverwaltung</h3>
+            <p class="settings-card__hint">Hier verwaltest du alle Accounts: Registrierungsanfragen freigeben oder ablehnen, Rang und Admin-Rechte vergeben, Benutzer sperren/entsperren/löschen/umbenennen und interne Notizen hinterlegen. <strong>Admin-Rechte</strong> sind unabhängig vom Rang und werden separat über den Schalter je Benutzer vergeben.</p>
 
-            <form class="settings-form" id="form-add-login" style="flex-wrap: wrap;">
-              <input type="text" id="login-name-input" class="field-input" placeholder="Name, z. B. Heinrich Hornhausen" required style="flex: 1 1 200px;" />
-              <select id="login-rolle-input" class="field-input" style="flex: 0 0 180px;">
+            <form class="settings-form" id="form-add-benutzer" style="flex-wrap: wrap;">
+              <input type="text" id="neuer-benutzer-name-input" class="field-input" placeholder="Benutzername, z. B. Heinrich Hornhausen" required style="flex: 1 1 200px;" />
+              <input type="email" id="neuer-benutzer-email-input" class="field-input" placeholder="E-Mail-Adresse" required style="flex: 1 1 200px;" />
+              <select id="neuer-benutzer-rolle-input" class="field-input" style="flex: 0 0 180px;">
                 <option value="Anwärter">Anwärter</option>
                 <option value="Assistenzarzt">Assistenzarzt</option>
                 <option value="Facharzt">Facharzt</option>
@@ -566,14 +604,11 @@
                 <option value="Chefarzt">Chefarzt</option>
                 <option value="Ärztliche Direktion">Ärztliche Direktion</option>
               </select>
-              <label class="mitarbeiter-pin-toggle">
-                <input type="checkbox" id="login-geschuetzt-input" checked />
-                Mit PIN schützen (= Admin-Rechte)
-              </label>
-              <button type="submit" class="btn btn--primary">Hinzufügen</button>
+              <button type="submit" class="btn btn--primary">Benutzer erstellen</button>
             </form>
+            <p class="settings-card__hint">Neu erstellte Benutzer sind sofort freigegeben und bekommen automatisch eine E-Mail von Firebase, um ihr eigenes Passwort festzulegen.</p>
 
-            <div class="settings-list" id="login-verwaltung-liste">
+            <div class="settings-list" id="benutzerverwaltung-liste">
               <!-- wird per JavaScript befüllt -->
             </div>
           </div>
@@ -695,7 +730,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=77"></script>
-  <script src="js/app.js?v=77"></script>
+  <script src="js/firebase-config.js?v=78"></script>
+  <script src="js/app.js?v=78"></script>
+  <!-- Login-/Benutzersystem: eigenes ES-Modul mit dem modernen Firebase
+       Modular SDK (siehe js/auth.js für den ausführlich kommentierten Code) -->
+  <script type="module" src="js/auth.js?v=78"></script>
 </body>
 </html>

@@ -1,0 +1,140 @@
+/* ============================================================================
+   Firestore Security Rules — Black Wolf Medical
+   ============================================================================
+   WICHTIG: Diese Datei hier im Repo ist nur eine ARCHIV-/VERSIONS-KOPIE.
+   Sie wird NICHT automatisch von Firebase gelesen! Damit sie wirklich
+   gilt, musst du sie manuell in der Firebase-Konsole einfügen:
+
+     Firebase-Konsole -> dein Projekt -> Firestore Database -> Reiter
+     "Regeln" -> kompletten bisherigen Inhalt löschen -> den Inhalt dieser
+     Datei hier hineinkopieren -> "Veröffentlichen" klicken.
+
+   Diese Regeln sorgen dafür, dass die Rechteprüfung nicht nur im Frontend
+   (also im JavaScript-Code, den man theoretisch manipulieren könnte)
+   passiert, sondern direkt von Firebase selbst durchgesetzt wird — ein
+   nicht freigegebener oder gesperrter Account kommt also NIEMALS an Daten,
+   egal was im Browser passiert.
+   ============================================================================ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ------------------------------------------------------------------
+       Hilfsfunktionen
+       ------------------------------------------------------------------ */
+
+    // Ist überhaupt jemand eingeloggt (egal welcher Status)?
+    function istEingeloggt() {
+      return request.auth != null;
+    }
+
+    // Lädt das eigene users/{uid}-Dokument des gerade eingeloggten Kontos.
+    // Wichtig: get() zählt NICHT als "list" - das ist erlaubt, auch wenn
+    // man selbst (noch) gar keine Leserechte auf die users-Collection als
+    // Ganzes hat.
+    function eigenesUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Ist der eingeloggte Nutzer ein Admin? (unabhängig vom Rang)
+    function istAdmin() {
+      return istEingeloggt() && eigenesUserDoc().isAdmin == true;
+    }
+
+    // Ist der eingeloggte Nutzer freigegeben (status == "approved")?
+    function istFreigegeben() {
+      return istEingeloggt() && eigenesUserDoc().status == 'approved';
+    }
+
+    /* ------------------------------------------------------------------
+       users/{uid} — ein Dokument pro Account, Dokument-ID = Firebase-Auth-UID
+       ------------------------------------------------------------------ */
+    match /users/{uid} {
+      // Einzelnes Dokument lesen: das eigene, oder wenn man Admin ist
+      allow get: if istEingeloggt() && (request.auth.uid == uid || istAdmin());
+
+      // Die GESAMTE Liste lesen (für die Benutzerverwaltung): nur Admins
+      allow list: if istAdmin();
+
+      // Neuen Account anlegen: nur das eigene Dokument, und zwingend mit
+      // status "pending" und isAdmin false - so kann sich niemand selbst
+      // sofort freischalten oder zum Admin machen, egal was das Frontend
+      // schickt.
+      allow create: if istEingeloggt()
+                    && request.auth.uid == uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.isAdmin == false;
+
+      // Ändern: Admins dürfen alles ändern (Freigeben/Ablehnen/Sperren/
+      // Rolle/Admin-Status/Notiz/Umbenennen). Der Account selbst darf NUR
+      // sein eigenes "lastLogin"-Feld aktualisieren (beim Einloggen) -
+      // alles andere (Rolle, isAdmin, status, ...) darf man sich nicht
+      // selbst geben.
+      allow update: if istAdmin()
+                    || (request.auth.uid == uid
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLogin']));
+
+      // Löschen: nur Admins
+      allow delete: if istAdmin();
+    }
+
+    /* ------------------------------------------------------------------
+       usernames/{nameKleingeschrieben} — reserviert einen Benutzernamen,
+       damit er nicht doppelt vergeben werden kann. Dokument enthält nur
+       { uid }. Getrennt von "users", weil eine Verfügbarkeits-Prüfung per
+       get() funktionieren muss, auch BEVOR man Admin oder überhaupt
+       freigegeben ist (z. B. während der Registrierung selbst).
+       ------------------------------------------------------------------ */
+    match /usernames/{name} {
+      // Jeder (auch nicht eingeloggt) darf prüfen, ob ein Name frei ist -
+      // das Dokument enthält keine sensiblen Daten, nur eine UID.
+      allow get: if true;
+
+      // Niemand darf die komplette Namensliste auf einmal abfragen.
+      allow list: if false;
+
+      // Einen Namen reservieren: nur für die eigene UID (bei Registrierung)
+      // oder durch einen Admin (z. B. beim direkten Anlegen eines Kontos
+      // oder beim Umbenennen).
+      allow create: if istEingeloggt() && (request.resource.data.uid == request.auth.uid || istAdmin());
+
+      // Ein reserviertes Dokument wird nie "geändert", nur neu angelegt
+      // oder gelöscht (siehe benenneUm in js/auth.js) - daher grundsätzlich
+      // gesperrt.
+      allow update: if false;
+
+      // Freigeben (z. B. beim Umbenennen der alte Name, oder beim Löschen
+      // eines Accounts): nur Admins.
+      allow delete: if istAdmin();
+    }
+
+    /* ------------------------------------------------------------------
+       Bestehende Collections der eigentlichen App - unverändert in ihrer
+       DATENSTRUKTUR, aber jetzt zusätzlich an "istFreigegeben()" gekoppelt,
+       statt (wie bisher) für jeden eingeloggten (auch anonymen) Nutzer
+       offen zu sein. Bewusst JEDE Collection einzeln aufgeführt statt
+       eines Wildcard-Musters ({document=**}) - ein Wildcard würde sich mit
+       den spezifischeren Regeln oben (users/usernames) per OR verbinden
+       und deren strengere Einschränkungen effektiv aufweichen.
+       ------------------------------------------------------------------ */
+    match /department/{dokument} {
+      allow read, write: if istFreigegeben();
+    }
+    match /presence/{dokument} {
+      allow read, write: if istFreigegeben();
+    }
+    match /notizen/{dokument} {
+      allow read, write: if istFreigegeben();
+    }
+    match /verkaufslog/{dokument} {
+      allow read, write: if istFreigegeben();
+    }
+    match /kontakte/{dokument} {
+      allow read, write: if istFreigegeben();
+    }
+    match /ankuendigungen/{dokument} {
+      allow read, write: if istFreigegeben();
+    }
+  }
+}
