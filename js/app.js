@@ -966,7 +966,9 @@
 
     // Dashboard: Begrüßung + Datum/Uhrzeit (rein kosmetisch, unabhängig vom Login)
     const stunde = jetzt.getHours();
-    const tageszeit = stunde < 5 ? "Gute Nacht" : stunde < 11 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend";
+    // "Gute Nacht" ist im Deutschen eine Verabschiedung, keine Begrüßung -
+    // deshalb gilt "Guten Abend" bis in die frühen Morgenstunden weiter.
+    const tageszeit = stunde < 5 ? "Guten Abend" : stunde < 11 ? "Guten Morgen" : stunde < 18 ? "Guten Tag" : "Guten Abend";
     const greetingEl = document.getElementById("dashboard-greeting");
     const nameEl = document.getElementById("dashboard-name");
     if (greetingEl) greetingEl.textContent = `${tageszeit},`;
@@ -2997,7 +2999,6 @@
       const karte = document.createElement("div");
       karte.className = "board-item";
       karte.innerHTML = `
-        <span class="board-item__pin">${ICON_PIN}</span>
         <div class="board-item__text">${verarbeiteRichInhalt(eintrag.text)}</div>
         <div class="board-item__meta">
           <span>— ${escapeHtml(eintrag.autor)} · ${formatiereZeitstempel(eintrag.millis)} Uhr</span>
@@ -3469,7 +3470,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 75;
+  const APP_VERSION = 77;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
