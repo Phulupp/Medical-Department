@@ -241,6 +241,7 @@
     navAdminToggle: document.getElementById("nav-admin-toggle"),
     navAdminBadge: document.getElementById("nav-admin-badge"),
     viewAdmin: document.getElementById("view-admin"),
+    viewAdminLog: document.getElementById("view-admin-log"),
 
     formAddBenutzer: document.getElementById("form-add-benutzer"),
     neuerBenutzerNameInput: document.getElementById("neuer-benutzer-name-input"),
@@ -302,6 +303,7 @@
     infos: { title: "Medizin-Wiki", subtitle: "Wirkung & Einsatzgebiet der Medikamente" },
     einstellungen: { title: "Einstellungen", subtitle: "Konfiguration des Ärztekammer-Systems" },
     admin: { title: "Admin", subtitle: "Benutzerverwaltung – nur für Administratoren sichtbar" },
+    "admin-log": { title: "Aktivitäts-Log", subtitle: "Wer hat wann was im Admin Panel geändert – nur für Administratoren sichtbar" },
   };
 
   /* ------------------------------------------------------------------------
@@ -1608,11 +1610,14 @@
     abonniereBenutzerlisteFallsAdmin();
     abonniereAdminLogFallsAdmin();
 
-    // Falls jemand gerade auf der Admin-Seite ist und in genau diesem
-    // Moment seine Admin-Rechte verliert: automatisch zur Startseite
-    // zurückschicken, statt ihn auf einer Seite zu lassen, die für ihn
-    // eigentlich gar nicht mehr sichtbar sein soll.
-    if (!istAdmin() && el.viewAdmin && el.viewAdmin.classList.contains("view--active")) {
+    // Falls jemand gerade auf einer der beiden Admin-Unterseiten ist und in
+    // genau diesem Moment seine Admin-Rechte verliert: automatisch zur
+    // Startseite zurückschicken, statt ihn auf einer Seite zu lassen, die
+    // für ihn eigentlich gar nicht mehr sichtbar sein soll.
+    const aufAdminSeite =
+      (el.viewAdmin && el.viewAdmin.classList.contains("view--active")) ||
+      (el.viewAdminLog && el.viewAdminLog.classList.contains("view--active"));
+    if (!istAdmin() && aufAdminSeite) {
       const startNavItem = document.querySelector('.nav__item[data-view="start"]');
       if (startNavItem) startNavItem.click();
     }
@@ -1645,6 +1650,12 @@
                <button type="button" class="btn btn--secondary" data-role="benutzer-ablehnen" data-uid="${person.uid}">Ablehnen</button>`;
     } else if (person.status === "locked") {
       statusAktionenHtml = `<button type="button" class="btn btn--secondary" data-role="benutzer-entsperren" data-uid="${person.uid}">Entsperren</button>`;
+    } else if (person.status === "rejected") {
+      // Eine Ablehnung ist keine endgültige Sackgasse - falls sie aus
+      // Versehen passiert ist oder sich die Einschätzung nachträglich
+      // ändert, kann ein Admin die Person jederzeit doch noch freigeben
+      // (nutzt denselben "Freigeben"-Button/Handler wie bei "pending").
+      statusAktionenHtml = `<button type="button" class="btn btn--secondary" data-role="benutzer-freigeben" data-uid="${person.uid}">Doch freigeben</button>`;
     } else if (!istUnantastbar) {
       // Dauer-Auswahl direkt neben dem "Sperren"-Button - "Dauerhaft"
       // setzt keine gesperrtBis-Zeit, die anderen Optionen sperren
@@ -1976,6 +1987,50 @@
         zeigeToast(fehler && fehler.message ? fehler.message : "Aktion fehlgeschlagen.");
       }
     });
+  }
+
+  /* ------------------------------------------------------------------------
+     10a2. Admin: Unter-Reiter "Benutzer" / "Aktivitäts-Log" - dasselbe
+     Muster wie bei Verkauf (Medikamente/Verkaufslog) und Infos (Allgemein/
+     Personal/Herstellung): zwei eigene Seiten mit einer kleinen Tab-Leiste
+     oben, statt alles auf einer einzigen, langen Seite untereinander zu
+     stapeln. Eigenes Datenattribut "data-admin-subview" (statt des schon
+     für Verkauf genutzten "data-subview"), damit sich die Klick-Handler
+     nicht gegenseitig in die Quere kommen.
+     ------------------------------------------------------------------------ */
+  let aktiverAdminSubview = "admin"; // Standard-Unterseite beim Öffnen des Admin-Reiters
+
+  const adminTabs = document.querySelectorAll(".org-tabs__tab[data-admin-subview]");
+  adminTabs.forEach((item) => {
+    item.addEventListener("click", () => {
+      wechsleZuAdminAnsicht(item.dataset.adminSubview);
+    });
+  });
+
+  function wechsleZuAdminAnsicht(subview) {
+    if (!istAdmin()) return; // Sicherheitshalber - der ganze Reiter ist für Nicht-Admins ohnehin unsichtbar
+
+    aktiverAdminSubview = subview;
+
+    el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
+    if (el.navAdminToggle) el.navAdminToggle.classList.add("nav__item--active");
+    adminTabs.forEach((i) => i.classList.toggle("org-tabs__tab--active", i.dataset.adminSubview === subview));
+
+    el.views.forEach((view) => view.classList.remove("view--active"));
+    const zielEl = document.getElementById(`view-${subview}`);
+    if (zielEl) zielEl.classList.add("view--active");
+
+    const pageHeader = document.getElementById("page-header");
+    if (pageHeader) pageHeader.hidden = false;
+
+    const meta = VIEW_META[subview];
+    if (meta) {
+      el.viewTitle.textContent = meta.title;
+      el.viewSubtitle.textContent = meta.subtitle;
+    }
+
+    if (subview === "admin") renderBenutzerverwaltung();
+    if (subview === "admin-log") renderAdminLog();
   }
 
   /* ------------------------------------------------------------------------
@@ -3571,6 +3626,13 @@
         return;
       }
 
+      // Sonderfall "Admin": genau wie bei Verkauf - navigiert zur zuletzt
+      // aktiven Unterseite (Benutzer/Aktivitäts-Log).
+      if (item === el.navAdminToggle) {
+        wechsleZuAdminAnsicht(aktiverAdminSubview);
+        return;
+      }
+
       el.navItems.forEach((i) => i.classList.remove("nav__item--active"));
       item.classList.add("nav__item--active");
 
@@ -3592,7 +3654,8 @@
         mitarbeiterBearbeitenModus = false; // Sicherheitshalber immer mit Lese-Ansicht starten
         renderMitarbeiterListe();
       }
-      if (zielView === "admin") renderBenutzerverwaltung();
+      // "admin" wird nie hier erreicht - der Sonderfall weiter oben fängt
+      // den Klick auf den Admin-Reiter bereits ab (siehe wechsleZuAdminAnsicht).
     });
   });
 
@@ -3703,7 +3766,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 83;
+  const APP_VERSION = 85;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
