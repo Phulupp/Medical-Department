@@ -40,6 +40,7 @@
 // (10.12.2) wie beim Compat SDK, damit beide "Sprachen" sicher zusammenpassen.
 import {
   initializeApp,
+  getApp,
   deleteApp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
@@ -81,11 +82,36 @@ const firebaseConfig = window.firebaseConfig;
 if (!firebaseConfig || !firebaseConfig.apiKey) {
   console.warn("auth.js: Firebase-Konfiguration fehlt - Login-System wird nicht gestartet.");
 } else {
-  // Eigene, benannte Firebase-App-Instanz ("bwmAuth") statt der
-  // Standard-Instanz - so gibt es garantiert keinen Konflikt mit der
-  // Compat-Instanz, die der Rest der App (js/app.js) benutzt. Beide zeigen
-  // trotzdem auf dieselbe Firebase-Datenbank (dieselben firebaseConfig-Werte).
-  const app = initializeApp(firebaseConfig, "bwmAuth");
+  // WICHTIG (Fehlerkorrektur, Version 86): Hier wird bewusst NICHT mehr
+  // eine eigene, separat benannte Firebase-App-Instanz ("bwmAuth") erzeugt,
+  // sondern über getApp() dieselbe Standard-App wiederverwendet, die
+  // js/firebase-config.js weiter oben bereits per `firebase.initializeApp(...)`
+  // (Compat-Schreibweise) angelegt hat. Der Grund: Eine mit einem eigenen
+  // Namen erzeugte App hat in Firebase eine KOMPLETT EIGENE, unabhängige
+  // Anmelde-Sitzung - Google Sign-In/E-Mail-Login hier in diesem Modul
+  // hätte dann NIEMALS etwas mit der Anmelde-Sitzung zu tun gehabt, die der
+  // Rest der App (js/app.js, Compat-SDK) für seine Firestore-Zugriffe
+  // benutzt (Medikamente, Verkauf, Notizen, Kontakte, Ankündigungen,
+  // Presence). Das erklärt, warum diese Bereiche für jeden Account trotz
+  // korrektem "status: approved" leer blieben und mit "Missing or
+  // insufficient permissions" fehlschlugen: Aus Sicht der Firestore
+  // Security Rules war dort schlicht NIEMAND eingeloggt (request.auth war
+  // dort immer null), weil die eigentliche Anmeldung nur auf der separaten
+  // "bwmAuth"-App stattfand. Mit getApp() teilen sich Compat- und
+  // Modular-SDK jetzt dieselbe Anmelde-Sitzung, wie es von Firebase auch
+  // offiziell so vorgesehen ist.
+  //
+  // Sicherheitsnetz: Falls aus irgendeinem Grund (z. B. Netzwerkfehler beim
+  // Laden der Compat-CDN-Skripte weiter oben) noch gar keine Standard-App
+  // existiert, würde getApp() eine Ausnahme werfen - in dem Fall legen wir
+  // hier stattdessen selbst die Standard-App an (ohne eigenen Namen), damit
+  // das Login-System trotzdem startet.
+  let app;
+  try {
+    app = getApp();
+  } catch (fehler) {
+    app = initializeApp(firebaseConfig);
+  }
   const auth = getAuth(app);
   const db = getFirestore(app);
 
