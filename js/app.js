@@ -1,9 +1,12 @@
 /* ==========================================================================
    Ärztekammer – App-Logik
-   Zugang: gemeinsames Website-Passwort + Namensauswahl (kein klassischer
-   Account-Login). Im Hintergrund läuft trotzdem ein anonymer Firebase-Login,
-   damit die Firestore-Datenbank geschützt bleibt und alle Mitarbeiter
-   dieselben Daten in Echtzeit sehen (Medikamente + "wer ist online").
+   Zugang: echtes Login-/Benutzersystem mit eigenen Accounts (E-Mail/Passwort
+   oder Google), siehe js/auth.js für den kompletten Anmelde-/Registrierungs-
+   Code (moderne "Modular SDK"-Schreibweise, eigenes Modul). Diese Datei hier
+   (js/app.js) bleibt bei der "Compat"-Schreibweise für alles andere
+   (Medikamente, Wiki, Personal, Kontakte, ...) und wartet nur auf ein Signal
+   von js/auth.js ("bwm:auth-approved"), sobald jemand eingeloggt UND von
+   einem Admin freigegeben ist - siehe Abschnitt 6 weiter unten.
    ========================================================================== */
 
 (function () {
@@ -12,20 +15,25 @@
   /* ------------------------------------------------------------------------
      1. Konstanten
      ------------------------------------------------------------------------ */
-  // Gemeinsames Zugangspasswort für die Website. Zum Ändern: Wert hier
-  // ersetzen und die Datei neu hochladen.
-  const SITE_PASSWORD = "Otter";
-
-  // PIN, der zusätzlich nötig ist, um sich als geschützter Mitarbeiter
-  // (z. B. Heinrich oder Grete) anzumelden - verhindert, dass sich andere
-  // Personen fälschlicherweise als diese Namen ausgeben.
-  const ADMIN_PIN = "1311";
-
   // Rollen, die Medikamente löschen UND beide Mitarbeiter-Listen verwalten dürfen
   const ADMIN_ROLLEN = ["Ärztliche Direktion", "Chefarzt", "Stellv. Chefarzt"];
 
   // Ränge (gemeinsam genutzt für Login-Verwaltung UND Stations-Verwaltung)
   const STATIONS_RAENGE = ["Anwärter", "Assistenzarzt", "Facharzt", "Stellv. Oberarzt", "Oberarzt", "Stellv. Chefarzt", "Chefarzt"];
+
+  // Alle 8 Standardränge inkl. "Ärztliche Direktion" - für die
+  // Benutzerverwaltung (Rang ist rein organisatorisch, unabhängig von
+  // Admin-Rechten). Reihenfolge entspricht dem <select> in index.html.
+  const BENUTZER_RAENGE = [
+    "Anwärter",
+    "Assistenzarzt",
+    "Facharzt",
+    "Stellv. Oberarzt",
+    "Oberarzt",
+    "Stellv. Chefarzt",
+    "Chefarzt",
+    "Ärztliche Direktion",
+  ];
 
   // Die Stationierungen (RDR2-Roleplay-Städte) inkl. Farbcode - passend zur
   // farblichen Kennzeichnung im Spiel selbst.
@@ -57,15 +65,6 @@
   const ICON_DRAG =
     '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="9" cy="6" r="1.4"></circle><circle cx="15" cy="6" r="1.4"></circle><circle cx="9" cy="12" r="1.4"></circle><circle cx="15" cy="12" r="1.4"></circle><circle cx="9" cy="18" r="1.4"></circle><circle cx="15" cy="18" r="1.4"></circle></svg>';
 
-  // Standard-LOGIN-Liste (komplett unabhängig von der Mitarbeiter-/Stations-
-  // Liste unten!). Bestimmt einzig und allein, wer sich beim Betreten der
-  // Seite anmelden kann. "geschuetzt: true" bedeutet: Für die Anmeldung mit
-  // diesem Namen ist der ADMIN_PIN nötig.
-  const DEFAULT_LOGIN_MITARBEITER = [
-    { id: "heinrich", name: "Heinrich Hornhausen", rolle: "Chefarzt", geschuetzt: true },
-    { id: "grete", name: "Grete Hornhausen", rolle: "Stellv. Chefarzt", geschuetzt: true },
-  ];
-
   // Standard-Mitarbeiter-/Stationsliste: FESTE Anzahl Plätze je Station
   // (reines Organisations-Tool für die Mitarbeiter-Seite - hat NICHTS mit
   // dem Login zu tun). Leere Plätze haben name: "". "abteilung" ist nur für
@@ -90,15 +89,9 @@
 
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
   const STORAGE_KEY_V2 = "medicalDepartment.medikamente.v2";
-  const GATE_PASSWORD_OK = "medicalDepartment.gate.passwordOk";
-  const GATE_NAME = "medicalDepartment.gate.name";
-  const GATE_ROLLE = "medicalDepartment.gate.rolle";
-  const GATE_LOGIN_ZEIT = "medicalDepartment.gate.loginZeit";
-  const SESSION_DAUER_MS = 24 * 60 * 60 * 1000; // Nach 24h wird ein erneutes Login verlangt
 
   const MEDIKAMENTE_DOC = "department/medikamente";
   const MITARBEITER_DOC = "department/mitarbeiter";
-  const LOGIN_MITARBEITER_DOC = "department/loginMitarbeiter";
   const INFOS_DOC = "department/infos";
   const PRESENCE_COLLECTION = "presence";
   const NOTIZEN_COLLECTION = "notizen";
@@ -145,19 +138,18 @@
   let medikamenteSortierModus = false; // Erst nach Klick auf "Reihenfolge bearbeiten" per Drag & Drop sortierbar
   let ziehId = null;                   // ID des Medikaments, das gerade per Drag & Drop verschoben wird
   let aktivesMedikamentId = null;
-  let aktuellerNutzer = null;       // { name, rolle }
+  let aktuellerNutzer = null;       // { uid, name, rolle, admin } - wird von js/auth.js per Event befüllt
   let unsubMedikamente = null;
   let unsubPresence = null;
   let unsubNotizen = null;
   let unsubVerkaufslog = null;
   let unsubMitarbeiter = null;
-  let unsubLoginMitarbeiter = null;
+  let unsubBenutzerliste = null;
   let unsubInfos = null;
   let unsubAnkuendigungen = null;
   let stationenDaten = { direktion: [], blackwater: [], rhodes: [] }; // Feste Plätze je Station
-  let loginMitarbeiterListe = [];  // Eigene, unabhängige Liste NUR fürs Login-Dropdown
+  let benutzerListe = [];          // Alle Accounts (nur für Admins geladen) - für die Benutzerverwaltung
   let infosListe = [];             // Dynamische Infos-Seite
-  let gewaehltesMitarbeiterGeschuetzt = false;
   let speicherTimer = null;
   let heartbeatTimer = null;
   let onlineRecomputeTimer = null;
@@ -171,18 +163,9 @@
     authScreen: document.getElementById("auth-screen"),
     appRoot: document.getElementById("app-root"),
 
-    formGatePassword: document.getElementById("form-gate-password"),
-    gatePasswordInput: document.getElementById("gate-password"),
-    gatePasswordError: document.getElementById("gate-password-error"),
-
-    formGateName: document.getElementById("form-gate-name"),
-    gateNameSelect: document.getElementById("gate-name-select"),
-    gateNameCustomWrapper: document.getElementById("gate-name-custom-wrapper"),
-    gateNameCustom: document.getElementById("gate-name-custom"),
-    gatePinWrapper: document.getElementById("gate-pin-wrapper"),
-    gatePinInput: document.getElementById("gate-pin"),
-    gateNameError: document.getElementById("gate-name-error"),
-
+    // Hinweis: Die Formulare für Login/Registrieren/Google/Status-Hinweise
+    // werden komplett von js/auth.js gesteuert (eigenes Modul) - hier in
+    // app.js brauchen wir davon keine DOM-Referenzen mehr.
     authConfigHint: document.getElementById("auth-config-hint"),
 
     onlineWidgetBtn: document.getElementById("online-widget-btn"),
@@ -253,11 +236,11 @@
     einstellungenAdmin: document.getElementById("einstellungen-admin"),
     einstellungenLocked: document.getElementById("einstellungen-locked"),
 
-    formAddLogin: document.getElementById("form-add-login"),
-    loginNameInput: document.getElementById("login-name-input"),
-    loginRolleInput: document.getElementById("login-rolle-input"),
-    loginGeschuetztInput: document.getElementById("login-geschuetzt-input"),
-    loginVerwaltungListe: document.getElementById("login-verwaltung-liste"),
+    formAddBenutzer: document.getElementById("form-add-benutzer"),
+    neuerBenutzerNameInput: document.getElementById("neuer-benutzer-name-input"),
+    neuerBenutzerEmailInput: document.getElementById("neuer-benutzer-email-input"),
+    neuerBenutzerRolleInput: document.getElementById("neuer-benutzer-rolle-input"),
+    benutzerverwaltungListe: document.getElementById("benutzerverwaltung-liste"),
 
     tableBody: document.getElementById("med-table-body"),
     emptyState: document.getElementById("empty-state"),
@@ -321,9 +304,9 @@
 
   if (!istFirebaseKonfiguriert()) {
     el.authConfigHint.hidden = false;
-    [el.formGatePassword, el.formGateName].forEach((form) => {
-      form.querySelectorAll("input, select, button").forEach((feld) => (feld.disabled = true));
-    });
+    // Die Login-/Registrieren-Formulare selbst werden von js/auth.js
+    // gesteuert - dessen eigene Prüfung sorgt dafür, dass ohne gültige
+    // Firebase-Konfiguration dort gar nichts erst gestartet wird.
   }
 
   /* ------------------------------------------------------------------------
@@ -592,11 +575,12 @@
     return (name || "?").trim().charAt(0).toUpperCase();
   }
 
-  // Gibt das lustige Emoji-Avatar zurück, falls in der Login-Liste eines
-  // hinterlegt ist (Inside-Joke), sonst den Anfangsbuchstaben.
+  // Avatar-Kürzel für den Badge oben rechts (Anfangsbuchstabe des
+  // Benutzernamens). Das frühere Emoji-Avatar war an die alte, jetzt
+  // entfernte Login-Liste gekoppelt und hat im neuen Benutzersystem keine
+  // Entsprechung mehr.
   function avatarVon(name) {
-    const eintrag = loginMitarbeiterListe.find((m) => m.name.toLowerCase() === (name || "").toLowerCase());
-    return eintrag && eintrag.avatar ? eintrag.avatar : initialenVon(name);
+    return initialenVon(name);
   }
 
   // Für die Namensauswahl beim Betreten: Direktion zuerst, dann Rhodes, dann
@@ -626,168 +610,47 @@
   }
 
   /* ------------------------------------------------------------------------
-     6. Zugangssperre: Passwort-Schritt + dynamische Namensauswahl
+     6. Bridge zum neuen Login-/Benutzersystem (js/auth.js, Modular SDK)
+     ------------------------------------------------------------------------
+     Das komplette Login/Registrierung/Session-Handling passiert jetzt in
+     js/auth.js (eigenes ES-Modul, neues Firebase-Auth-System). js/app.js
+     bekommt davon nur über zwei Custom-Events etwas mit:
+
+     - "bwm:auth-approved": feuert genau EINMAL pro Sitzung, sobald ein
+       Nutzer eingeloggt UND von einem Admin freigegeben ist. Das ist der
+       Moment, in dem die eigentliche App (wie früher nach dem alten
+       Passwort/Namens-Gate) starten soll.
+     - "bwm:auth-profile-updated": feuert, wenn sich am eigenen Profil
+       (Rolle, Admin-Status, Benutzername) live etwas ändert, WÄHREND man
+       schon eingeloggt ist (z. B. ein Admin ändert die eigene Rolle) - hier
+       muss NICHT die ganze App neu gestartet werden, nur die Anzeige
+       aktualisiert werden.
+
+     `aktuellerNutzer` hat dieselbe Form wie vorher ({ name, rolle, ... }),
+     nur zusätzlich mit `uid` und `admin` - dadurch funktioniert istAdmin()
+     und der Rest der App unverändert weiter.
      ------------------------------------------------------------------------ */
-  if (istFirebaseKonfiguriert()) {
-    el.formGatePassword.addEventListener("submit", (event) => {
-      event.preventDefault();
-      el.gatePasswordError.hidden = true;
+  window.addEventListener("bwm:auth-approved", (event) => {
+    const { uid, username, rolle, isAdmin } = event.detail || {};
+    aktuellerNutzer = { uid, name: username, rolle, admin: !!isAdmin };
+    appStarten();
+  });
 
-      if (el.gatePasswordInput.value !== SITE_PASSWORD) {
-        zeigeFeldFehler(el.gatePasswordError, "Falsches Passwort. Bitte versuch es erneut.");
-        return;
-      }
+  window.addEventListener("bwm:auth-profile-updated", (event) => {
+    if (!aktuellerNutzer) return;
+    const { username, rolle, isAdmin } = event.detail || {};
+    aktuellerNutzer.name = username;
+    aktuellerNutzer.rolle = rolle;
+    aktuellerNutzer.admin = !!isAdmin;
 
-      localStorage.setItem(GATE_PASSWORD_OK, "true");
-      vorbereitenNameSchritt();
-    });
-
-    el.gateNameSelect.addEventListener("change", () => {
-      const istAndere = el.gateNameSelect.value === "__andere__";
-      el.gateNameCustomWrapper.hidden = !istAndere;
-      if (istAndere) el.gateNameCustom.focus();
-
-      const eintrag = loginMitarbeiterListe.find((m) => m.name === el.gateNameSelect.value);
-      gewaehltesMitarbeiterGeschuetzt = !!(eintrag && eintrag.geschuetzt);
-      el.gatePinWrapper.hidden = !gewaehltesMitarbeiterGeschuetzt;
-      if (gewaehltesMitarbeiterGeschuetzt) el.gatePinInput.focus();
-    });
-
-    el.formGateName.addEventListener("submit", (event) => {
-      event.preventDefault();
-      el.gateNameError.hidden = true;
-
-      let name = el.gateNameSelect.value;
-      let rolle;
-
-      if (!name) {
-        zeigeFeldFehler(el.gateNameError, "Bitte wähle aus, wer du bist.");
-        return;
-      }
-
-      if (name === "__andere__") {
-        name = el.gateNameCustom.value.trim();
-        if (!name) {
-          zeigeFeldFehler(el.gateNameError, "Bitte gib deinen Namen ein.");
-          return;
-        }
-        rolle = "Mitarbeiter";
-      } else {
-        const eintrag = loginMitarbeiterListe.find((m) => m.name === name);
-        rolle = eintrag ? eintrag.rolle : "Mitarbeiter";
-
-        if (eintrag && eintrag.geschuetzt) {
-          if (el.gatePinInput.value !== ADMIN_PIN) {
-            zeigeFeldFehler(el.gateNameError, "Falscher PIN für diesen Namen.");
-            return;
-          }
-        }
-      }
-
-      localStorage.setItem(GATE_NAME, name);
-      localStorage.setItem(GATE_ROLLE, rolle);
-      localStorage.setItem(GATE_LOGIN_ZEIT, String(Date.now()));
-
-      aktuellerNutzer = { name, rolle };
-      aktualisiereAdminStatusVonNutzer();
-      anmeldenUndStarten();
-    });
-  }
-
-  function zeigeGateSchritt(schritt) {
-    el.formGatePassword.classList.toggle("auth-form--active", schritt === "password");
-    el.formGateName.classList.toggle("auth-form--active", schritt === "name");
-  }
-
-  // Meldet sich (falls nötig) anonym bei Firebase an, lädt die Login-Liste
-  // und zeigt danach erst den Namens-Schritt an. Der anonyme Login muss hier
-  // schon passieren, weil wir Firestore lesen müssen, um die Namensauswahl
-  // zu befüllen.
-  function vorbereitenNameSchritt() {
-    const weiter = () => {
-      abonniereLoginMitarbeiterliste();
-      zeigeGateSchritt("name");
-    };
-
-    if (auth.currentUser) {
-      weiter();
-      return;
-    }
-
-    auth
-      .signInAnonymously()
-      .then(weiter)
-      .catch((fehler) => {
-        console.error("Anonymer Login fehlgeschlagen:", fehler);
-        zeigeFeldFehler(el.gatePasswordError, "Verbindung fehlgeschlagen. Bitte Internetverbindung prüfen.");
-      });
-  }
-
-  function populiereNamensDropdown() {
-    // Alle dynamisch eingefügten Optionen entfernen (behält nur den
-    // Platzhalter an erster und "Andere Person..." an letzter Stelle)
-    while (el.gateNameSelect.options.length > 2) {
-      el.gateNameSelect.remove(1);
-    }
-
-    loginMitarbeiterListe.forEach((person) => {
-      const option = document.createElement("option");
-      option.value = person.name;
-      option.textContent = `${person.name} (${person.rolle})${person.geschuetzt ? " · PIN" : ""}`;
-      el.gateNameSelect.insertBefore(option, el.gateNameSelect.lastElementChild);
-    });
-  }
-
-  // Beim Laden prüfen, ob Passwort & Name schon in diesem Browser hinterlegt
-  // sind -> dann direkt durchstarten, ohne erneut zu fragen. ABER: Läuft die
-  // Session ab (siehe SESSION_DAUER_MS), wird alles zurückgesetzt und komplett
-  // neu nach Passwort + Name gefragt - damit man nicht wochenlang ungefragt
-  // im selben Nutzer "gefangen" bleibt.
-  function pruefeGespeichertenZugang() {
-    const passwortOk = localStorage.getItem(GATE_PASSWORD_OK) === "true";
-    const gespeicherterName = localStorage.getItem(GATE_NAME);
-    const gespeicherteRolle = localStorage.getItem(GATE_ROLLE);
-    const loginZeit = Number(localStorage.getItem(GATE_LOGIN_ZEIT) || 0);
-    const sessionAbgelaufen = loginZeit > 0 && Date.now() - loginZeit > SESSION_DAUER_MS;
-
-    if (sessionAbgelaufen) {
-      localStorage.removeItem(GATE_PASSWORD_OK);
-      localStorage.removeItem(GATE_NAME);
-      localStorage.removeItem(GATE_ROLLE);
-      localStorage.removeItem(GATE_LOGIN_ZEIT);
-      zeigeGateSchritt("password");
-      return;
-    }
-
-    if (passwortOk && gespeicherterName) {
-      aktuellerNutzer = { name: gespeicherterName, rolle: gespeicherteRolle || "Mitarbeiter" };
-      anmeldenUndStarten();
-    } else if (passwortOk) {
-      vorbereitenNameSchritt();
-    } else {
-      zeigeGateSchritt("password");
-    }
-  }
-
-  /* ------------------------------------------------------------------------
-     7. Anonymer Firebase-Login im Hintergrund
-     ------------------------------------------------------------------------ */
-  function anmeldenUndStarten() {
-    if (!istFirebaseKonfiguriert()) return;
-
-    if (auth.currentUser) {
-      appStarten();
-      return;
-    }
-
-    auth
-      .signInAnonymously()
-      .then(() => appStarten())
-      .catch((fehler) => {
-        console.error("Anonymer Login fehlgeschlagen:", fehler);
-        zeigeFeldFehler(el.gateNameError, "Verbindung fehlgeschlagen. Bitte Internetverbindung prüfen und erneut versuchen.");
-      });
-  }
+    // Anzeige aktualisieren, ohne die App neu zu starten (Abos laufen ja
+    // bereits) - v. a. relevant, falls sich der eigene Admin-Status ändert,
+    // damit admin-geschützte Bereiche sofort ein-/ausgeblendet werden.
+    renderBenutzerBadge();
+    if (typeof renderBenutzerverwaltung === "function") renderBenutzerverwaltung();
+    if (typeof renderTabelle === "function") renderTabelle();
+    if (typeof renderMitarbeiterListe === "function") renderMitarbeiterListe();
+  });
 
   function appStarten() {
     el.authScreen.hidden = true;
@@ -805,7 +668,6 @@
     abonniereNotizen();
     abonniereVerkaufslog();
     abonniereMitarbeiterliste();
-    abonniereLoginMitarbeiterliste();
     abonniereInfos();
     abonniereAnkuendigungen();
     abonniereKontakte();
@@ -889,12 +751,12 @@
 
   el.btnLogout.addEventListener("click", () => {
     entferneEigenePresence();
-    localStorage.removeItem(GATE_NAME);
-    localStorage.removeItem(GATE_ROLLE);
-    localStorage.removeItem(GATE_LOGIN_ZEIT);
-    // Passwort bleibt bewusst gespeichert, damit man nicht bei jedem
-    // Nutzerwechsel erneut das Website-Passwort eintippen muss.
-    window.location.reload();
+    // Der eigentliche Logout (signOut) passiert in js/auth.js - dieser
+    // Button hat dort denselben id="btn-logout" und damit einen eigenen
+    // Klick-Listener, der die Firebase-Sitzung wirklich beendet und danach
+    // automatisch (über onAuthStateChanged) zurück zum Login-Bildschirm
+    // führt. Hier räumen wir nur noch die presence aus dieser laufenden
+    // Sitzung auf, bevor abgemeldet wird.
   });
 
   /* ------------------------------------------------------------------------
@@ -1583,178 +1445,215 @@
   }
 
   /* ------------------------------------------------------------------------
-     10c. Firestore: LOGIN-Liste (unabhängig von der Mitarbeiter-Seite,
-          bestimmt einzig, wer sich anmelden kann)
+     10c/10d. Benutzerverwaltung (echte Firebase-Accounts, verwaltet über
+     js/auth.js / window.BenutzerVerwaltung - siehe Kommentar dort). Diese
+     Sektion lädt/rendert nur die Liste und reicht Klicks an die Funktionen
+     aus window.BenutzerVerwaltung weiter; die eigentliche Firestore-Logik
+     (inkl. Security Rules) lebt komplett in js/auth.js.
      ------------------------------------------------------------------------ */
-  // Verhindert eine komplette Aussperrung, OHNE eine fremde Person (wie
-  // "Chris Moon") ins Login einzuschleusen. Admin-Rechte hängen jetzt am
-  // PIN-Schutz (geschuetzt), NICHT mehr am Rang - Heinrich/Grete können also
-  // z. B. "Oberarzt"/"Stellv. Oberarzt" heißen und trotzdem Admin sein.
-  function sichereMindestensEinenAdminZu() {
-    let geaendert = false;
-
-    // Alten, versehentlich eingeschleusten Chris-Moon-Notfall-Login entfernen
-    const vorherAnzahl = loginMitarbeiterListe.length;
-    loginMitarbeiterListe = loginMitarbeiterListe.filter((m) => m.id !== "chris-moon-notfall-admin");
-    if (loginMitarbeiterListe.length !== vorherAnzahl) geaendert = true;
-
-    const hatAdmin = loginMitarbeiterListe.some((m) => m.geschuetzt);
-    if (!hatAdmin) {
-      const heinrich = loginMitarbeiterListe.find((m) => m.id === "heinrich");
-      const grete = loginMitarbeiterListe.find((m) => m.id === "grete");
-
-      if (heinrich) {
-        heinrich.geschuetzt = true;
-        geaendert = true;
-      }
-      if (grete) {
-        grete.geschuetzt = true;
-        geaendert = true;
-      }
-
-      // Falls weder Heinrich noch Grete in der Liste stehen: ersten
-      // vorhandenen Eintrag zum Admin machen, damit niemand ausgesperrt bleibt.
-      if (!heinrich && !grete && loginMitarbeiterListe.length > 0) {
-        loginMitarbeiterListe[0].geschuetzt = true;
-        geaendert = true;
-      }
-    }
-
-    if (geaendert) speichereLoginMitarbeiterliste();
-  }
-
-  function abonniereLoginMitarbeiterliste() {
-    if (unsubLoginMitarbeiter) return Promise.resolve(); // bereits abonniert
-
-    return new Promise((resolve) => {
-      let ersterDurchlauf = true;
-
-      unsubLoginMitarbeiter = docRef(LOGIN_MITARBEITER_DOC).onSnapshot(
-        (doc) => {
-          if (doc.exists && Array.isArray(doc.data().liste)) {
-            loginMitarbeiterListe = doc.data().liste;
-            sichereMindestensEinenAdminZu();
-          } else {
-            loginMitarbeiterListe = DEFAULT_LOGIN_MITARBEITER.map((m) => ({ ...m }));
-            speichereLoginMitarbeiterliste();
-          }
-
-          populiereNamensDropdown();
-          renderLoginVerwaltung();
-          aktualisiereAdminStatusVonNutzer();
-          renderMitarbeiterListe();
-
-          if (ersterDurchlauf) {
-            ersterDurchlauf = false;
-            resolve();
-          }
-        },
-        (fehler) => {
-          console.error("Fehler beim Laden der Login-Liste:", fehler);
-          if (ersterDurchlauf) {
-            ersterDurchlauf = false;
-            resolve();
-          }
-        }
-      );
-    });
-  }
-
-  function speichereLoginMitarbeiterliste() {
-    docRef(LOGIN_MITARBEITER_DOC)
-      .set({ liste: loginMitarbeiterListe, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
-      .catch((fehler) => {
-        console.error("Login-Liste konnte nicht gespeichert werden:", fehler);
-        zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
-      });
-  }
-
   function istAdmin() {
     return !!(aktuellerNutzer && aktuellerNutzer.admin);
   }
 
-  // Ermittelt Admin-Status UND Rang live aus der aktuellen Login-Liste und
-  // aktualisiert aktuellerNutzer entsprechend - inklusive sofortiger
-  // Aktualisierung des Badges oben rechts. Wird sowohl direkt nach dem
-  // Login als auch bei jeder Änderung der Login-Liste aufgerufen, damit
-  // eine nachträgliche Rang-/PIN-Änderung sofort überall sichtbar wird.
-  function aktualisiereAdminStatusVonNutzer() {
-    if (!aktuellerNutzer) return;
-    const eintrag = loginMitarbeiterListe.find((m) => m.name.toLowerCase() === aktuellerNutzer.name.toLowerCase());
-    aktuellerNutzer.admin = !!(eintrag && eintrag.geschuetzt);
-
-    if (eintrag && eintrag.rolle && eintrag.rolle !== aktuellerNutzer.rolle) {
-      aktuellerNutzer.rolle = eintrag.rolle;
-      localStorage.setItem(GATE_ROLLE, eintrag.rolle);
+  // Abonniert die komplette Nutzerliste - aber NUR, wenn der aktuelle
+  // Nutzer Admin ist, weil Firestore Security Rules Nicht-Admins den
+  // "list"-Zugriff auf die users-Collection ohnehin verweigern (siehe
+  // firestore.rules). Wird bei jedem Rendern der Einstellungen-Seite bzw.
+  // bei Admin-Statuswechsel neu geprüft.
+  function abonniereBenutzerlisteFallsAdmin() {
+    if (!istAdmin()) {
+      if (unsubBenutzerliste) {
+        unsubBenutzerliste();
+        unsubBenutzerliste = null;
+      }
+      benutzerListe = [];
+      return;
     }
+    if (unsubBenutzerliste || !window.BenutzerVerwaltung) return; // bereits abonniert
 
-    renderBenutzerBadge();
+    unsubBenutzerliste = window.BenutzerVerwaltung.onListe((liste) => {
+      benutzerListe = liste;
+      renderBenutzerverwaltung();
+    });
   }
 
-  /* ------------------------------------------------------------------------
-     10d. Einstellungen: Login-Verwaltung
-     ------------------------------------------------------------------------ */
-  function renderLoginVerwaltung() {
-    if (!el.loginVerwaltungListe) return;
+  // Formatiert einen Firestore-Timestamp (Modular-SDK-Objekt mit .toDate())
+  // in ein deutsches Datum+Uhrzeit-Format, oder zeigt "—", falls (noch)
+  // kein Wert vorhanden ist (z. B. lastLogin bei einem ganz neuen Account).
+  function formatiereFirestoreZeitstempel(ts) {
+    if (!ts || typeof ts.toDate !== "function") return "—";
+    const datum = ts.toDate();
+    return `${String(datum.getDate()).padStart(2, "0")}.${String(datum.getMonth() + 1).padStart(2, "0")}.${datum.getFullYear()} ${String(
+      datum.getHours()
+    ).padStart(2, "0")}:${String(datum.getMinutes()).padStart(2, "0")}`;
+  }
+
+  const BENUTZER_STATUS_LABEL = {
+    pending: "Ausstehend",
+    approved: "Freigegeben",
+    rejected: "Abgelehnt",
+    locked: "Gesperrt",
+  };
+
+  function renderBenutzerverwaltung() {
+    if (!el.benutzerverwaltungListe) return;
 
     el.einstellungenAdmin.hidden = !istAdmin();
     el.einstellungenLocked.hidden = istAdmin();
     if (!istAdmin()) return;
 
-    el.loginVerwaltungListe.innerHTML = "";
+    abonniereBenutzerlisteFallsAdmin();
 
-    if (loginMitarbeiterListe.length === 0) {
-      el.loginVerwaltungListe.innerHTML = `<p class="notes-empty">Noch keine Login-Namen eingetragen.</p>`;
+    el.benutzerverwaltungListe.innerHTML = "";
+
+    if (benutzerListe.length === 0) {
+      el.benutzerverwaltungListe.innerHTML = `<p class="notes-empty">Noch keine Benutzer vorhanden.</p>`;
       return;
     }
 
-    loginMitarbeiterListe.forEach((person) => {
+    // Ausstehende Anfragen zuerst, damit Admins sie nicht übersehen.
+    const sortiert = [...benutzerListe].sort((a, b) => {
+      if (a.status === "pending" && b.status !== "pending") return -1;
+      if (b.status === "pending" && a.status !== "pending") return 1;
+      return (a.username || "").localeCompare(b.username || "");
+    });
+
+    sortiert.forEach((person) => {
       const zeile = document.createElement("div");
-      zeile.className = "settings-list__item";
+      zeile.className = "settings-list__item settings-list__item--user";
+      const statusLabel = BENUTZER_STATUS_LABEL[person.status] || person.status;
+
+      const rollenOptionen = BENUTZER_RAENGE.map(
+        (rolle) => `<option value="${escapeHtml(rolle)}" ${rolle === person.rolle ? "selected" : ""}>${escapeHtml(rolle)}</option>`
+      ).join("");
+
       zeile.innerHTML = `
-        <span>
-          <span class="settings-list__name">${escapeHtml(person.name)}</span>
-          <span class="settings-list__role">${escapeHtml(person.rolle)}</span>
-          ${person.geschuetzt ? '<span class="settings-list__protected">PIN-geschützt · Admin</span>' : ""}
-        </span>
-        <button type="button" class="icon-btn icon-btn--delete" data-role="remove-login" data-id="${person.id}" title="Entfernen">${ICON_TRASH}</button>
+        <div class="settings-list__user-main">
+          <span class="settings-list__name">${escapeHtml(person.username || "(ohne Namen)")}</span>
+          <span class="settings-list__status-pill settings-list__status-pill--${person.status}">${escapeHtml(statusLabel)}</span>
+          ${person.isAdmin ? '<span class="settings-list__protected">Admin</span>' : ""}
+          <select class="field-input settings-list__rolle-select" data-role="benutzer-rolle" data-uid="${person.uid}">${rollenOptionen}</select>
+        </div>
+        <div class="settings-list__user-meta">
+          <span class="settings-list__meta-text">Registriert: ${formatiereFirestoreZeitstempel(person.createdAt)}</span>
+          <span class="settings-list__meta-text">Letzter Login: ${formatiereFirestoreZeitstempel(person.lastLogin)}</span>
+        </div>
+        <input type="text" class="field-input settings-list__note-input" data-role="benutzer-notiz" data-uid="${person.uid}" placeholder="Interne Notiz (nur für Admins sichtbar)" value="${escapeHtml(person.adminNote || "")}" />
+        <div class="settings-list__user-actions">
+          ${
+            person.status === "pending"
+              ? `<button type="button" class="btn btn--secondary" data-role="benutzer-freigeben" data-uid="${person.uid}">Freigeben</button>
+                 <button type="button" class="btn btn--secondary" data-role="benutzer-ablehnen" data-uid="${person.uid}">Ablehnen</button>`
+              : person.status === "locked"
+                ? `<button type="button" class="btn btn--secondary" data-role="benutzer-entsperren" data-uid="${person.uid}">Entsperren</button>`
+                : `<button type="button" class="btn btn--secondary" data-role="benutzer-sperren" data-uid="${person.uid}">Sperren</button>`
+          }
+          <button type="button" class="btn btn--secondary" data-role="benutzer-admin-umschalten" data-uid="${person.uid}" data-aktuell="${!!person.isAdmin}">${person.isAdmin ? "Admin entziehen" : "Zum Admin machen"}</button>
+          <button type="button" class="btn btn--secondary" data-role="benutzer-umbenennen" data-uid="${person.uid}" data-name="${escapeHtml(person.username || "")}">Umbenennen</button>
+          <button type="button" class="icon-btn icon-btn--delete" data-role="benutzer-loeschen" data-uid="${person.uid}" data-name="${escapeHtml(person.username || "")}" title="Löschen">${ICON_TRASH}</button>
+        </div>
       `;
-      el.loginVerwaltungListe.appendChild(zeile);
+      el.benutzerverwaltungListe.appendChild(zeile);
     });
   }
 
-  if (el.formAddLogin) {
-    el.formAddLogin.addEventListener("submit", (event) => {
+  if (el.formAddBenutzer) {
+    el.formAddBenutzer.addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (!istAdmin()) return;
+      if (!istAdmin() || !window.BenutzerVerwaltung) return;
 
-      const name = el.loginNameInput.value.trim();
-      const rolle = el.loginRolleInput.value;
-      const geschuetzt = el.loginGeschuetztInput.checked;
-      if (!name) return;
+      const username = el.neuerBenutzerNameInput.value.trim();
+      const email = el.neuerBenutzerEmailInput.value.trim();
+      const rolle = el.neuerBenutzerRolleInput.value;
+      if (!username || !email) return;
 
-      if (loginMitarbeiterListe.some((m) => m.name.toLowerCase() === name.toLowerCase())) {
-        zeigeToast("Dieser Name steht bereits in der Login-Liste.");
-        return;
+      try {
+        await window.BenutzerVerwaltung.erstelleNeuenBenutzer({ username, email, rolle });
+        el.neuerBenutzerNameInput.value = "";
+        el.neuerBenutzerEmailInput.value = "";
+        zeigeToast(`„${username}“ wurde angelegt und bekommt eine E-Mail zum Passwort festlegen.`);
+      } catch (fehler) {
+        console.error("Benutzer konnte nicht erstellt werden:", fehler);
+        zeigeToast(fehler && fehler.message ? fehler.message : "Benutzer konnte nicht erstellt werden.");
       }
-
-      loginMitarbeiterListe.push({ id: erzeugeId(name), name, rolle, geschuetzt });
-      speichereLoginMitarbeiterliste();
-      el.loginNameInput.value = "";
-      el.loginGeschuetztInput.checked = true;
-      zeigeToast(`„${name}“ kann sich jetzt anmelden.${geschuetzt ? " (PIN-geschützt · Admin)" : ""}`);
     });
   }
 
-  if (el.loginVerwaltungListe) {
-    el.loginVerwaltungListe.addEventListener("click", (event) => {
-      const btn = event.target.closest('[data-role="remove-login"]');
-      if (!btn || !istAdmin()) return;
+  if (el.benutzerverwaltungListe) {
+    el.benutzerverwaltungListe.addEventListener("change", (event) => {
+      if (!istAdmin() || !window.BenutzerVerwaltung) return;
 
-      const person = loginMitarbeiterListe.find((m) => m.id === btn.dataset.id);
-      loginMitarbeiterListe = loginMitarbeiterListe.filter((m) => m.id !== btn.dataset.id);
-      speichereLoginMitarbeiterliste();
-      if (person) zeigeToast(`„${person.name}“ kann sich nicht mehr anmelden.`);
+      const rolleSelect = event.target.closest('[data-role="benutzer-rolle"]');
+      if (rolleSelect) {
+        window.BenutzerVerwaltung.setzeRolle(rolleSelect.dataset.uid, rolleSelect.value).catch((fehler) =>
+          console.error("Rolle konnte nicht geändert werden:", fehler)
+        );
+      }
+    });
+
+    // Notiz-Feld: erst beim Verlassen des Feldes speichern (nicht bei jedem
+    // Tastendruck), damit nicht bei jedem Buchstaben ein Schreibvorgang
+    // ausgelöst wird.
+    el.benutzerverwaltungListe.addEventListener(
+      "blur",
+      (event) => {
+        if (!istAdmin() || !window.BenutzerVerwaltung) return;
+        const notizInput = event.target.closest && event.target.closest('[data-role="benutzer-notiz"]');
+        if (notizInput) {
+          window.BenutzerVerwaltung.setzeNotiz(notizInput.dataset.uid, notizInput.value).catch((fehler) =>
+            console.error("Notiz konnte nicht gespeichert werden:", fehler)
+          );
+        }
+      },
+      true
+    );
+
+    el.benutzerverwaltungListe.addEventListener("click", async (event) => {
+      if (!istAdmin() || !window.BenutzerVerwaltung) return;
+
+      const freigebenBtn = event.target.closest('[data-role="benutzer-freigeben"]');
+      const ablehnenBtn = event.target.closest('[data-role="benutzer-ablehnen"]');
+      const sperrenBtn = event.target.closest('[data-role="benutzer-sperren"]');
+      const entsperrenBtn = event.target.closest('[data-role="benutzer-entsperren"]');
+      const adminBtn = event.target.closest('[data-role="benutzer-admin-umschalten"]');
+      const umbenennenBtn = event.target.closest('[data-role="benutzer-umbenennen"]');
+      const loeschenBtn = event.target.closest('[data-role="benutzer-loeschen"]');
+
+      try {
+        if (freigebenBtn) {
+          await window.BenutzerVerwaltung.setzeStatus(freigebenBtn.dataset.uid, "approved");
+          zeigeToast("Benutzer freigegeben.");
+        } else if (ablehnenBtn) {
+          await window.BenutzerVerwaltung.setzeStatus(ablehnenBtn.dataset.uid, "rejected");
+          zeigeToast("Registrierung abgelehnt.");
+        } else if (sperrenBtn) {
+          await window.BenutzerVerwaltung.setzeStatus(sperrenBtn.dataset.uid, "locked");
+          zeigeToast("Benutzer gesperrt.");
+        } else if (entsperrenBtn) {
+          await window.BenutzerVerwaltung.setzeStatus(entsperrenBtn.dataset.uid, "approved");
+          zeigeToast("Benutzer entsperrt.");
+        } else if (adminBtn) {
+          const neuerWert = adminBtn.dataset.aktuell !== "true";
+          await window.BenutzerVerwaltung.setzeAdmin(adminBtn.dataset.uid, neuerWert);
+          zeigeToast(neuerWert ? "Admin-Rechte vergeben." : "Admin-Rechte entzogen.");
+        } else if (umbenennenBtn) {
+          const alterName = umbenennenBtn.dataset.name;
+          const neuerName = window.prompt("Neuer Benutzername:", alterName);
+          if (neuerName && neuerName.trim() && neuerName.trim() !== alterName) {
+            await window.BenutzerVerwaltung.benenneUm(umbenennenBtn.dataset.uid, neuerName.trim(), alterName);
+            zeigeToast("Benutzername geändert.");
+          }
+        } else if (loeschenBtn) {
+          const name = loeschenBtn.dataset.name;
+          if (window.confirm(`„${name}“ wirklich löschen? Der Account verliert damit den Zugriff auf die App.`)) {
+            await window.BenutzerVerwaltung.loesche(loeschenBtn.dataset.uid);
+            zeigeToast(`„${name}“ wurde gelöscht.`);
+          }
+        }
+      } catch (fehler) {
+        console.error("Aktion in der Benutzerverwaltung fehlgeschlagen:", fehler);
+        zeigeToast(fehler && fehler.message ? fehler.message : "Aktion fehlgeschlagen.");
+      }
     });
   }
 
@@ -3359,7 +3258,7 @@
         mitarbeiterBearbeitenModus = false; // Sicherheitshalber immer mit Lese-Ansicht starten
         renderMitarbeiterListe();
       }
-      if (zielView === "einstellungen") renderLoginVerwaltung();
+      if (zielView === "einstellungen") renderBenutzerverwaltung();
     });
   });
 
@@ -3470,7 +3369,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 77;
+  const APP_VERSION = 78;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
@@ -3497,13 +3396,10 @@
     }
 
     btn.addEventListener("click", () => {
-      // Login-Session zurücksetzen, damit nach dem Update wirklich alles
-      // frisch geladen wird (neues Passwort, neuer Name, neuer PIN-Check).
-      // Das Website-Passwort selbst bleibt bewusst NICHT gespeichert - so
-      // greift auch ein evtl. geändertes SITE_PASSWORD sofort.
-      localStorage.removeItem(GATE_PASSWORD_OK);
-      localStorage.removeItem(GATE_NAME);
-      localStorage.removeItem(GATE_ROLLE);
+      // Die Firebase-Auth-Sitzung selbst bleibt erhalten (kein Grund, sich
+      // wegen eines Website-Updates neu anzumelden) - ein einfacher Reload
+      // lädt die neue Version, onAuthStateChanged erkennt danach automatisch
+      // die weiterhin bestehende Sitzung.
       window.location.reload();
     });
 
@@ -3522,8 +3418,10 @@
 
   /* ------------------------------------------------------------------------
      23. Start
+     ------------------------------------------------------------------------
+     Kein expliziter Aufruf mehr nötig: js/auth.js prüft beim Laden über
+     onAuthStateChanged automatisch, ob schon eine gültige Firebase-Sitzung
+     besteht, und feuert danach "bwm:auth-approved" (siehe Bridge weiter
+     oben in dieser Datei), was appStarten() auslöst.
      ------------------------------------------------------------------------ */
-  if (istFirebaseKonfiguriert()) {
-    pruefeGespeichertenZugang();
-  }
 })();
