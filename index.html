@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=78" />
+  <link rel="stylesheet" href="css/style.css?v=83" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -102,7 +102,7 @@
 
       <!-- Status: Account wurde gesperrt -->
       <div class="auth-status" id="auth-status-locked">
-        <p class="auth-status__text">Dein Account wurde gesperrt. Bitte wende dich an einen Administrator.</p>
+        <p class="auth-status__text" id="auth-status-locked-text">Dein Account wurde gesperrt. Bitte wende dich an einen Administrator.</p>
         <button type="button" class="btn btn--ghost auth-submit" id="btn-locked-logout">Abmelden</button>
       </div>
 
@@ -111,6 +111,15 @@
         <code>js/firebase-config.js</code> ein, damit die Seite funktioniert.
       </p>
     </div>
+
+    <!-- Dezenter Footer auch auf dem Login-Bildschirm - dieselben zwei
+         Links wie im Footer der App weiter unten (siehe dort). -->
+    <footer class="page-footer" style="position: absolute; bottom: 0; left: 0; right: 0; border-top: none; text-align: center;">
+      <p style="display: flex; justify-content: center; gap: 18px;">
+        <button type="button" class="auth-link" data-open-modal="modal-datenschutz" style="font-size: 11px;">Datenschutz</button>
+        <button type="button" class="auth-link" data-open-modal="modal-informationen" style="font-size: 11px;">Informationen</button>
+      </p>
+    </footer>
   </div>
 
   <!-- ============================ -->
@@ -144,6 +153,18 @@
           <button class="nav__item" data-view="mitarbeiter"><span>Personal</span></button>
           <button class="nav__item" data-view="kontakte"><span>Kontakte</span></button>
           <button class="nav__item" data-view="einstellungen"><span>Einstellungen</span></button>
+          <!-- Nur für Admins sichtbar - standardmäßig per "hidden" ausgeblendet,
+               wird von js/app.js (aktualisiereAdminNavSichtbarkeit) erst
+               eingeblendet, sobald feststeht, dass der eingeloggte Nutzer
+               wirklich Admin ist. Nicht-Admins sehen diesen Reiter nie,
+               auch nicht kurz aufblitzend. -->
+          <button class="nav__item" id="nav-admin-toggle" data-view="admin" hidden>
+            <span>Admin</span>
+            <!-- Zeigt die Anzahl ausstehender Registrierungsanfragen, damit
+                 ein Admin sie sofort sieht, ohne extra in den Reiter
+                 reinklicken zu müssen. Wird per JS befüllt/versteckt. -->
+            <span class="nav__badge" id="nav-admin-badge" hidden>0</span>
+          </button>
         </nav>
 
         <div class="topnav__actions">
@@ -584,40 +605,49 @@
             <option value="kontakte">Kontakte</option>
           </select>
         </div>
+      </section>
 
-        <!-- Nur für Admins sichtbar -->
-        <div id="einstellungen-admin" hidden>
-          <div class="settings-card">
-            <h3>Benutzerverwaltung</h3>
-            <p class="settings-card__hint">Hier verwaltest du alle Accounts: Registrierungsanfragen freigeben oder ablehnen, Rang und Admin-Rechte vergeben, Benutzer sperren/entsperren/löschen/umbenennen und interne Notizen hinterlegen. <strong>Admin-Rechte</strong> sind unabhängig vom Rang und werden separat über den Schalter je Benutzer vergeben.</p>
+      <!-- ============================ -->
+      <!-- VIEW: ADMIN (nur für Admins - der Reiter selbst ist für alle
+           anderen unsichtbar, siehe nav-admin-toggle oben) -->
+      <!-- ============================ -->
+      <section class="view" id="view-admin">
+        <div class="settings-card">
+          <h3>Benutzerverwaltung</h3>
+          <p class="settings-card__hint">Hier verwaltest du alle Accounts: Registrierungsanfragen freigeben oder ablehnen, Rang und Admin-Rechte vergeben, Benutzer sperren (dauerhaft oder für eine bestimmte Zeit)/entsperren/löschen/umbenennen und interne Notizen hinterlegen. <strong>Admin-Rechte</strong> sind unabhängig vom Rang und werden separat über den Schalter je Benutzer vergeben.</p>
 
-            <form class="settings-form" id="form-add-benutzer" style="flex-wrap: wrap;">
-              <input type="text" id="neuer-benutzer-name-input" class="field-input" placeholder="Benutzername, z. B. Heinrich Hornhausen" required style="flex: 1 1 200px;" />
-              <input type="email" id="neuer-benutzer-email-input" class="field-input" placeholder="E-Mail-Adresse" required style="flex: 1 1 200px;" />
-              <select id="neuer-benutzer-rolle-input" class="field-input" style="flex: 0 0 180px;">
-                <option value="Anwärter">Anwärter</option>
-                <option value="Assistenzarzt">Assistenzarzt</option>
-                <option value="Facharzt">Facharzt</option>
-                <option value="Stellv. Oberarzt">Stellv. Oberarzt</option>
-                <option value="Oberarzt">Oberarzt</option>
-                <option value="Stellv. Chefarzt">Stellv. Chefarzt</option>
-                <option value="Chefarzt">Chefarzt</option>
-                <option value="Ärztliche Direktion">Ärztliche Direktion</option>
-              </select>
-              <button type="submit" class="btn btn--primary">Benutzer erstellen</button>
-            </form>
-            <p class="settings-card__hint">Neu erstellte Benutzer sind sofort freigegeben und bekommen automatisch eine E-Mail von Firebase, um ihr eigenes Passwort festzulegen.</p>
+          <form class="settings-form" id="form-add-benutzer" style="flex-wrap: wrap;">
+            <input type="text" id="neuer-benutzer-name-input" class="field-input" placeholder="Benutzername, z. B. Heinrich Hornhausen" required style="flex: 1 1 200px;" />
+            <input type="email" id="neuer-benutzer-email-input" class="field-input" placeholder="E-Mail-Adresse" required style="flex: 1 1 200px;" />
+            <select id="neuer-benutzer-rolle-input" class="field-input" style="flex: 0 0 180px;">
+              <option value="Anwärter">Anwärter</option>
+              <option value="Assistenzarzt">Assistenzarzt</option>
+              <option value="Facharzt">Facharzt</option>
+              <option value="Stellv. Oberarzt">Stellv. Oberarzt</option>
+              <option value="Oberarzt">Oberarzt</option>
+              <option value="Stellv. Chefarzt">Stellv. Chefarzt</option>
+              <option value="Chefarzt">Chefarzt</option>
+              <option value="Ärztliche Direktion">Ärztliche Direktion</option>
+            </select>
+            <button type="submit" class="btn btn--primary">Benutzer erstellen</button>
+          </form>
+          <p class="settings-card__hint">Neu erstellte Benutzer sind sofort freigegeben und bekommen automatisch eine E-Mail von Firebase, um ihr eigenes Passwort festzulegen.</p>
 
-            <div class="settings-list" id="benutzerverwaltung-liste">
-              <!-- wird per JavaScript befüllt -->
-            </div>
+          <input type="text" id="benutzerverwaltung-search-input" class="field-input" placeholder="Benutzer suchen..." style="margin-top: 4px;" />
+
+          <p class="settings-card__hint" id="benutzerverwaltung-hinweis-klick">Klicke auf einen Benutzer, um alle Infos und Aktionen (Sperren, Rolle, Notiz, Löschen, ...) zu öffnen.</p>
+
+          <div class="settings-list" id="benutzerverwaltung-liste">
+            <!-- wird per JavaScript befüllt -->
           </div>
         </div>
 
-        <!-- Für Nicht-Admins: Platzhalter (statt Mitarbeiterverwaltung) -->
-        <div id="einstellungen-locked" class="placeholder-card" hidden>
-          <h2>Weitere Einstellungen</h2>
-          <p>Die Mitarbeiterverwaltung ist nur für Admins sichtbar. Weitere Einstellungen folgen in einem zukünftigen Update.</p>
+        <div class="settings-card" id="admin-log-card">
+          <h3>Aktivitäts-Log</h3>
+          <p class="settings-card__hint">Zeigt die letzten Admin-Aktionen (Freigaben, Sperren, Rollenänderungen, Löschungen, ...) - wer hat wann was gemacht.</p>
+          <div class="settings-list" id="admin-log-liste">
+            <!-- wird per JavaScript befüllt -->
+          </div>
         </div>
       </section>
       </div>
@@ -625,6 +655,10 @@
       <footer class="page-footer">
         <p>Black Wolf Medical</p>
         <p class="page-footer__small">Ärztliche Registratur — Verwaltungssystem</p>
+        <p style="display: flex; gap: 18px; margin-top: 6px;">
+          <button type="button" class="auth-link" data-open-modal="modal-datenschutz">Datenschutz</button>
+          <button type="button" class="auth-link" data-open-modal="modal-informationen">Informationen</button>
+        </p>
       </footer>
     </div>
   </div>
@@ -699,6 +733,76 @@
   </div>
 
   <!-- ============================ -->
+  <!-- MODAL: Benutzer-Details (Admin Panel) -->
+  <!-- ============================ -->
+  <div class="modal-overlay" id="modal-benutzer-details">
+    <div class="modal modal--large">
+      <div class="modal__header">
+        <h3 id="benutzer-details-name">Benutzer</h3>
+        <button class="modal__close" data-close-modal="modal-benutzer-details">✕</button>
+      </div>
+      <div class="modal__body" id="benutzer-details-body">
+        <!-- wird per JavaScript befüllt -->
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" data-close-modal="modal-benutzer-details">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ -->
+  <!-- MODAL: Datenschutz (über den Footer erreichbar, auch ohne Login) -->
+  <!-- ============================ -->
+  <div class="modal-overlay" id="modal-datenschutz">
+    <div class="modal modal--large">
+      <div class="modal__header">
+        <h3>Datenschutz</h3>
+        <button class="modal__close" data-close-modal="modal-datenschutz">✕</button>
+      </div>
+      <div class="modal__body">
+        <p class="modal__hint">Diese Seite erklärt kurz und verständlich, welche Daten diese Website verarbeitet und wofür.</p>
+
+        <h3 style="margin-top: 18px; font-size: 16px;">Verwendung von Firebase</h3>
+        <p style="margin-top: 8px;">Für die Anmeldung wird Firebase Authentication verwendet. Benutzer können sich entweder mit E-Mail und Passwort oder mit Google anmelden.</p>
+
+        <h3 style="margin-top: 18px; font-size: 16px;">Speicherung personenbezogener Daten</h3>
+        <p style="margin-top: 8px;">Zur Anmeldung und Benutzerverwaltung werden folgende Daten gespeichert: Benutzername (RP-/Ingame-Name), E-Mail-Adresse, Registrierungsdatum, Letzter Login, Benutzerrolle sowie interne Systemberechtigungen.</p>
+        <p style="margin-top: 8px;">Die E-Mail-Adresse wird ausschließlich für die Anmeldung, die Passwort-Zurücksetzung und die Authentifizierung verwendet. Sie wird auf der Website niemals öffentlich angezeigt - andere Benutzer sehen ausschließlich den RP-/Ingame-Namen.</p>
+
+        <h3 style="margin-top: 18px; font-size: 16px;">Zweck der Website</h3>
+        <p style="margin-top: 8px;">Die Website dient ausschließlich der internen Verwaltung der Black Wolf Medical innerhalb eines privaten RedM-Roleplay-Projekts. Es werden keine Waren oder Dienstleistungen angeboten, und es erfolgt keine kommerzielle Nutzung. Die Website ist ausschließlich für berechtigte Mitglieder bestimmt.</p>
+
+        <h3 style="margin-top: 18px; font-size: 16px;">Weitergabe an Dritte</h3>
+        <p style="margin-top: 8px;">Es werden ausschließlich die für den Betrieb der Website notwendigen personenbezogenen Daten verarbeitet. Eine Weitergabe der Daten an Dritte erfolgt nicht - ausgenommen technisch erforderliche Dienste im Rahmen der Firebase Authentication von Google.</p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" data-close-modal="modal-datenschutz">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ -->
+  <!-- MODAL: Informationen (über den Footer erreichbar, auch ohne Login) -->
+  <!-- ============================ -->
+  <div class="modal-overlay" id="modal-informationen">
+    <div class="modal modal--large">
+      <div class="modal__header">
+        <h3>Informationen</h3>
+        <button class="modal__close" data-close-modal="modal-informationen">✕</button>
+      </div>
+      <div class="modal__body">
+        <p>Diese Website dient ausschließlich der internen Dokumentation und Verwaltung des Black Wolf Medical Bereichs innerhalb eines privaten RedM-Roleplay-Projekts.</p>
+        <p style="margin-top: 12px;">Sämtliche Namen, Charaktere, Berichte, Dokumentationen, medizinischen Einträge und Ereignisse beziehen sich ausschließlich auf fiktive Rollenspielcharaktere und fiktive Ereignisse innerhalb des Spiels.</p>
+        <p style="margin-top: 12px;">Es besteht keinerlei Bezug zu realen Personen, realen medizinischen Einrichtungen oder tatsächlichen Ereignissen.</p>
+        <p style="margin-top: 12px;">Die Website verfolgt keinerlei kommerzielle Zwecke und dient ausschließlich der internen Organisation und Dokumentation des Projekts.</p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" data-close-modal="modal-informationen">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ -->
   <!-- MODAL: Löschen bestätigen    -->
   <!-- ============================ -->
   <div class="modal-overlay" id="modal-delete">
@@ -730,10 +834,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=78"></script>
-  <script src="js/app.js?v=78"></script>
+  <script src="js/firebase-config.js?v=83"></script>
+  <script src="js/app.js?v=83"></script>
   <!-- Login-/Benutzersystem: eigenes ES-Modul mit dem modernen Firebase
        Modular SDK (siehe js/auth.js für den ausführlich kommentierten Code) -->
-  <script type="module" src="js/auth.js?v=78"></script>
+  <script type="module" src="js/auth.js?v=83"></script>
 </body>
 </html>

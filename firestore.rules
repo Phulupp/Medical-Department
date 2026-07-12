@@ -42,9 +42,46 @@ service cloud.firestore {
       return istEingeloggt() && eigenesUserDoc().isAdmin == true;
     }
 
-    // Ist der eingeloggte Nutzer freigegeben (status == "approved")?
+    // Prüft, ob die EIGENE zeitlich befristete Sperre (falls vorhanden)
+    // bereits abgelaufen ist. "gesperrtBis" ist ein Timestamp-Feld, das nur
+    // bei einer befristeten (nicht dauerhaften) Sperre gesetzt wird.
+    // request.time ist die von Firebase selbst ermittelte, vertrauenswürdige
+    // Serverzeit - kann vom Client nicht gefälscht werden.
+    function eigeneSperreAbgelaufen() {
+      let eigene = eigenesUserDoc();
+      return eigene.status == 'locked'
+        && eigene.get('gesperrtBis', null) != null
+        && request.time > eigene.gesperrtBis;
+    }
+
+    // Ist der eingeloggte Nutzer freigegeben? Zählt sowohl "approved" als
+    // auch eine befristete Sperre, deren Zeit bereits abgelaufen ist - so
+    // funktioniert die zeitliche Sperre auch OHNE eigenen Server/Cloud
+    // Function, rein anhand der von Firebase selbst geprüften Uhrzeit.
     function istFreigegeben() {
-      return istEingeloggt() && eigenesUserDoc().status == 'approved';
+      return istEingeloggt() && (eigenesUserDoc().status == 'approved' || eigeneSperreAbgelaufen());
+    }
+
+    // Ist DAS BETROFFENE Dokument (nicht der eingeloggte Nutzer, sondern
+    // das Dokument, das gerade geändert werden soll) als "unantastbar"
+    // markiert? Über resource.data.get(...) mit Standardwert false, damit
+    // das für alle "normalen" Accounts ohne dieses Feld nicht crasht.
+    function istUnantastbar() {
+      return resource.data.get('geschuetzt', false) == true;
+    }
+
+    // Verhindert genau zwei Dinge bei einem "unantastbar" markierten
+    // Account: dass ihm die Admin-Rechte entzogen werden, oder dass sein
+    // Status von "approved" weggeändert wird (z. B. Sperren/Ablehnen).
+    // Alles andere (Rolle ändern, Notiz setzen, Umbenennen) bleibt für
+    // Admins ganz normal weiter möglich.
+    function verletztUnantastbarkeit() {
+      let geaenderteFelder = request.resource.data.diff(resource.data).affectedKeys();
+      return istUnantastbar() &&
+        (
+          (geaenderteFelder.hasAny(['isAdmin']) && request.resource.data.isAdmin == false) ||
+          (geaenderteFelder.hasAny(['status']) && request.resource.data.status != 'approved')
+        );
     }
 
     /* ------------------------------------------------------------------
@@ -67,16 +104,29 @@ service cloud.firestore {
                     && request.resource.data.isAdmin == false;
 
       // Ändern: Admins dürfen alles ändern (Freigeben/Ablehnen/Sperren/
-      // Rolle/Admin-Status/Notiz/Umbenennen). Der Account selbst darf NUR
-      // sein eigenes "lastLogin"-Feld aktualisieren (beim Einloggen) -
-      // alles andere (Rolle, isAdmin, status, ...) darf man sich nicht
-      // selbst geben.
-      allow update: if istAdmin()
+      // Rolle/Admin-Status/Notiz/Umbenennen) - AUSSER bei einem als
+      // "geschuetzt: true" markierten Account darf selbst ein Admin nicht
+      // die Admin-Rechte entziehen oder den Freigabe-Status wegändern
+      // (siehe verletztUnantastbarkeit() oben). Der Account selbst darf
+      // NUR sein eigenes "lastLogin"-Feld aktualisieren (beim Einloggen) -
+      // ODER, als dritte Ausnahme, sich selbst von "locked" zurück auf
+      // "approved" setzen, aber NUR wenn die eigene befristete Sperre laut
+      // Server-Uhrzeit bereits abgelaufen ist (siehe eigeneSperreAbgelaufen
+      // oben). Das ist der "Selbstheilungs"-Mechanismus, der eine
+      // zeitlich befristete Sperre automatisch enden lässt, ganz ohne
+      // eigenen Server/Cloud Function.
+      allow update: if (istAdmin() && !verletztUnantastbarkeit())
                     || (request.auth.uid == uid
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLogin']));
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLogin']))
+                    || (request.auth.uid == uid
+                        && resource.data.status == 'locked'
+                        && resource.data.get('gesperrtBis', null) != null
+                        && request.time > resource.data.gesperrtBis
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'lastLogin', 'gesperrtBis'])
+                        && request.resource.data.status == 'approved');
 
-      // Löschen: nur Admins
-      allow delete: if istAdmin();
+      // Löschen: nur Admins, und niemals bei einem "geschuetzt"-Account.
+      allow delete: if istAdmin() && !istUnantastbar();
     }
 
     /* ------------------------------------------------------------------
@@ -107,6 +157,20 @@ service cloud.firestore {
       // Freigeben (z. B. beim Umbenennen der alte Name, oder beim Löschen
       // eines Accounts): nur Admins.
       allow delete: if istAdmin();
+    }
+
+    /* ------------------------------------------------------------------
+       adminLog/{logId} — Aktivitäts-Log für das Admin Panel. Ein Eintrag
+       pro Admin-Aktion (Freigeben, Sperren, Rolle ändern, Löschen, ...),
+       geschrieben von js/auth.js. Absichtlich unveränderlich: einmal
+       geschrieben, kann ein Eintrag NIE mehr geändert oder gelöscht werden
+       (auch nicht von einem Admin) - sonst wäre das Log selbst nicht mehr
+       vertrauenswürdig.
+       ------------------------------------------------------------------ */
+    match /adminLog/{logId} {
+      allow create: if istAdmin();
+      allow list, get: if istAdmin();
+      allow update, delete: if false;
     }
 
     /* ------------------------------------------------------------------

@@ -299,6 +299,25 @@ p {
   transform: translateY(0);
 }
 
+/* Zeigt die Anzahl ausstehender Registrierungsanfragen direkt am
+   "Admin"-Reiter, damit ein Admin neue Anfragen sofort sieht, ohne
+   extra reinklicken zu müssen. */
+.nav__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-oxblood);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 /* --------------------------------------------------------------------------
    6. Topnav-Aktionen: Online-Widget & Nutzer-Badge
    -------------------------------------------------------------------------- */
@@ -1145,6 +1164,71 @@ p {
   flex: 0 0 170px;
   padding: 7px 10px;
   font-size: 12.5px;
+}
+
+.settings-list__sperr-dauer-select {
+  flex: 0 0 130px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+}
+
+/* --------------------------------------------------------------------------
+   Vereinfachte, klickbare Benutzer-Zeile (öffnet das Detail-Modal) - die
+   frühere gestapelte ".settings-list__item--user"-Karte mit allen Aktionen
+   direkt in der Zeile wurde dadurch ersetzt.
+   -------------------------------------------------------------------------- */
+.settings-list__item--clickable {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.settings-list__item--clickable:hover,
+.settings-list__item--clickable:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--color-brass-soft);
+  outline: none;
+}
+
+.settings-list__user-row-main {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.settings-list__user-row-rolle {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  margin-left: 10px;
+}
+
+.settings-list__wartet-hinweis {
+  font-size: 10.5px;
+  color: var(--color-oxblood-text);
+  background: var(--color-oxblood-soft);
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+
+/* --------------------------------------------------------------------------
+   Aktivitäts-Log (Admin Panel)
+   -------------------------------------------------------------------------- */
+.admin-log__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+}
+
+.admin-log__item-text {
+  font-size: 12.5px;
+}
+
+.admin-log__item-zeit {
+  font-size: 10.5px;
+  color: var(--color-text-muted);
 }
 
 /* --------------------------------------------------------------------------
@@ -2733,6 +2817,12 @@ p {
 
 .modal--small {
   width: 380px;
+}
+
+.modal--large {
+  width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
 }
 
 .modal__header {

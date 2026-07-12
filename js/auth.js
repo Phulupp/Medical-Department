@@ -62,7 +62,12 @@ import {
   deleteDoc,
   onSnapshot,
   collection,
+  addDoc,
+  query,
+  orderBy,
+  limit,
   serverTimestamp,
+  Timestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // js/firebase-config.js (weiter oben als normales <script> geladen) hängt
@@ -122,6 +127,16 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
       const istFormular = el.tagName === "FORM";
       el.classList.toggle(istFormular ? "auth-form--active" : "auth-status--active", schrittId === id);
     });
+  }
+
+  // Formatiert einen Firestore-Timestamp als deutsches Datum + Uhrzeit,
+  // z. B. für die Anzeige "Gesperrt bis ..." auf dem Sperr-Bildschirm.
+  function formatiereDeutschesDatum(ts) {
+    if (!ts || typeof ts.toDate !== "function") return "unbekannt";
+    const d = ts.toDate();
+    return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()} ${String(
+      d.getHours()
+    ).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")} Uhr`;
   }
 
   // Übersetzt die (englischen) Firebase-Fehlercodes in verständliche,
@@ -207,6 +222,7 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
     btnPendingLogout: document.getElementById("btn-pending-logout"),
     btnRejectedLogout: document.getElementById("btn-rejected-logout"),
     btnLockedLogout: document.getElementById("btn-locked-logout"),
+    authStatusLockedText: document.getElementById("auth-status-locked-text"),
 
     btnLogout: document.getElementById("btn-logout"), // der "Abmelden"-Button oben rechts, innerhalb der laufenden App
   };
@@ -248,7 +264,7 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
         }
 
         const cred = await createUserWithEmailAndPassword(auth, email, passwort);
-        await erstelleBenutzerProfil(cred.user.uid, username);
+        await erstelleBenutzerProfil(cred.user.uid, username, email);
         await updateProfile(cred.user, { displayName: username }).catch(() => {});
         // Ab hier übernimmt der onAuthStateChanged-Beobachter weiter unten
         // automatisch und zeigt den "wartet auf Freigabe"-Hinweis an.
@@ -263,9 +279,18 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
   // Legt das eigentliche Profil-Dokument (users/{uid}) UND die
   // Namens-Reservierung (usernames/{name}) an. Wird sowohl bei normaler
   // Registrierung als auch nach dem ersten Google-Login benutzt.
-  async function erstelleBenutzerProfil(uid, username) {
+  //
+  // "email" wird bewusst zusätzlich gespeichert (anders als in der
+  // ursprünglichen Planung) - einzig, damit Admins im Benutzerverwaltungs-
+  // Panel einen "Passwort zurücksetzen"-Button anbieten können. Das ist
+  // unproblematisch, weil "users/{uid}" laut Security Rules ohnehin schon
+  // nur von Admins oder dem Account selbst gelesen werden darf (siehe
+  // firestore.rules, "allow get"/"allow list") - es wird also durch dieses
+  // Feld nichts neu öffentlich sichtbar.
+  async function erstelleBenutzerProfil(uid, username, email) {
     await setDoc(doc(db, "users", uid), {
       username: username.trim(),
+      email: email || null,
       rolle: "Anwärter",
       isAdmin: false,
       status: "pending",
@@ -359,7 +384,7 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
           zeigeFeldFehler(el.googleUsernameError, "Dieser Benutzername ist bereits vergeben.");
           return;
         }
-        await erstelleBenutzerProfil(ausstehenderGoogleUser.uid, username);
+        await erstelleBenutzerProfil(ausstehenderGoogleUser.uid, username, ausstehenderGoogleUser.email);
         ausstehenderGoogleUser = null;
         // onAuthStateChanged/onSnapshot (weiter unten) bemerkt automatisch,
         // dass jetzt ein Profil existiert, und zeigt "wartet auf Freigabe".
@@ -408,6 +433,12 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
   let unsubUserDoc = null;
   let bereitsGestartet = false; // true, sobald die App in dieser Sitzung einmal gestartet wurde
 
+  // Merkt sich, WER gerade als Admin eingeloggt ist (uid + Benutzername) -
+  // wird für das Aktivitäts-Log gebraucht (siehe protokolliere() weiter
+  // unten), damit jeder Log-Eintrag festhält, welcher Admin eine Aktion
+  // ausgeführt hat.
+  let aktuellerAdmin = null;
+
   onAuthStateChanged(auth, (firebaseUser) => {
     if (unsubUserDoc) {
       unsubUserDoc();
@@ -417,6 +448,7 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
     if (!firebaseUser) {
       // Niemand eingeloggt -> Login-Bildschirm zeigen.
       bereitsGestartet = false;
+      aktuellerAdmin = null;
       if (el.appRoot) el.appRoot.hidden = true;
       if (el.authScreen) el.authScreen.hidden = false;
       zeigeAuthSchritt("form-login");
@@ -443,6 +475,10 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
           if (el.authScreen) el.authScreen.hidden = true;
           if (el.appRoot) el.appRoot.hidden = false;
 
+          aktuellerAdmin = daten.isAdmin
+            ? { uid: firebaseUser.uid, username: daten.username || "Unbekannt" }
+            : null;
+
           const detail = { uid: firebaseUser.uid, username: daten.username, rolle: daten.rolle, isAdmin: !!daten.isAdmin };
 
           if (!bereitsGestartet) {
@@ -457,6 +493,8 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
             window.dispatchEvent(new CustomEvent("bwm:auth-profile-updated", { detail }));
           }
         } else {
+          aktuellerAdmin = null;
+
           if (bereitsGestartet) {
             // Nutzer war schon aktiv in der App und hat GERADE seinen
             // Zugriff verloren (z. B. wurde live von einem Admin
@@ -465,6 +503,31 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
             window.location.reload();
             return;
           }
+
+          // Befristete Sperre, deren Zeit laut Uhrzeit bereits abgelaufen
+          // ist: Der Account "heilt sich selbst", indem er seinen eigenen
+          // Status zurück auf "approved" setzt - die Security Rules
+          // erlauben genau das explizit, aber NUR wenn "gesperrtBis"
+          // wirklich schon in der Vergangenheit liegt (siehe
+          // eigeneSperreAbgelaufen() in firestore.rules). Der
+          // onSnapshot-Listener hier feuert danach automatisch erneut mit
+          // dem aktualisierten Status, der Sperr-Bildschirm wird also gar
+          // nicht erst angezeigt.
+          if (daten.status === "locked" && daten.gesperrtBis && daten.gesperrtBis.toMillis() <= Date.now()) {
+            updateDoc(doc(db, "users", firebaseUser.uid), { status: "approved", gesperrtBis: null }).catch(
+              (fehler) => console.error("Automatisches Entsperren fehlgeschlagen:", fehler)
+            );
+            return;
+          }
+
+          // Bei einer (noch aktiven) Sperre den Hinweistext dynamisch mit
+          // dem konkreten Sperr-Ende füllen, statt eines generischen Texts.
+          if (daten.status === "locked" && el.authStatusLockedText) {
+            el.authStatusLockedText.textContent = daten.gesperrtBis
+              ? `Dein Account ist gesperrt bis ${formatiereDeutschesDatum(daten.gesperrtBis)}. Bitte wende dich an einen Administrator, falls du denkst, dass das ein Fehler ist.`
+              : "Dein Account wurde dauerhaft gesperrt. Bitte wende dich an einen Administrator.";
+          }
+
           if (el.appRoot) el.appRoot.hidden = true;
           if (el.authScreen) el.authScreen.hidden = false;
           zeigeAuthSchritt(`auth-status-${daten.status}`);
@@ -478,9 +541,31 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
   });
 
   /* ------------------------------------------------------------------------
+     11b. Aktivitäts-Log: schreibt bei jeder admin-verändernden Aktion einen
+     Eintrag in die neue Collection "adminLog" (siehe firestore.rules -
+     erstellen dürfen nur Admins, ändern/löschen niemand - ein Log soll
+     nachträglich nicht manipulierbar sein). Fehler beim Loggen selbst
+     verhindern NIE die eigentliche Aktion (z. B. Sperren) - Logging ist ein
+     "Nice-to-have", kein Blocker.
+     ------------------------------------------------------------------------ */
+  function protokolliere(aktion, zielUid, zielName, details) {
+    if (!aktuellerAdmin) return; // sollte praktisch nie vorkommen (Aktion kam ja von einem Admin)
+    addDoc(collection(db, "adminLog"), {
+      zeitpunkt: serverTimestamp(),
+      adminUid: aktuellerAdmin.uid,
+      adminName: aktuellerAdmin.username,
+      aktion,
+      zielUid: zielUid || null,
+      zielName: zielName || null,
+      details: details || "",
+    }).catch((fehler) => console.error("Aktivitäts-Log konnte nicht geschrieben werden:", fehler));
+  }
+
+  /* ------------------------------------------------------------------------
      12. Benutzerverwaltung (nur für Admins) - öffentliche Schnittstelle für
-         js/app.js, das diese Funktionen aus seinem "Benutzerverwaltung"-
-         Bereich unter Einstellungen aufruft.
+         js/app.js, das diese Funktionen aus seinem eigenen "Admin"-Reiter
+         aufruft (eigener Navigationspunkt, nur für Admins sichtbar - siehe
+         index.html/js/app.js).
      ------------------------------------------------------------------------ */
   window.BenutzerVerwaltung = {
     // Abonniert die komplette Nutzerliste live. Nicht-Admins bekommen von
@@ -498,28 +583,86 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
       );
     },
 
-    setzeStatus(uid, neuerStatus) {
-      return updateDoc(doc(db, "users", uid), { status: neuerStatus });
+    // Für "Freigeben"/"Ablehnen" (kein Zeitbezug) - für Sperren/Entsperren
+    // bitte sperreBenutzer()/entsperreBenutzer() weiter unten benutzen,
+    // die kümmern sich zusätzlich um das Feld "gesperrtBis". "username" wird
+    // nur fürs Aktivitäts-Log gebraucht (lesbare Namen statt nackter UIDs).
+    async setzeStatus(uid, neuerStatus, username) {
+      await updateDoc(doc(db, "users", uid), { status: neuerStatus });
+      const aktion = neuerStatus === "approved" ? "Freigegeben" : neuerStatus === "rejected" ? "Abgelehnt" : "Status geändert";
+      protokolliere(aktion, uid, username);
     },
-    setzeRolle(uid, neueRolle) {
-      return updateDoc(doc(db, "users", uid), { rolle: neueRolle });
+    async setzeRolle(uid, neueRolle, username) {
+      await updateDoc(doc(db, "users", uid), { rolle: neueRolle });
+      protokolliere("Rang geändert", uid, username, neueRolle);
     },
-    setzeAdmin(uid, istAdminWert) {
-      return updateDoc(doc(db, "users", uid), { isAdmin: !!istAdminWert });
+    async setzeAdmin(uid, istAdminWert, username) {
+      await updateDoc(doc(db, "users", uid), { isAdmin: !!istAdminWert });
+      protokolliere(istAdminWert ? "Admin-Rechte vergeben" : "Admin-Rechte entzogen", uid, username);
     },
     setzeNotiz(uid, text) {
+      // Notizen werden bewusst NICHT protokolliert - das wäre bei jedem
+      // Tastendruck-Speichern zu viel Rauschen im Log.
       return updateDoc(doc(db, "users", uid), { adminNote: text });
     },
 
+    // Sperrt einen Account - entweder dauerhaft (tage = null/0) oder
+    // befristet für die angegebene Anzahl Tage. Bei einer befristeten
+    // Sperre wird zusätzlich "gesperrtBis" gesetzt (ein Timestamp in der
+    // Zukunft) - die Security Rules erlauben dem Account danach, sich nach
+    // Ablauf dieser Zeit automatisch selbst wieder freizuschalten (siehe
+    // eigeneSperreAbgelaufen() in firestore.rules und den entsprechenden
+    // Code weiter oben im onAuthStateChanged-Beobachter), ganz ohne
+    // eigenen Server/Cloud Function.
+    async sperreBenutzer(uid, tage, username) {
+      const daten = { status: "locked" };
+      if (tage && tage > 0) {
+        const bis = new Date(Date.now() + tage * 24 * 60 * 60 * 1000);
+        daten.gesperrtBis = Timestamp.fromDate(bis);
+      } else {
+        daten.gesperrtBis = null; // dauerhafte Sperre, kein Ablaufdatum
+      }
+      await updateDoc(doc(db, "users", uid), daten);
+      protokolliere("Gesperrt", uid, username, tage && tage > 0 ? `für ${tage} Tag(e)` : "dauerhaft");
+    },
+
+    // Entsperrt einen Account manuell (unabhängig davon, ob eine
+    // befristete Sperre noch läuft oder nicht) und räumt "gesperrtBis"
+    // wieder auf.
+    async entsperreBenutzer(uid, username) {
+      await updateDoc(doc(db, "users", uid), { status: "approved", gesperrtBis: null });
+      protokolliere("Entsperrt", uid, username);
+    },
+
+    // Verschickt eine "Passwort zurücksetzen"-E-Mail an die hinterlegte
+    // Adresse (funktioniert nur, wenn "email" auf dem Profil gespeichert
+    // ist - bei Accounts, die vor dieser Funktion registriert wurden, fehlt
+    // das Feld, js/app.js blendet den Button in dem Fall aus).
+    async sendePasswortReset(email, uid, username) {
+      await sendPasswordResetEmail(auth, email);
+      protokolliere("Passwort-Reset verschickt", uid, username);
+    },
+
     async loesche(uid) {
-      // Löscht nur das Firestore-Profil. Das Firebase-Auth-Konto selbst
+      // Löscht das Firestore-Profil UND die zugehörige Namens-Reservierung
+      // (sonst bliebe der Benutzername für immer "vergeben", obwohl der
+      // Account gar nicht mehr existiert). Das Firebase-Auth-Konto selbst
       // (E-Mail + Passwort) kann aus dem Browser heraus technisch NICHT
       // gelöscht werden (nur die Person selbst, oder ein Server mit
-      // Admin-Rechten). Die Person könnte sich also theoretisch weiterhin
-      // mit ihrem alten Passwort anmelden, würde dann aber automatisch
-      // wieder beim "Benutzernamen wählen"-Schritt landen, weil ihr Profil
-      // fehlt - sie hat also KEINEN Zugriff mehr auf die eigentliche App.
-      return deleteDoc(doc(db, "users", uid));
+      // Admin-Rechten - siehe Kommentar in erstelleNeuenBenutzer weiter
+      // unten zum Warum). Die Person hat nach dem Löschen aber garantiert
+      // KEINEN Zugriff mehr auf irgendwelche Daten der App (das erzwingen
+      // die Security Rules), selbst wenn sie sich mit altem Passwort
+      // nochmal einloggen würde - sie würde dann nur wieder beim
+      // "Benutzernamen wählen"-Schritt landen, komplett bei null.
+      const profilSnap = await getDoc(doc(db, "users", uid));
+      const username = profilSnap.exists() ? profilSnap.data().username : null;
+
+      await deleteDoc(doc(db, "users", uid));
+      if (username) {
+        await deleteDoc(doc(db, "usernames", benutzernameSchluessel(username))).catch(() => {});
+      }
+      protokolliere("Gelöscht", uid, username);
     },
 
     async benenneUm(uid, neuerName, alterName) {
@@ -534,6 +677,21 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
       if (alterSchluessel && alterSchluessel !== neuerSchluessel) {
         await deleteDoc(doc(db, "usernames", alterSchluessel)).catch(() => {});
       }
+      protokolliere("Umbenannt", uid, neuerName.trim(), `vorher: „${alterName}“`);
+    },
+
+    // Live-Abo der letzten 50 Aktivitäts-Log-Einträge (neueste zuerst) -
+    // fürs "Aktivitäts-Log"-Kärtchen im Admin Panel.
+    onLog(callback) {
+      return onSnapshot(
+        query(collection(db, "adminLog"), orderBy("zeitpunkt", "desc"), limit(50)),
+        (snap) => {
+          const liste = [];
+          snap.forEach((docSnap) => liste.push({ id: docSnap.id, ...docSnap.data() }));
+          callback(liste);
+        },
+        (fehler) => console.error("Aktivitäts-Log konnte nicht geladen werden:", fehler)
+      );
     },
 
     // Admin legt direkt einen neuen, bereits freigegebenen Account an -
@@ -560,6 +718,7 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
 
         await setDoc(doc(db, "users", neueUid), {
           username: username.trim(),
+          email: email || null,
           rolle: rolle || "Anwärter",
           isAdmin: false,
           status: "approved", // vom Admin direkt erstellt = bereits geprüft
@@ -574,6 +733,7 @@ if (!firebaseConfig || !firebaseConfig.apiKey) {
         await sendPasswordResetEmail(tempAuth, email);
 
         await signOut(tempAuth);
+        protokolliere("Benutzer erstellt", neueUid, username.trim());
       } finally {
         deleteApp(tempApp).catch(() => {});
       }

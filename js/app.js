@@ -149,6 +149,11 @@
   let unsubAnkuendigungen = null;
   let stationenDaten = { direktion: [], blackwater: [], rhodes: [] }; // Feste Plätze je Station
   let benutzerListe = [];          // Alle Accounts (nur für Admins geladen) - für die Benutzerverwaltung
+  let bekanntePendingUids = null;  // null = Liste noch nie geladen (verhindert Toast beim allerersten Laden)
+  let benutzerSuche = "";          // Suchbegriff im Admin Panel (Filter nach Benutzername)
+  let aktiverDetailUid = null;     // uid des Benutzers, dessen Detail-Modal gerade offen ist (oder null)
+  let unsubAdminLog = null;
+  let adminLogEintraege = [];      // Die letzten Aktivitäts-Log-Einträge (nur für Admins geladen)
   let infosListe = [];             // Dynamische Infos-Seite
   let speicherTimer = null;
   let heartbeatTimer = null;
@@ -233,14 +238,22 @@
     infoKategorieInput: document.getElementById("info-kategorie-input"),
     infosGrid: document.getElementById("infos-grid"),
 
-    einstellungenAdmin: document.getElementById("einstellungen-admin"),
-    einstellungenLocked: document.getElementById("einstellungen-locked"),
+    navAdminToggle: document.getElementById("nav-admin-toggle"),
+    navAdminBadge: document.getElementById("nav-admin-badge"),
+    viewAdmin: document.getElementById("view-admin"),
 
     formAddBenutzer: document.getElementById("form-add-benutzer"),
     neuerBenutzerNameInput: document.getElementById("neuer-benutzer-name-input"),
     neuerBenutzerEmailInput: document.getElementById("neuer-benutzer-email-input"),
     neuerBenutzerRolleInput: document.getElementById("neuer-benutzer-rolle-input"),
+    benutzerverwaltungSearchInput: document.getElementById("benutzerverwaltung-search-input"),
     benutzerverwaltungListe: document.getElementById("benutzerverwaltung-liste"),
+
+    modalBenutzerDetails: document.getElementById("modal-benutzer-details"),
+    benutzerDetailsName: document.getElementById("benutzer-details-name"),
+    benutzerDetailsBody: document.getElementById("benutzer-details-body"),
+
+    adminLogListe: document.getElementById("admin-log-liste"),
 
     tableBody: document.getElementById("med-table-body"),
     emptyState: document.getElementById("empty-state"),
@@ -288,6 +301,7 @@
     notizen: { title: "Infos", subtitle: "Gemeinsame Infos des Teams" },
     infos: { title: "Medizin-Wiki", subtitle: "Wirkung & Einsatzgebiet der Medikamente" },
     einstellungen: { title: "Einstellungen", subtitle: "Konfiguration des Ärztekammer-Systems" },
+    admin: { title: "Admin", subtitle: "Benutzerverwaltung – nur für Administratoren sichtbar" },
   };
 
   /* ------------------------------------------------------------------------
@@ -658,6 +672,7 @@
 
     renderBenutzerBadge();
     renderMitarbeiterListe();
+    aktualisiereAdminNavSichtbarkeit();
 
     sessionId = sessionStorage.getItem("medicalDepartment.sessionId") || erzeugeSessionId();
     sessionStorage.setItem("medicalDepartment.sessionId", sessionId);
@@ -1458,8 +1473,11 @@
   // Abonniert die komplette Nutzerliste - aber NUR, wenn der aktuelle
   // Nutzer Admin ist, weil Firestore Security Rules Nicht-Admins den
   // "list"-Zugriff auf die users-Collection ohnehin verweigern (siehe
-  // firestore.rules). Wird bei jedem Rendern der Einstellungen-Seite bzw.
-  // bei Admin-Statuswechsel neu geprüft.
+  // firestore.rules). Läuft bewusst dauerhaft im Hintergrund ab dem
+  // Login (nicht erst beim Öffnen des Admin-Reiters), damit die
+  // Anzeige "X ausstehend" am Reiter sowie der Hinweis-Toast bei neuen
+  // Registrierungen auch dann funktionieren, wenn der Admin gerade auf
+  // einer ganz anderen Seite ist.
   function abonniereBenutzerlisteFallsAdmin() {
     if (!istAdmin()) {
       if (unsubBenutzerliste) {
@@ -1467,14 +1485,93 @@
         unsubBenutzerliste = null;
       }
       benutzerListe = [];
+      bekanntePendingUids = null;
+      aktualisiereAdminBadge();
       return;
     }
     if (unsubBenutzerliste || !window.BenutzerVerwaltung) return; // bereits abonniert
 
     unsubBenutzerliste = window.BenutzerVerwaltung.onListe((liste) => {
+      const neuePendingUids = new Set(liste.filter((u) => u.status === "pending").map((u) => u.uid));
+
+      // Neue Registrierungsanfrage(n) erkannt (waren beim letzten Laden
+      // noch nicht "pending") -> kurzer Hinweis-Toast, damit ein Admin es
+      // auch mitbekommt, wenn er gerade nicht im Admin-Reiter ist. Beim
+      // allerersten Laden (bekanntePendingUids ist noch null) wird
+      // bewusst KEIN Toast gezeigt, sonst würde jede bereits bestehende
+      // Anfrage bei jedem Login fälschlich wie "neu" wirken.
+      if (bekanntePendingUids) {
+        liste
+          .filter((u) => u.status === "pending" && !bekanntePendingUids.has(u.uid))
+          .forEach((u) => zeigeToast(`Neue Registrierung: „${u.username || "unbekannt"}“ wartet auf Freigabe.`));
+      }
+      bekanntePendingUids = neuePendingUids;
+
       benutzerListe = liste;
+      aktualisiereAdminBadge();
       renderBenutzerverwaltung();
     });
+  }
+
+  // Analog zu abonniereBenutzerlisteFallsAdmin(), nur für das
+  // Aktivitäts-Log-Kärtchen im Admin Panel.
+  function abonniereAdminLogFallsAdmin() {
+    if (!istAdmin()) {
+      if (unsubAdminLog) {
+        unsubAdminLog();
+        unsubAdminLog = null;
+      }
+      adminLogEintraege = [];
+      return;
+    }
+    if (unsubAdminLog || !window.BenutzerVerwaltung || !window.BenutzerVerwaltung.onLog) return;
+
+    unsubAdminLog = window.BenutzerVerwaltung.onLog((liste) => {
+      adminLogEintraege = liste;
+      renderAdminLog();
+    });
+  }
+
+  function renderAdminLog() {
+    if (!el.adminLogListe) return;
+    el.adminLogListe.innerHTML = "";
+
+    if (adminLogEintraege.length === 0) {
+      el.adminLogListe.innerHTML = `<p class="notes-empty">Noch keine Aktivitäten protokolliert.</p>`;
+      return;
+    }
+
+    adminLogEintraege.forEach((eintrag) => {
+      const zeile = document.createElement("div");
+      zeile.className = "admin-log__item";
+      const zielText = eintrag.zielName ? ` „${escapeHtml(eintrag.zielName)}“` : "";
+      const detailsText = eintrag.details ? ` (${escapeHtml(eintrag.details)})` : "";
+      zeile.innerHTML = `
+        <span class="admin-log__item-text"><strong>${escapeHtml(eintrag.adminName || "Unbekannt")}</strong> — ${escapeHtml(eintrag.aktion || "")}${zielText}${detailsText}</span>
+        <span class="admin-log__item-zeit">${formatiereFirestoreZeitstempel(eintrag.zeitpunkt)}</span>
+      `;
+      el.adminLogListe.appendChild(zeile);
+    });
+  }
+
+  // Rechnet aus, wie viele volle Tage seit einem Firestore-Timestamp
+  // vergangen sind - für den "wartet seit X Tag(en)"-Hinweis bei
+  // ausstehenden Registrierungen.
+  function tageSeit(ts) {
+    if (!ts || typeof ts.toDate !== "function") return null;
+    const vergangeneMs = Date.now() - ts.toDate().getTime();
+    return Math.max(0, Math.floor(vergangeneMs / (24 * 60 * 60 * 1000)));
+  }
+
+  // Zeigt die Anzahl ausstehender Registrierungsanfragen als kleine
+  // Zahl-Pille direkt am "Admin"-Reiter (nur sichtbar, wenn es welche
+  // gibt), damit ein Admin es sofort sieht, ohne extra reinklicken zu
+  // müssen.
+  function aktualisiereAdminBadge() {
+    if (!el.navAdminBadge) return;
+    const anzahl = benutzerListe.filter((u) => u.status === "pending").length;
+    el.navAdminBadge.textContent = String(anzahl);
+    el.navAdminBadge.hidden = anzahl === 0;
   }
 
   // Formatiert einen Firestore-Timestamp (Modular-SDK-Objekt mit .toDate())
@@ -1495,11 +1592,152 @@
     locked: "Gesperrt",
   };
 
+  // Blendet den "Admin"-Reiter in der Top-Navigation nur für echte Admins
+  // ein. Wird direkt nach dem Login (appStarten) UND bei jeder Live-
+  // Änderung des eigenen Profils aufgerufen (siehe bwm:auth-profile-updated
+  // weiter oben) - damit z. B. ein Nutzer, dem gerade live die Admin-Rechte
+  // entzogen werden, den Reiter sofort verliert und nicht mehr sieht,
+  // statt erst beim nächsten Neuladen der Seite.
+  function aktualisiereAdminNavSichtbarkeit() {
+    if (el.navAdminToggle) el.navAdminToggle.hidden = !istAdmin();
+
+    // Startet (bzw. beendet) die Live-Nutzerliste direkt hier, nicht erst
+    // beim Öffnen des Admin-Reiters - nur so kann die Anzahl-Pille am
+    // Reiter und der Toast bei neuen Registrierungen auch dann
+    // funktionieren, wenn der Admin gerade auf einer anderen Seite ist.
+    abonniereBenutzerlisteFallsAdmin();
+    abonniereAdminLogFallsAdmin();
+
+    // Falls jemand gerade auf der Admin-Seite ist und in genau diesem
+    // Moment seine Admin-Rechte verliert: automatisch zur Startseite
+    // zurückschicken, statt ihn auf einer Seite zu lassen, die für ihn
+    // eigentlich gar nicht mehr sichtbar sein soll.
+    if (!istAdmin() && el.viewAdmin && el.viewAdmin.classList.contains("view--active")) {
+      const startNavItem = document.querySelector('.nav__item[data-view="start"]');
+      if (startNavItem) startNavItem.click();
+    }
+  }
+
+  // Baut den Inhalt des Detail-Modals für EINEN Benutzer (Badges, Meta-
+  // Infos, Rang, Notiz, alle Aktions-Buttons). Wird sowohl beim Öffnen des
+  // Modals als auch bei jeder Live-Aktualisierung der Nutzerliste erneut
+  // aufgerufen, damit der Inhalt immer aktuell ist, während das Modal
+  // offen ist (z. B. wenn parallel jemand anders eine Änderung macht).
+  function baueBenutzerDetailsHtml(person) {
+    const statusLabel = BENUTZER_STATUS_LABEL[person.status] || person.status;
+
+    const rollenOptionen = BENUTZER_RAENGE.map(
+      (rolle) => `<option value="${escapeHtml(rolle)}" ${rolle === person.rolle ? "selected" : ""}>${escapeHtml(rolle)}</option>`
+    ).join("");
+
+    // "geschuetzt: true" (nur manuell in der Firebase-Konsole setzbar, z. B.
+    // beim ersten Admin-Account) blockiert serverseitig per Security Rules,
+    // dass diesem Account die Admin-Rechte entzogen, der Status weggeändert
+    // oder der Account gelöscht werden kann - siehe firestore.rules
+    // (verletztUnantastbarkeit()). Hier in der Anzeige blenden wir die
+    // entsprechenden Buttons deshalb erst gar nicht ein, statt den Admin
+    // erst klicken zu lassen und dann einen Firestore-Fehler zu zeigen.
+    const istUnantastbar = !!person.geschuetzt;
+
+    let statusAktionenHtml = "";
+    if (person.status === "pending") {
+      statusAktionenHtml = `<button type="button" class="btn btn--secondary" data-role="benutzer-freigeben" data-uid="${person.uid}">Freigeben</button>
+               <button type="button" class="btn btn--secondary" data-role="benutzer-ablehnen" data-uid="${person.uid}">Ablehnen</button>`;
+    } else if (person.status === "locked") {
+      statusAktionenHtml = `<button type="button" class="btn btn--secondary" data-role="benutzer-entsperren" data-uid="${person.uid}">Entsperren</button>`;
+    } else if (!istUnantastbar) {
+      // Dauer-Auswahl direkt neben dem "Sperren"-Button - "Dauerhaft"
+      // setzt keine gesperrtBis-Zeit, die anderen Optionen sperren
+      // befristet (siehe sperreBenutzer() in js/auth.js). Die Uhrzeit,
+      // ab der die Sperre wieder endet, wird serverseitig über die
+      // Firestore Security Rules geprüft, nicht nur im Frontend.
+      statusAktionenHtml = `
+        <select class="field-input settings-list__sperr-dauer-select" data-role="benutzer-sperr-dauer" data-uid="${person.uid}">
+          <option value="0">Dauerhaft</option>
+          <option value="1">1 Tag</option>
+          <option value="3">3 Tage</option>
+          <option value="7">7 Tage</option>
+          <option value="30">30 Tage</option>
+        </select>
+        <button type="button" class="btn btn--secondary" data-role="benutzer-sperren" data-uid="${person.uid}">Sperren</button>`;
+    }
+
+    const adminAktionHtml =
+      istUnantastbar && person.isAdmin
+        ? ""
+        : `<button type="button" class="btn btn--secondary" data-role="benutzer-admin-umschalten" data-uid="${person.uid}" data-aktuell="${!!person.isAdmin}">${person.isAdmin ? "Admin entziehen" : "Zum Admin machen"}</button>`;
+
+    // "Passwort zurücksetzen" nur möglich, wenn eine E-Mail-Adresse auf
+    // dem Profil hinterlegt ist - fehlt bei Accounts, die vor Einführung
+    // dieses Felds registriert wurden (dann wird der Button einfach nicht
+    // angezeigt statt später mit einem Firestore-Fehler zu scheitern).
+    const passwortResetHtml = person.email
+      ? `<button type="button" class="btn btn--secondary" data-role="benutzer-passwort-reset" data-uid="${person.uid}" data-name="${escapeHtml(person.username || "")}" data-email="${escapeHtml(person.email)}">Passwort zurücksetzen</button>`
+      : "";
+
+    const loeschenHtml = istUnantastbar
+      ? ""
+      : `<button type="button" class="icon-btn icon-btn--delete" data-role="benutzer-loeschen" data-uid="${person.uid}" data-name="${escapeHtml(person.username || "")}" title="Löschen">${ICON_TRASH}</button>`;
+
+    const wartetTage = person.status === "pending" ? tageSeit(person.createdAt) : null;
+    const wartetHtml =
+      wartetTage !== null && wartetTage >= 1
+        ? `<span class="settings-list__meta-text">Wartet seit ${wartetTage} Tag${wartetTage === 1 ? "" : "en"}</span>`
+        : "";
+
+    return `
+      <div class="settings-list__user-main">
+        <span class="settings-list__status-pill settings-list__status-pill--${person.status}">${escapeHtml(statusLabel)}</span>
+        ${person.isAdmin ? '<span class="settings-list__protected">Admin</span>' : ""}
+        ${istUnantastbar ? '<span class="settings-list__protected" title="Kann nicht entzogen, gesperrt oder gelöscht werden">Geschützt</span>' : ""}
+      </div>
+      <div class="settings-list__user-meta" style="margin-top: 10px;">
+        <span class="settings-list__meta-text">Registriert: ${formatiereFirestoreZeitstempel(person.createdAt)}</span>
+        <span class="settings-list__meta-text">Letzter Login: ${formatiereFirestoreZeitstempel(person.lastLogin)}</span>
+        ${
+          person.status === "locked"
+            ? `<span class="settings-list__meta-text">${
+                person.gesperrtBis
+                  ? `Gesperrt bis: ${formatiereFirestoreZeitstempel(person.gesperrtBis)}`
+                  : "Dauerhaft gesperrt"
+              }</span>`
+            : ""
+        }
+        ${wartetHtml}
+      </div>
+
+      <label class="field-label" style="margin-top: 14px;">Rang</label>
+      <select class="field-input settings-list__rolle-select" data-role="benutzer-rolle" data-uid="${person.uid}" style="width: 100%; flex: none;">${rollenOptionen}</select>
+
+      <label class="field-label">Interne Notiz (nur für Admins sichtbar)</label>
+      <input type="text" class="field-input settings-list__note-input" data-role="benutzer-notiz" data-uid="${person.uid}" placeholder="z. B. Kontext zu einer Sperre..." value="${escapeHtml(person.adminNote || "")}" style="width: 100%; flex: none;" />
+
+      <div class="settings-list__user-actions" style="margin-top: 16px;">
+        ${statusAktionenHtml}
+        ${adminAktionHtml}
+        ${passwortResetHtml}
+        <button type="button" class="btn btn--secondary" data-role="benutzer-umbenennen" data-uid="${person.uid}" data-name="${escapeHtml(person.username || "")}">Umbenennen</button>
+        ${loeschenHtml}
+      </div>
+    `;
+  }
+
+  // Öffnet das Detail-Modal für genau einen Benutzer - alle Infos und
+  // Aktionen laufen jetzt hier zusammen, statt (wie früher) direkt in der
+  // Zeile der Liste zu stehen.
+  function oeffneBenutzerDetailModal(uid) {
+    const person = benutzerListe.find((u) => u.uid === uid);
+    if (!person || !el.modalBenutzerDetails) return;
+    aktiverDetailUid = uid;
+    el.benutzerDetailsName.textContent = person.username || "(ohne Namen)";
+    el.benutzerDetailsBody.innerHTML = baueBenutzerDetailsHtml(person);
+    oeffneModal(el.modalBenutzerDetails);
+  }
+
   function renderBenutzerverwaltung() {
     if (!el.benutzerverwaltungListe) return;
 
-    el.einstellungenAdmin.hidden = !istAdmin();
-    el.einstellungenLocked.hidden = istAdmin();
+    aktualisiereAdminNavSichtbarkeit();
     if (!istAdmin()) return;
 
     abonniereBenutzerlisteFallsAdmin();
@@ -1508,53 +1746,71 @@
 
     if (benutzerListe.length === 0) {
       el.benutzerverwaltungListe.innerHTML = `<p class="notes-empty">Noch keine Benutzer vorhanden.</p>`;
-      return;
+    } else {
+      const suchbegriff = benutzerSuche.trim().toLowerCase();
+      const gefiltert = suchbegriff
+        ? benutzerListe.filter((u) => (u.username || "").toLowerCase().includes(suchbegriff))
+        : benutzerListe;
+
+      // Ausstehende Anfragen zuerst, damit Admins sie nicht übersehen.
+      const sortiert = [...gefiltert].sort((a, b) => {
+        if (a.status === "pending" && b.status !== "pending") return -1;
+        if (b.status === "pending" && a.status !== "pending") return 1;
+        return (a.username || "").localeCompare(b.username || "");
+      });
+
+      if (sortiert.length === 0) {
+        el.benutzerverwaltungListe.innerHTML = `<p class="notes-empty">Kein Benutzer gefunden.</p>`;
+      } else {
+        // Bewusst eine einfache, vereinfachte Zeile pro Benutzer (Name,
+        // Status, Rang) statt aller Aktionen direkt hier - ein Klick auf
+        // die Zeile öffnet das Detail-Modal mit allen Infos und Aktionen
+        // (siehe oeffneBenutzerDetailModal/baueBenutzerDetailsHtml oben).
+        sortiert.forEach((person) => {
+          const zeile = document.createElement("div");
+          zeile.className = "settings-list__item settings-list__item--clickable";
+          zeile.dataset.uid = person.uid;
+          zeile.setAttribute("role", "button");
+          zeile.setAttribute("tabindex", "0");
+
+          const statusLabel = BENUTZER_STATUS_LABEL[person.status] || person.status;
+          const istUnantastbar = !!person.geschuetzt;
+          const wartetTage = person.status === "pending" ? tageSeit(person.createdAt) : null;
+          const wartetHtml =
+            wartetTage !== null && wartetTage >= 1
+              ? `<span class="settings-list__wartet-hinweis">wartet seit ${wartetTage} Tag${wartetTage === 1 ? "" : "en"}</span>`
+              : "";
+
+          zeile.innerHTML = `
+            <div class="settings-list__user-row-main">
+              <span class="settings-list__name">${escapeHtml(person.username || "(ohne Namen)")}</span>
+              <span class="settings-list__status-pill settings-list__status-pill--${person.status}">${escapeHtml(statusLabel)}</span>
+              ${person.isAdmin ? '<span class="settings-list__protected">Admin</span>' : ""}
+              ${istUnantastbar ? '<span class="settings-list__protected" title="Kann nicht entzogen, gesperrt oder gelöscht werden">Geschützt</span>' : ""}
+              ${wartetHtml}
+            </div>
+            <span class="settings-list__user-row-rolle">${escapeHtml(person.rolle || "")}</span>
+          `;
+          el.benutzerverwaltungListe.appendChild(zeile);
+        });
+      }
     }
 
-    // Ausstehende Anfragen zuerst, damit Admins sie nicht übersehen.
-    const sortiert = [...benutzerListe].sort((a, b) => {
-      if (a.status === "pending" && b.status !== "pending") return -1;
-      if (b.status === "pending" && a.status !== "pending") return 1;
-      return (a.username || "").localeCompare(b.username || "");
-    });
-
-    sortiert.forEach((person) => {
-      const zeile = document.createElement("div");
-      zeile.className = "settings-list__item settings-list__item--user";
-      const statusLabel = BENUTZER_STATUS_LABEL[person.status] || person.status;
-
-      const rollenOptionen = BENUTZER_RAENGE.map(
-        (rolle) => `<option value="${escapeHtml(rolle)}" ${rolle === person.rolle ? "selected" : ""}>${escapeHtml(rolle)}</option>`
-      ).join("");
-
-      zeile.innerHTML = `
-        <div class="settings-list__user-main">
-          <span class="settings-list__name">${escapeHtml(person.username || "(ohne Namen)")}</span>
-          <span class="settings-list__status-pill settings-list__status-pill--${person.status}">${escapeHtml(statusLabel)}</span>
-          ${person.isAdmin ? '<span class="settings-list__protected">Admin</span>' : ""}
-          <select class="field-input settings-list__rolle-select" data-role="benutzer-rolle" data-uid="${person.uid}">${rollenOptionen}</select>
-        </div>
-        <div class="settings-list__user-meta">
-          <span class="settings-list__meta-text">Registriert: ${formatiereFirestoreZeitstempel(person.createdAt)}</span>
-          <span class="settings-list__meta-text">Letzter Login: ${formatiereFirestoreZeitstempel(person.lastLogin)}</span>
-        </div>
-        <input type="text" class="field-input settings-list__note-input" data-role="benutzer-notiz" data-uid="${person.uid}" placeholder="Interne Notiz (nur für Admins sichtbar)" value="${escapeHtml(person.adminNote || "")}" />
-        <div class="settings-list__user-actions">
-          ${
-            person.status === "pending"
-              ? `<button type="button" class="btn btn--secondary" data-role="benutzer-freigeben" data-uid="${person.uid}">Freigeben</button>
-                 <button type="button" class="btn btn--secondary" data-role="benutzer-ablehnen" data-uid="${person.uid}">Ablehnen</button>`
-              : person.status === "locked"
-                ? `<button type="button" class="btn btn--secondary" data-role="benutzer-entsperren" data-uid="${person.uid}">Entsperren</button>`
-                : `<button type="button" class="btn btn--secondary" data-role="benutzer-sperren" data-uid="${person.uid}">Sperren</button>`
-          }
-          <button type="button" class="btn btn--secondary" data-role="benutzer-admin-umschalten" data-uid="${person.uid}" data-aktuell="${!!person.isAdmin}">${person.isAdmin ? "Admin entziehen" : "Zum Admin machen"}</button>
-          <button type="button" class="btn btn--secondary" data-role="benutzer-umbenennen" data-uid="${person.uid}" data-name="${escapeHtml(person.username || "")}">Umbenennen</button>
-          <button type="button" class="icon-btn icon-btn--delete" data-role="benutzer-loeschen" data-uid="${person.uid}" data-name="${escapeHtml(person.username || "")}" title="Löschen">${ICON_TRASH}</button>
-        </div>
-      `;
-      el.benutzerverwaltungListe.appendChild(zeile);
-    });
+    // Detail-Modal live aktualisieren, falls es gerade offen ist (z. B.
+    // ändert sich der Status durch genau die Aktion, die man gerade im
+    // Modal ausgelöst hat, oder ein anderer Admin ändert währenddessen
+    // etwas an derselben Person).
+    if (aktiverDetailUid && el.modalBenutzerDetails && el.modalBenutzerDetails.classList.contains("modal-overlay--visible")) {
+      const aktuellePerson = benutzerListe.find((u) => u.uid === aktiverDetailUid);
+      if (aktuellePerson) {
+        el.benutzerDetailsName.textContent = aktuellePerson.username || "(ohne Namen)";
+        el.benutzerDetailsBody.innerHTML = baueBenutzerDetailsHtml(aktuellePerson);
+      } else {
+        // Person wurde gerade gelöscht, während das Modal offen war.
+        schliesseModal(el.modalBenutzerDetails);
+        aktiverDetailUid = null;
+      }
+    }
   }
 
   if (el.formAddBenutzer) {
@@ -1579,14 +1835,43 @@
     });
   }
 
+  if (el.benutzerverwaltungSearchInput) {
+    el.benutzerverwaltungSearchInput.addEventListener("input", (event) => {
+      benutzerSuche = event.target.value;
+      renderBenutzerverwaltung();
+    });
+  }
+
   if (el.benutzerverwaltungListe) {
-    el.benutzerverwaltungListe.addEventListener("change", (event) => {
+    // Klick (oder Enter/Leertaste bei Tastaturbedienung) auf eine Zeile
+    // öffnet das Detail-Modal für genau diesen Benutzer.
+    el.benutzerverwaltungListe.addEventListener("click", (event) => {
+      const zeile = event.target.closest("[data-uid]");
+      if (zeile) oeffneBenutzerDetailModal(zeile.dataset.uid);
+    });
+    el.benutzerverwaltungListe.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const zeile = event.target.closest("[data-uid]");
+      if (!zeile) return;
+      event.preventDefault();
+      oeffneBenutzerDetailModal(zeile.dataset.uid);
+    });
+  }
+
+  // Alle eigentlichen Admin-Aktionen (Rolle ändern, Notiz speichern,
+  // Freigeben/Ablehnen/Sperren/Entsperren, Admin-Rechte, Passwort-Reset,
+  // Umbenennen, Löschen) laufen jetzt über Klicks/Änderungen INNERHALB des
+  // Detail-Modals, nicht mehr direkt in der Liste (siehe
+  // baueBenutzerDetailsHtml oben für das Markup).
+  if (el.benutzerDetailsBody) {
+    el.benutzerDetailsBody.addEventListener("change", (event) => {
       if (!istAdmin() || !window.BenutzerVerwaltung) return;
 
       const rolleSelect = event.target.closest('[data-role="benutzer-rolle"]');
       if (rolleSelect) {
-        window.BenutzerVerwaltung.setzeRolle(rolleSelect.dataset.uid, rolleSelect.value).catch((fehler) =>
-          console.error("Rolle konnte nicht geändert werden:", fehler)
+        const person = benutzerListe.find((u) => u.uid === rolleSelect.dataset.uid);
+        window.BenutzerVerwaltung.setzeRolle(rolleSelect.dataset.uid, rolleSelect.value, person && person.username).catch(
+          (fehler) => console.error("Rolle konnte nicht geändert werden:", fehler)
         );
       }
     });
@@ -1594,7 +1879,7 @@
     // Notiz-Feld: erst beim Verlassen des Feldes speichern (nicht bei jedem
     // Tastendruck), damit nicht bei jedem Buchstaben ein Schreibvorgang
     // ausgelöst wird.
-    el.benutzerverwaltungListe.addEventListener(
+    el.benutzerDetailsBody.addEventListener(
       "blur",
       (event) => {
         if (!istAdmin() || !window.BenutzerVerwaltung) return;
@@ -1608,7 +1893,7 @@
       true
     );
 
-    el.benutzerverwaltungListe.addEventListener("click", async (event) => {
+    el.benutzerDetailsBody.addEventListener("click", async (event) => {
       if (!istAdmin() || !window.BenutzerVerwaltung) return;
 
       const freigebenBtn = event.target.closest('[data-role="benutzer-freigeben"]');
@@ -1616,26 +1901,45 @@
       const sperrenBtn = event.target.closest('[data-role="benutzer-sperren"]');
       const entsperrenBtn = event.target.closest('[data-role="benutzer-entsperren"]');
       const adminBtn = event.target.closest('[data-role="benutzer-admin-umschalten"]');
+      const passwortResetBtn = event.target.closest('[data-role="benutzer-passwort-reset"]');
       const umbenennenBtn = event.target.closest('[data-role="benutzer-umbenennen"]');
       const loeschenBtn = event.target.closest('[data-role="benutzer-loeschen"]');
 
       try {
         if (freigebenBtn) {
-          await window.BenutzerVerwaltung.setzeStatus(freigebenBtn.dataset.uid, "approved");
+          const person = benutzerListe.find((u) => u.uid === freigebenBtn.dataset.uid);
+          await window.BenutzerVerwaltung.setzeStatus(freigebenBtn.dataset.uid, "approved", person && person.username);
           zeigeToast("Benutzer freigegeben.");
         } else if (ablehnenBtn) {
-          await window.BenutzerVerwaltung.setzeStatus(ablehnenBtn.dataset.uid, "rejected");
+          const person = benutzerListe.find((u) => u.uid === ablehnenBtn.dataset.uid);
+          await window.BenutzerVerwaltung.setzeStatus(ablehnenBtn.dataset.uid, "rejected", person && person.username);
           zeigeToast("Registrierung abgelehnt.");
         } else if (sperrenBtn) {
-          await window.BenutzerVerwaltung.setzeStatus(sperrenBtn.dataset.uid, "locked");
-          zeigeToast("Benutzer gesperrt.");
+          // Die Dauer-Auswahl steht als <select> direkt daneben im Modal -
+          // Wert "0" bedeutet dauerhafte Sperre.
+          const dauerSelect = el.benutzerDetailsBody.querySelector(
+            `[data-role="benutzer-sperr-dauer"][data-uid="${sperrenBtn.dataset.uid}"]`
+          );
+          const tage = dauerSelect ? Number(dauerSelect.value) : 0;
+          const person = benutzerListe.find((u) => u.uid === sperrenBtn.dataset.uid);
+          await window.BenutzerVerwaltung.sperreBenutzer(sperrenBtn.dataset.uid, tage, person && person.username);
+          zeigeToast(tage > 0 ? `Benutzer für ${tage} Tag(e) gesperrt.` : "Benutzer dauerhaft gesperrt.");
         } else if (entsperrenBtn) {
-          await window.BenutzerVerwaltung.setzeStatus(entsperrenBtn.dataset.uid, "approved");
+          const person = benutzerListe.find((u) => u.uid === entsperrenBtn.dataset.uid);
+          await window.BenutzerVerwaltung.entsperreBenutzer(entsperrenBtn.dataset.uid, person && person.username);
           zeigeToast("Benutzer entsperrt.");
         } else if (adminBtn) {
           const neuerWert = adminBtn.dataset.aktuell !== "true";
-          await window.BenutzerVerwaltung.setzeAdmin(adminBtn.dataset.uid, neuerWert);
+          const person = benutzerListe.find((u) => u.uid === adminBtn.dataset.uid);
+          await window.BenutzerVerwaltung.setzeAdmin(adminBtn.dataset.uid, neuerWert, person && person.username);
           zeigeToast(neuerWert ? "Admin-Rechte vergeben." : "Admin-Rechte entzogen.");
+        } else if (passwortResetBtn) {
+          const email = passwortResetBtn.dataset.email;
+          const name = passwortResetBtn.dataset.name;
+          if (email) {
+            await window.BenutzerVerwaltung.sendePasswortReset(email, passwortResetBtn.dataset.uid, name);
+            zeigeToast(`Passwort-Zurücksetzen-E-Mail an „${name}“ verschickt.`);
+          }
         } else if (umbenennenBtn) {
           const alterName = umbenennenBtn.dataset.name;
           const neuerName = window.prompt("Neuer Benutzername:", alterName);
@@ -1645,9 +1949,26 @@
           }
         } else if (loeschenBtn) {
           const name = loeschenBtn.dataset.name;
-          if (window.confirm(`„${name}“ wirklich löschen? Der Account verliert damit den Zugriff auf die App.`)) {
-            await window.BenutzerVerwaltung.loesche(loeschenBtn.dataset.uid);
+          const uid = loeschenBtn.dataset.uid;
+          // Wichtiger Hinweis im Dialog: Das löscht das komplette Profil
+          // (Rolle/Rechte/Notiz/Registrierungsdatum usw.) UND den
+          // reservierten Benutzernamen sofort und unwiderruflich - die
+          // Person hat danach garantiert keinerlei Zugriff mehr auf
+          // irgendwelche Daten der App. Der reine Login-Eintrag (E-Mail +
+          // Passwort) bleibt aus technischen Gründen in Firebase
+          // Authentication selbst bestehen (das kann aus dem Browser
+          // heraus nicht gelöscht werden) - falls gewünscht, kann dieser
+          // separat und manuell in der Firebase-Konsole entfernt werden
+          // (Authentication -> Nutzer -> UID suchen -> Löschen).
+          if (
+            window.confirm(
+              `„${name}“ wirklich vollständig löschen?\n\nDas entfernt Profil, Rolle und alle Rechte sofort - der Zugriff auf die App ist danach garantiert weg.\n\nUID (für die Firebase-Konsole, falls du den reinen Login-Eintrag zusätzlich manuell entfernen willst): ${uid}`
+            )
+          ) {
+            await window.BenutzerVerwaltung.loesche(uid);
             zeigeToast(`„${name}“ wurde gelöscht.`);
+            if (el.modalBenutzerDetails) schliesseModal(el.modalBenutzerDetails);
+            aktiverDetailUid = null;
           }
         }
       } catch (fehler) {
@@ -3010,6 +3331,19 @@
     });
   });
 
+  // Generisches Öffnen von Modals über ein Attribut (aktuell nur für die
+  // beiden Footer-Links "Datenschutz"/"Informationen" gebraucht, die sowohl
+  // auf dem Login-Bildschirm als auch in der App erreichbar sein müssen -
+  // Modals funktionieren unabhängig davon, ob gerade der Login-Bildschirm
+  // oder die App sichtbar ist, deshalb diese Lösung statt eines eigenen
+  // Navigationspunkts).
+  document.querySelectorAll("[data-open-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const modal = document.getElementById(btn.getAttribute("data-open-modal"));
+      if (modal) oeffneModal(modal);
+    });
+  });
+
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     document.querySelectorAll(".modal-overlay--visible").forEach(schliesseModal);
@@ -3258,7 +3592,7 @@
         mitarbeiterBearbeitenModus = false; // Sicherheitshalber immer mit Lese-Ansicht starten
         renderMitarbeiterListe();
       }
-      if (zielView === "einstellungen") renderBenutzerverwaltung();
+      if (zielView === "admin") renderBenutzerverwaltung();
     });
   });
 
@@ -3369,7 +3703,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 78;
+  const APP_VERSION = 83;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
