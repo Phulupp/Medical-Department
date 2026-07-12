@@ -1551,16 +1551,6 @@ p {
   position: relative;
 }
 
-.board-item__pin {
-  position: absolute;
-  top: -9px;
-  left: 18px;
-  display: inline-flex;
-  color: var(--color-brass);
-  background: var(--color-surface);
-  padding: 0 4px;
-}
-
 .board-item__text {
   font-size: 13.5px;
   line-height: 1.6;
