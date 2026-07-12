@@ -4,11 +4,12 @@
    Deine Projektdaten sind hier bereits eingetragen.
 
    WICHTIG: Im Firebase-Projekt muss unter "Sicherheit -> Authentication ->
-   Sign-in method" der Anbieter "Anonym" (Anonymous) aktiviert sein - NICHT
-   E-Mail/Passwort. Die App nutzt einen unsichtbaren anonymen Login im
-   Hintergrund, damit die Firestore-Datenbank geschützt bleibt, während der
-   sichtbare Zugang über das gemeinsame Website-Passwort läuft (siehe
-   js/app.js, Konstante SITE_PASSWORD).
+   Sign-in method" der Anbieter "E-Mail/Passwort" aktiviert sein (und
+   "Google", falls du den Google-Login nutzen willst). Das echte Login-
+   /Benutzersystem lebt in js/auth.js (eigenes Modul, moderne "Modular SDK"-
+   Schreibweise) - diese Datei hier stellt nur die gemeinsamen Projektdaten
+   bereit, die sowohl vom "alten" Compat-Code hier unten als auch von
+   js/auth.js genutzt werden (siehe `window.firebaseConfig` weiter unten).
    ========================================================================== */
 
 const firebaseConfig = {
@@ -19,6 +20,12 @@ const firebaseConfig = {
   messagingSenderId: "585178618283",
   appId: "1:585178618283:web:6ab4b6086011dd4ca79aee",
 };
+
+// Macht dieselben Projektdaten auch für js/auth.js verfügbar (ein "const"
+// in einem klassischen <script>-Tag ist für ein ES-Modul sonst nicht
+// sichtbar) - so gibt es nur EINE Stelle, an der die Projektdaten gepflegt
+// werden müssen, statt sie doppelt zu pflegen.
+window.firebaseConfig = firebaseConfig;
 
 // Firebase initialisieren (wird von app.js verwendet)
 // Defensive Prüfung: falls das Firebase-SDK nicht geladen werden konnte
