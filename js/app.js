@@ -98,8 +98,23 @@
   const VERKAUFSLOG_COLLECTION = "verkaufslog";
   const KONTAKTE_COLLECTION = "kontakte";
   const ANKUENDIGUNGEN_COLLECTION = "ankuendigungen";
+  const HANDBUCH_COLLECTION = "handbuch";
   const ONLINE_SCHWELLE_MS = 45 * 1000;   // Nach 45s ohne Update gilt jemand als offline
   const HEARTBEAT_INTERVALL_MS = 20 * 1000;
+
+  // Ränge, für die der Reiter "Handbuch" (interne Dokumentenbibliothek)
+  // überhaupt sichtbar ist - unabhängig von den Admin-Rechten (isAdmin),
+  // die stattdessen die BEARBEITUNG einzelner Dokumente steuern (siehe
+  // istAdmin() weiter unten). Zusätzlich serverseitig in firestore.rules
+  // abgesichert, damit ein nicht berechtigter Nutzer selbst über die
+  // Konsole/Firestore direkt nicht an die Inhalte kommt.
+  const HANDBUCH_SICHTBARE_RAENGE = [
+    "Stellv. Oberarzt",
+    "Oberarzt",
+    "Stellv. Chefarzt",
+    "Chefarzt",
+    "Ärztliche Direktion",
+  ];
 
   const DEFAULT_MEDIKAMENTE = [
     { id: "bandage", name: "Bandage", preis: 2, menge: 0, beschreibung: "Heilt nicht direkt, überbrückt aber die Zeit bei einer Schusswunde." },
@@ -130,6 +145,92 @@
     { id: "vitaminspritze", titel: "Vitaminspritze", text: "Für Rancher." },
   ];
 
+  // Seed-Daten für das Handbuch (interne Dokumentenbibliothek). Werden nur
+  // einmalig angelegt, falls die Firestore-Collection "handbuch" noch leer
+  // ist (siehe seedeHandbuchStandarddokumente weiter unten) - danach lebt
+  // der Inhalt ausschließlich in Firestore und wird von Admins über den
+  // eingebauten Rich-Text-Editor gepflegt.
+  const DEFAULT_HANDBUCH_DOKUMENTE = [
+    {
+      id: "einarbeitungsleitfaden",
+      titel: "Einarbeitungsleitfaden",
+      beschreibung: "Ablauf und Grundlagen für neue Mitglieder der Black Wolf Medical.",
+      reihenfolge: 1,
+      inhalt:
+        "<h1>Einarbeitungsleitfaden</h1>" +
+        "<p>Dieser Leitfaden begleitet neue Mitglieder der Black Wolf Medical durch die ersten Wochen im Dienst. Er ersetzt keine mündliche Einweisung durch die Stationsleitung, fasst aber die wichtigsten Grundlagen verbindlich zusammen.</p>" +
+        "<h2>Erste Schritte</h2>" +
+        "<ul>" +
+        "<li>Zugang zur Registratur einrichten und mit der eigenen Rolle vertraut machen.</li>" +
+        "<li>Vorstellung bei der zuständigen Stationsleitung der eigenen Station.</li>" +
+        "<li>Bestandsaufnahme des Medikamentenschranks gemeinsam mit einem erfahrenen Kollegen.</li>" +
+        "<li>Teilnahme an mindestens einer begleiteten Schicht vor dem ersten Alleindienst.</li>" +
+        "</ul>" +
+        "<h2>Aufgaben in der Einarbeitungszeit</h2>" +
+        "<p>Anwärter und Assistenzärzte übernehmen zu Beginn ausschließlich Aufgaben unter Aufsicht: Grundversorgung, Dokumentation im Verkaufslog sowie die Pflege der Notizen. Eigenständige Entscheidungen bei schweren Fällen bleiben erfahrenerem Personal vorbehalten, bis die Stationsleitung die Freigabe erteilt.</p>" +
+        "<hr>" +
+        "<h2>Verhalten gegenüber Patienten</h2>" +
+        "<p>Jede Behandlung erfolgt ruhig, sachlich und unabhängig davon, wer die Person ist. Auskünfte über Patienten werden ausschließlich innerhalb der Black Wolf Medical und niemals gegenüber Dritten weitergegeben.</p>" +
+        "<h2>Ansprechpartner</h2>" +
+        "<p>Bei Fragen zur Einarbeitung wenden sich neue Mitglieder zunächst an die eigene Stationsleitung, bei grundsätzlichen Fragen an die Ärztliche Direktion.</p>",
+    },
+    {
+      id: "dienstvorschriften",
+      titel: "Dienstvorschriften",
+      beschreibung: "Verbindliche Regeln für den laufenden Dienstbetrieb.",
+      reihenfolge: 2,
+      inhalt:
+        "<h1>Dienstvorschriften</h1>" +
+        "<p>Diese Vorschriften gelten für alle Mitglieder der Black Wolf Medical, unabhängig von Rang und Station, und regeln den laufenden Dienstbetrieb.</p>" +
+        "<h2>Verhalten im Dienst</h2>" +
+        "<ul>" +
+        "<li>Pünktliches Erscheinen zur vereinbarten Schicht, Abwesenheiten rechtzeitig bei der Stationsleitung melden.</li>" +
+        "<li>Vollständige und wahrheitsgemäße Dokumentation jeder Behandlung und jedes Verkaufs.</li>" +
+        "<li>Sorgfältiger Umgang mit Medikamenten und Ausrüstung, Bestände regelmäßig kontrollieren.</li>" +
+        "</ul>" +
+        "<h2>Umgang mit Medikamenten</h2>" +
+        "<p>Medikamente werden ausschließlich zu den in der Preisliste festgelegten Konditionen abgegeben. Abweichende Konditionen bedürfen der vorherigen Zustimmung der Stationsleitung.</p>" +
+        "<hr>" +
+        "<h2>Meldepflichten</h2>" +
+        "<p>Besondere Vorkommnisse - etwa Zwischenfälle mit Patienten, Verluste von Ausrüstung oder Konflikte mit anderen Institutionen - werden umgehend über die Notizen-Seite oder direkt an die Stationsleitung gemeldet.</p>" +
+        "<h2>Zusammenarbeit mit anderen Institutionen</h2>" +
+        "<p>Die Zusammenarbeit mit Sheriff-Department und weiteren Institutionen erfolgt stets höflich und zurückhaltend. Auskünfte über Patienten werden nur im gesetzlich bzw. organisatorisch vorgesehenen Rahmen erteilt.</p>" +
+        "<h2>Konsequenzen bei Verstößen</h2>" +
+        "<p>Verstöße gegen diese Dienstvorschriften werden von der Stationsleitung oder der Ärztlichen Direktion bewertet und können je nach Schwere von einem klärenden Gespräch bis zur Beendigung der Mitgliedschaft reichen.</p>",
+    },
+    {
+      id: "befoerderungsrichtlinien",
+      titel: "Beförderungsrichtlinien",
+      beschreibung: "Voraussetzungen und Ablauf für Beförderungen innerhalb der Rangstruktur.",
+      reihenfolge: 3,
+      inhalt:
+        "<h1>Beförderungsrichtlinien</h1>" +
+        "<p>Diese Richtlinien regeln, unter welchen Voraussetzungen Mitglieder der Black Wolf Medical in einen höheren Rang befördert werden.</p>" +
+        "<h2>Rangstruktur</h2>" +
+        "<ul>" +
+        "<li>Anwärter</li>" +
+        "<li>Assistenzarzt</li>" +
+        "<li>Facharzt</li>" +
+        "<li>Stellv. Oberarzt</li>" +
+        "<li>Oberarzt</li>" +
+        "<li>Stellv. Chefarzt</li>" +
+        "<li>Chefarzt</li>" +
+        "<li>Ärztliche Direktion</li>" +
+        "</ul>" +
+        "<h2>Voraussetzungen</h2>" +
+        "<p>Eine Beförderung setzt in der Regel eine angemessene Zeit im aktuellen Rang, zuverlässige Anwesenheit sowie eine saubere Dienstführung ohne offene Verstöße gegen die Dienstvorschriften voraus.</p>" +
+        "<hr>" +
+        "<h2>Bewertungskriterien</h2>" +
+        "<ol>" +
+        "<li>Fachliche und organisatorische Zuverlässigkeit im Dienst.</li>" +
+        "<li>Verhalten gegenüber Patienten, Kollegen und anderen Institutionen.</li>" +
+        "<li>Bereitschaft, Verantwortung für Station und Einarbeitung neuer Mitglieder zu übernehmen.</li>" +
+        "</ol>" +
+        "<h2>Ablauf</h2>" +
+        "<p>Beförderungen ab dem Rang Stellv. Oberarzt werden ausschließlich von Chefarzt, Stellv. Chefarzt oder der Ärztlichen Direktion entschieden und in der Benutzerverwaltung hinterlegt. Beförderungen unterhalb dieser Schwelle können von der jeweiligen Stationsleitung vorgeschlagen werden.</p>",
+    },
+  ];
+
   /* ------------------------------------------------------------------------
      2. Anwendungsstatus
      ------------------------------------------------------------------------ */
@@ -147,6 +248,10 @@
   let unsubBenutzerliste = null;
   let unsubInfos = null;
   let unsubAnkuendigungen = null;
+  let unsubHandbuch = null;
+  let handbuchDokumente = [];       // Live-Liste aller Handbuch-Dokumente (nur geladen, wenn berechtigt)
+  let aktivesHandbuchDokumentId = null; // id des gerade geöffneten Dokuments (oder null = Übersicht)
+  let handbuchSeedLaeuft = false;   // verhindert doppeltes Anlegen der Standarddokumente
   let stationenDaten = { direktion: [], blackwater: [], rhodes: [] }; // Feste Plätze je Station
   let benutzerListe = [];          // Alle Accounts (nur für Admins geladen) - für die Benutzerverwaltung
   let bekanntePendingUids = null;  // null = Liste noch nie geladen (verhindert Toast beim allerersten Laden)
@@ -256,6 +361,23 @@
 
     adminLogListe: document.getElementById("admin-log-liste"),
 
+    navHandbuchToggle: document.getElementById("nav-handbuch-toggle"),
+    handbuchUebersicht: document.getElementById("handbuch-uebersicht"),
+    handbuchListe: document.getElementById("handbuch-liste"),
+    handbuchLeer: document.getElementById("handbuch-leer"),
+    handbuchDokumentAnsicht: document.getElementById("handbuch-dokument-ansicht"),
+    handbuchBtnZurueck: document.getElementById("handbuch-btn-zurueck"),
+    handbuchKopfTitel: document.getElementById("handbuch-kopf-titel"),
+    handbuchKopfVersion: document.getElementById("handbuch-kopf-version"),
+    handbuchKopfDatum: document.getElementById("handbuch-kopf-datum"),
+    handbuchKopfBearbeiter: document.getElementById("handbuch-kopf-bearbeiter"),
+    handbuchBtnBearbeiten: document.getElementById("handbuch-btn-bearbeiten"),
+    handbuchInhaltAnzeige: document.getElementById("handbuch-inhalt-anzeige"),
+    handbuchEditorWrapper: document.getElementById("handbuch-editor-wrapper"),
+    handbuchEditorFeld: document.getElementById("handbuch-editor-feld"),
+    handbuchBtnSpeichern: document.getElementById("handbuch-btn-speichern"),
+    handbuchBtnAbbrechen: document.getElementById("handbuch-btn-abbrechen"),
+
     tableBody: document.getElementById("med-table-body"),
     emptyState: document.getElementById("empty-state"),
     searchInput: document.getElementById("search-input"),
@@ -297,6 +419,7 @@
     start: { title: "Start", subtitle: "Schwarzes Brett – wichtige Ankündigungen" },
     medikamente: { title: "Medikamente", subtitle: "Übersicht & Verwaltung des Medikamentenbestands" },
     mitarbeiter: { title: "Personal", subtitle: "Verwaltung des medizinischen Personals" },
+    handbuch: { title: "Handbuch", subtitle: "Interne Leitfäden, Richtlinien & Dokumentationen – nur für Stellv. Oberarzt und höher sichtbar" },
     kontakte: { title: "Kontakte", subtitle: "Telegramm-Verzeichnis – wer ist wer" },
     verkaufslog: { title: "Verkaufsliste", subtitle: "Verkäufe eintragen & Historie einsehen" },
     notizen: { title: "Infos", subtitle: "Gemeinsame Infos des Teams" },
@@ -666,6 +789,13 @@
     if (typeof renderBenutzerverwaltung === "function") renderBenutzerverwaltung();
     if (typeof renderTabelle === "function") renderTabelle();
     if (typeof renderMitarbeiterListe === "function") renderMitarbeiterListe();
+    // Rang und Admin-Status können sich live ändern - der "Handbuch"-Reiter
+    // (rang-abhängig) und der "Bearbeiten"-Button (admin-abhängig) müssen
+    // deshalb sofort neu bewertet werden, nicht erst beim nächsten Login.
+    if (typeof aktualisiereHandbuchNavSichtbarkeit === "function") aktualisiereHandbuchNavSichtbarkeit();
+    if (typeof aktivesHandbuchDokumentId !== "undefined" && aktivesHandbuchDokumentId && typeof renderHandbuchDokument === "function") {
+      renderHandbuchDokument(aktivesHandbuchDokumentId);
+    }
   });
 
   function appStarten() {
@@ -675,6 +805,7 @@
     renderBenutzerBadge();
     renderMitarbeiterListe();
     aktualisiereAdminNavSichtbarkeit();
+    aktualisiereHandbuchNavSichtbarkeit();
 
     sessionId = sessionStorage.getItem("medicalDepartment.sessionId") || erzeugeSessionId();
     sessionStorage.setItem("medicalDepartment.sessionId", sessionId);
@@ -3324,6 +3455,400 @@
   }
 
   /* ------------------------------------------------------------------------
+     11d. Handbuch (interne Dokumentenbibliothek)
+     ------------------------------------------------------------------------
+     Sichtbarkeit des Reiters: nur für die Ränge in HANDBUCH_SICHTBARE_RAENGE
+     (unabhängig von den Admin-Rechten). Bearbeiten einzelner Dokumente:
+     ausschließlich für Admins (istAdmin(), genau wie beim Medizin-Wiki und
+     dem Schwarzen Brett). Beides zusätzlich serverseitig über
+     firestore.rules erzwungen, nicht nur hier im Frontend.
+
+     Jedes Dokument liegt als eigenes Firestore-Dokument in der Collection
+     "handbuch" (Dokument-ID = fester Slug, z. B. "einarbeitungsleitfaden")
+     mit den Feldern: titel, beschreibung, inhalt (sanitiertes HTML),
+     reihenfolge, version, letzteAenderung (Server-Zeitstempel),
+     letzterBearbeiter. Weitere Dokumente können jederzeit hinzugefügt
+     werden, indem ein weiterer Eintrag in DEFAULT_HANDBUCH_DOKUMENTE oben
+     ergänzt wird (wird beim nächsten leeren Start automatisch angelegt)
+     oder indem ein Admin direkt ein neues Dokument mit denselben Feldern in
+     Firestore anlegt - die Übersicht liest die Collection vollständig
+     dynamisch aus, sortiert nach "reihenfolge".
+     ------------------------------------------------------------------------ */
+  function darfHandbuchSehen() {
+    return !!(aktuellerNutzer && HANDBUCH_SICHTBARE_RAENGE.includes(aktuellerNutzer.rolle));
+  }
+
+  // Blendet den "Handbuch"-Reiter nur für berechtigte Ränge ein - analog zu
+  // aktualisiereAdminNavSichtbarkeit() weiter oben. Wird direkt nach dem
+  // Login UND bei jeder Live-Änderung des eigenen Profils aufgerufen, damit
+  // ein Nutzer, dessen Rang sich gerade ändert, den Reiter sofort
+  // bekommt/verliert, statt erst beim nächsten Neuladen.
+  function aktualisiereHandbuchNavSichtbarkeit() {
+    if (el.navHandbuchToggle) el.navHandbuchToggle.hidden = !darfHandbuchSehen();
+
+    abonniereHandbuchFallsBerechtigt();
+
+    // Falls jemand gerade auf der Handbuch-Seite ist und in genau diesem
+    // Moment die Berechtigung verliert (z. B. Rang wird herabgestuft):
+    // automatisch zur Startseite zurückschicken.
+    const viewHandbuchEl = document.getElementById("view-handbuch");
+    const aufHandbuchSeite = viewHandbuchEl && viewHandbuchEl.classList.contains("view--active");
+    if (!darfHandbuchSehen() && aufHandbuchSeite) {
+      const startNavItem = document.querySelector('.nav__item[data-view="start"]');
+      if (startNavItem) startNavItem.click();
+    }
+  }
+
+  // Abonniert die Handbuch-Collection live - aber NUR, wenn der aktuelle
+  // Nutzer überhaupt berechtigt ist (Firestore Security Rules würden einem
+  // nicht berechtigten Nutzer den Zugriff ohnehin verweigern, siehe
+  // firestore.rules - hier wird zusätzlich vermieden, dass unnötig eine
+  // Fehlermeldung in der Konsole landet).
+  function abonniereHandbuchFallsBerechtigt() {
+    if (!darfHandbuchSehen()) {
+      if (unsubHandbuch) {
+        unsubHandbuch();
+        unsubHandbuch = null;
+      }
+      handbuchDokumente = [];
+      aktivesHandbuchDokumentId = null;
+      return;
+    }
+    if (unsubHandbuch) return; // bereits abonniert
+
+    unsubHandbuch = db
+      .collection(HANDBUCH_COLLECTION)
+      .orderBy("reihenfolge", "asc")
+      .onSnapshot(
+        (snapshot) => {
+          const liste = [];
+          snapshot.forEach((doc) => liste.push({ id: doc.id, ...doc.data() }));
+          handbuchDokumente = liste;
+
+          // Selbstheilend, genau wie bei Medikamenten/Infos: Ist die
+          // Collection noch komplett leer, legt ein Admin die drei
+          // Standarddokumente automatisch an. Nicht-Admins warten in dem
+          // (in der Praxis nur einmaligen) Fall einfach, bis ein Admin die
+          // Seite öffnet - die Security Rules erlauben das Anlegen ohnehin
+          // nur Admins.
+          if (liste.length === 0 && istAdmin() && !handbuchSeedLaeuft) {
+            seedeHandbuchStandarddokumente();
+          }
+
+          renderHandbuchListe();
+          if (aktivesHandbuchDokumentId) renderHandbuchDokument(aktivesHandbuchDokumentId);
+        },
+        (fehler) => console.error("Fehler beim Laden des Handbuchs:", fehler)
+      );
+  }
+
+  function seedeHandbuchStandarddokumente() {
+    handbuchSeedLaeuft = true;
+    const batch = db.batch();
+    DEFAULT_HANDBUCH_DOKUMENTE.forEach((dok) => {
+      const ref = db.collection(HANDBUCH_COLLECTION).doc(dok.id);
+      batch.set(ref, {
+        titel: dok.titel,
+        beschreibung: dok.beschreibung,
+        inhalt: dok.inhalt,
+        reihenfolge: dok.reihenfolge,
+        version: 1.0,
+        letzteAenderung: firebase.firestore.FieldValue.serverTimestamp(),
+        letzterBearbeiter: "System",
+      });
+    });
+    batch
+      .commit()
+      .catch((fehler) => console.error("Handbuch-Standarddokumente konnten nicht angelegt werden:", fehler))
+      .finally(() => {
+        handbuchSeedLaeuft = false;
+      });
+  }
+
+  // Schlichte, elegante Liste statt großer Dashboard-Karten - jeder Eintrag
+  // zeigt Titel, kurze Beschreibung, letzte Änderung und letzten Bearbeiter.
+  function renderHandbuchListe() {
+    if (!el.handbuchListe) return;
+    el.handbuchListe.innerHTML = "";
+    if (el.handbuchLeer) el.handbuchLeer.hidden = handbuchDokumente.length !== 0;
+
+    handbuchDokumente.forEach((dok) => {
+      const eintrag = document.createElement("button");
+      eintrag.type = "button";
+      eintrag.className = "handbuch-item";
+      eintrag.innerHTML = `
+        <div class="handbuch-item__haupt">
+          <span class="handbuch-item__titel">${escapeHtml(dok.titel || "Ohne Titel")}</span>
+          ${dok.beschreibung ? `<span class="handbuch-item__beschreibung">${escapeHtml(dok.beschreibung)}</span>` : ""}
+        </div>
+        <div class="handbuch-item__meta">
+          <div>Zuletzt geändert: ${formatiereFirestoreZeitstempel(dok.letzteAenderung)}</div>
+          <div>von ${escapeHtml(dok.letzterBearbeiter || "—")}</div>
+        </div>
+      `;
+      eintrag.addEventListener("click", () => oeffneHandbuchDokument(dok.id));
+      el.handbuchListe.appendChild(eintrag);
+    });
+  }
+
+  function oeffneHandbuchDokument(id) {
+    aktivesHandbuchDokumentId = id;
+    if (el.handbuchUebersicht) el.handbuchUebersicht.hidden = true;
+    if (el.handbuchDokumentAnsicht) el.handbuchDokumentAnsicht.hidden = false;
+    // Sicherheitshalber immer im Lesemodus öffnen, nie mitten im
+    // Bearbeitungsmodus eines zuvor geöffneten Dokuments.
+    if (el.handbuchEditorWrapper) el.handbuchEditorWrapper.hidden = true;
+    if (el.handbuchInhaltAnzeige) el.handbuchInhaltAnzeige.hidden = false;
+    renderHandbuchDokument(id);
+  }
+
+  function zeigeHandbuchUebersicht() {
+    aktivesHandbuchDokumentId = null;
+    if (el.handbuchDokumentAnsicht) el.handbuchDokumentAnsicht.hidden = true;
+    if (el.handbuchUebersicht) el.handbuchUebersicht.hidden = false;
+    renderHandbuchListe();
+  }
+
+  // Aktualisiert Kopfzeile + Leseansicht eines Dokuments. Rührt bewusst
+  // NICHT an, ob gerade der Lese- oder der Bearbeitungsmodus sichtbar ist -
+  // das steuern ausschließlich starteHandbuchBearbeitung()/
+  // beendeHandbuchBearbeitung(), damit ein Admin mitten in der Bearbeitung
+  // nicht durch ein Live-Update (z. B. durch einen anderen Admin) aus dem
+  // Editor gerissen wird.
+  function renderHandbuchDokument(id) {
+    const dok = handbuchDokumente.find((d) => d.id === id);
+    if (!dok) {
+      zeigeHandbuchUebersicht();
+      return;
+    }
+
+    if (el.handbuchKopfTitel) el.handbuchKopfTitel.textContent = dok.titel || "—";
+    if (el.handbuchKopfVersion) {
+      el.handbuchKopfVersion.textContent = typeof dok.version === "number" ? dok.version.toFixed(1) : "1.0";
+    }
+    if (el.handbuchKopfDatum) el.handbuchKopfDatum.textContent = formatiereFirestoreZeitstempel(dok.letzteAenderung);
+    if (el.handbuchKopfBearbeiter) el.handbuchKopfBearbeiter.textContent = dok.letzterBearbeiter || "—";
+    if (el.handbuchInhaltAnzeige) el.handbuchInhaltAnzeige.innerHTML = dok.inhalt || "";
+    // Den "Bearbeiten"-Button nur anfassen, wenn der Editor gerade NICHT
+    // offen ist - sonst könnte ein Live-Update während einer laufenden
+    // Bearbeitung (z. B. durch einen anderen Admin an einem anderen
+    // Dokument) den Button unter dem geöffneten Editor wieder einblenden.
+    const geradeImEditor = el.handbuchEditorWrapper && !el.handbuchEditorWrapper.hidden;
+    if (el.handbuchBtnBearbeiten && !geradeImEditor) el.handbuchBtnBearbeiten.hidden = !istAdmin();
+  }
+
+  // Wechselt "an Ort und Stelle" (kein separates Fenster/Modal) in den
+  // Bearbeitungsmodus - derselbe Inhalt wird im Rich-Text-Editor geöffnet.
+  function starteHandbuchBearbeitung() {
+    if (!istAdmin() || !aktivesHandbuchDokumentId) return;
+    const dok = handbuchDokumente.find((d) => d.id === aktivesHandbuchDokumentId);
+    if (!dok || !el.handbuchEditorFeld) return;
+
+    el.handbuchEditorFeld.innerHTML = dok.inhalt || "";
+    if (el.handbuchInhaltAnzeige) el.handbuchInhaltAnzeige.hidden = true;
+    if (el.handbuchBtnBearbeiten) el.handbuchBtnBearbeiten.hidden = true;
+    if (el.handbuchEditorWrapper) el.handbuchEditorWrapper.hidden = false;
+    el.handbuchEditorFeld.focus();
+    // Sorgt dafür, dass die Enter-Taste von Anfang an <p>-Absätze statt
+    // browserabhängiger <div>s erzeugt (wichtig für saubere, vorhersehbare
+    // Abstände in der Leseansicht).
+    try {
+      document.execCommand("defaultParagraphSeparator", false, "p");
+    } catch (fehler) {
+      /* ältere Browser kennen dieses Kommando nicht - kein Problem, nur kosmetisch */
+    }
+  }
+
+  // Beendet den Bearbeitungsmodus (nach "Speichern" oder "Abbrechen") und
+  // wechselt automatisch zurück in die normale Leseansicht.
+  function beendeHandbuchBearbeitung() {
+    if (el.handbuchEditorWrapper) el.handbuchEditorWrapper.hidden = true;
+    if (el.handbuchInhaltAnzeige) el.handbuchInhaltAnzeige.hidden = false;
+    if (el.handbuchBtnBearbeiten) el.handbuchBtnBearbeiten.hidden = !istAdmin() || !aktivesHandbuchDokumentId;
+  }
+
+  // Erlaubt NUR eine kleine, feste Auswahl an Tags (Überschriften 1/2, Fett,
+  // Kursiv, Aufzählung, Nummerierung, horizontale Linie, Absätze/Zeilen-
+  // umbrüche) und verwirft alles andere (Skripte, Bilder, Tabellen, fremde
+  // Attribute, ...) - verhindert HTML-Injection aus dem contenteditable-Feld.
+  // Bewusst als eigene Funktion (statt sanitisiereRichText() von oben
+  // mitzunutzen): das Handbuch erlaubt eine GRÖSSERE Tag-Auswahl
+  // (Überschriften/Listen/Trennlinie) als Notizen/Ankündigungen/Wiki, dafür
+  // absichtlich KEINE Schriftfarbe - der Editor bietet sie gar nicht erst an.
+  function sanitisiereHandbuchInhalt(html) {
+    const quelle = document.createElement("div");
+    quelle.innerHTML = html;
+
+    function bereinigeKinder(knoten, ziel) {
+      Array.from(knoten.childNodes).forEach((kind) => {
+        if (kind.nodeType === Node.TEXT_NODE) {
+          ziel.appendChild(document.createTextNode(kind.textContent));
+          return;
+        }
+        if (kind.nodeType !== Node.ELEMENT_NODE) return;
+
+        const tag = kind.tagName;
+
+        if (tag === "BR") {
+          ziel.appendChild(document.createElement("br"));
+          return;
+        }
+        if (tag === "HR") {
+          ziel.appendChild(document.createElement("hr"));
+          return;
+        }
+        if (tag === "H1" || tag === "H2") {
+          const neu = document.createElement(tag.toLowerCase());
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+        if (tag === "STRONG" || tag === "B") {
+          const neu = document.createElement("strong");
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+        if (tag === "EM" || tag === "I") {
+          const neu = document.createElement("em");
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+        if (tag === "UL" || tag === "OL") {
+          const neu = document.createElement(tag.toLowerCase());
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+        if (tag === "LI") {
+          const neu = document.createElement("li");
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+        if (tag === "P" || tag === "DIV") {
+          // Contenteditable erzeugt je nach Browser DIV statt P für
+          // einzelne Absätze - beides wird als Absatz behandelt.
+          const neu = document.createElement("p");
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+
+        // Alles andere (SPAN, FONT, U, MARK, SCRIPT, IMG, TABLE, ...): Tag
+        // verwerfen, Text-Inhalt behalten (mit Zeilenumbruch, damit nichts
+        // zusammenläuft).
+        bereinigeKinder(kind, ziel);
+        ziel.appendChild(document.createElement("br"));
+      });
+    }
+
+    const ergebnis = document.createElement("div");
+    bereinigeKinder(quelle, ergebnis);
+    return ergebnis.innerHTML;
+  }
+
+  if (el.handbuchBtnZurueck) {
+    el.handbuchBtnZurueck.addEventListener("click", () => zeigeHandbuchUebersicht());
+  }
+
+  if (el.handbuchBtnBearbeiten) {
+    el.handbuchBtnBearbeiten.addEventListener("click", () => starteHandbuchBearbeitung());
+  }
+
+  if (el.handbuchBtnAbbrechen) {
+    el.handbuchBtnAbbrechen.addEventListener("click", () => beendeHandbuchBearbeitung());
+  }
+
+  if (el.handbuchBtnSpeichern) {
+    el.handbuchBtnSpeichern.addEventListener("click", () => {
+      if (!istAdmin() || !aktivesHandbuchDokumentId || !aktuellerNutzer || !el.handbuchEditorFeld) return;
+      const dok = handbuchDokumente.find((d) => d.id === aktivesHandbuchDokumentId);
+      if (!dok) return;
+
+      const inhalt = sanitisiereHandbuchInhalt(el.handbuchEditorFeld.innerHTML.trim());
+      // Automatische Versionierung: bei jeder Änderung um 0.1 erhöht (1.0 ->
+      // 1.1 -> 1.2, ...) - zusammen mit Datum und Bearbeiter automatisch
+      // gepflegt, ohne dass ein Admin das manuell einträgt.
+      const bisherigeVersion = typeof dok.version === "number" ? dok.version : 1.0;
+      const naechsteVersion = Math.round((bisherigeVersion + 0.1) * 10) / 10;
+
+      el.handbuchBtnSpeichern.disabled = true;
+      db.collection(HANDBUCH_COLLECTION)
+        .doc(aktivesHandbuchDokumentId)
+        .update({
+          inhalt,
+          version: naechsteVersion,
+          letzteAenderung: firebase.firestore.FieldValue.serverTimestamp(),
+          letzterBearbeiter: aktuellerNutzer.name,
+        })
+        .then(() => {
+          // Sofort den neuen Inhalt anzeigen, statt kurz den alten Stand zu
+          // zeigen, bis das Live-Update aus Firestore zurückkommt (das
+          // folgt gleich danach automatisch und bestätigt nur denselben Stand).
+          if (el.handbuchInhaltAnzeige) el.handbuchInhaltAnzeige.innerHTML = inhalt;
+          if (el.handbuchKopfVersion) el.handbuchKopfVersion.textContent = naechsteVersion.toFixed(1);
+          if (el.handbuchKopfBearbeiter) el.handbuchKopfBearbeiter.textContent = aktuellerNutzer.name;
+          zeigeToast("Dokument wurde gespeichert.");
+          beendeHandbuchBearbeitung();
+        })
+        .catch((fehler) => {
+          console.error("Handbuch-Dokument konnte nicht gespeichert werden:", fehler);
+          zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
+        })
+        .finally(() => {
+          el.handbuchBtnSpeichern.disabled = false;
+        });
+    });
+  }
+
+  // Eigene, zusätzliche Toolbar für den Handbuch-Editor (Überschriften 1/2,
+  // Fett, Kursiv, Aufzählung, Nummerierung, horizontale Linie). Bewusst NICHT
+  // über die bestehende ".format-toolbar"-Logik weiter oben gelöst (die
+  // kennt nur Fett/Unterstrichen/Schriftfarbe für Notizen/Ankündigungen/Wiki)
+  // - eigene CSS-Klasse ".handbuch-toolbar" und ein eigenes Daten-Attribut
+  // "data-handbuch-format", damit beide Handler sich nicht gegenseitig
+  // stören und die bestehende Funktionalität unverändert bleibt.
+  if (el.handbuchEditorFeld) {
+    document.querySelectorAll(".handbuch-toolbar .format-btn[data-handbuch-format]").forEach((btn) => {
+      btn.addEventListener("mousedown", (event) => {
+        event.preventDefault(); // Fokus/Markierung im Editor nicht verlieren
+        el.handbuchEditorFeld.focus();
+        try {
+          document.execCommand("defaultParagraphSeparator", false, "p");
+        } catch (fehler) {
+          /* ältere Browser kennen dieses Kommando nicht - kein Problem, nur kosmetisch */
+        }
+
+        switch (btn.dataset.handbuchFormat) {
+          case "h1":
+            document.execCommand("formatBlock", false, "H1");
+            break;
+          case "h2":
+            document.execCommand("formatBlock", false, "H2");
+            break;
+          case "bold":
+            document.execCommand("bold");
+            break;
+          case "italic":
+            document.execCommand("italic");
+            break;
+          case "ul":
+            document.execCommand("insertUnorderedList");
+            break;
+          case "ol":
+            document.execCommand("insertOrderedList");
+            break;
+          case "hr":
+            document.execCommand("insertHorizontalRule");
+            break;
+        }
+      });
+    });
+  }
+
+  /* ------------------------------------------------------------------------
      12. Modal-Steuerung
      ------------------------------------------------------------------------ */
   function oeffneModal(modalElement) {
@@ -3654,6 +4179,10 @@
         mitarbeiterBearbeitenModus = false; // Sicherheitshalber immer mit Lese-Ansicht starten
         renderMitarbeiterListe();
       }
+
+      if (zielView === "handbuch") {
+        zeigeHandbuchUebersicht(); // immer mit der Übersicht starten, nie mitten in einem zuvor geöffneten Dokument
+      }
       // "admin" wird nie hier erreicht - der Sonderfall weiter oben fängt
       // den Klick auf den Admin-Reiter bereits ab (siehe wechsleZuAdminAnsicht).
     });
@@ -3766,7 +4295,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 86;
+  const APP_VERSION = 87;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
