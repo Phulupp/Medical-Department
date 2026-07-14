@@ -2322,9 +2322,10 @@ p {
 }
 
 /* --------------------------------------------------------------------------
-   19. Personal — Ärztliche Direktion / Leitung (alle Standorte) / Medizinisches
-       Personal (Standort-Reiter + Tabelle), passend zum Mockup. Weiterhin
-       keine Profilbilder/Online-Status - reine, ruhige Register-Optik.
+   19. Personal — Ärztliche Direktion / Praxisleitungen (Rhodes, Blackwater,
+       Valentine) / Medizinisches Personal (Standort-Reiter + kompakte Liste
+       statt Tabelle). Weiterhin keine Profilbilder/Online-Status - reine,
+       ruhige Register-Optik, ganz ohne neue Farben/Typografie.
    -------------------------------------------------------------------------- */
 .staff-toolbar {
   display: flex;
@@ -2341,33 +2342,38 @@ p {
 .staff-grid {
   display: flex;
   flex-direction: column;
-  gap: 56px;
+  gap: 48px;
   margin-bottom: 32px;
 }
 
-/* Ein Kapitel: "Ärztliche Direktion" / "Leitung" / "Medizinisches Personal" -
-   dezente Gold-Labels, keine großen Displaytitel, keine Versalien. */
+/* Ein Kapitel: "Ärztliche Direktion" / "Praxisleitungen" / "Medizinisches
+   Personal" / "Badges verwalten" - dezente Gold-Labels, keine großen
+   Displaytitel, keine Versalien. */
 .org-chapter__titel {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 17px;
   color: var(--color-brass-text);
-  margin-bottom: 6px;
+  margin-bottom: 14px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--color-hairline);
 }
 
-/* Ärztliche Direktion: eigene, herausgehobene Karte ganz oben - steht
-   bewusst über der gesamten Leitung. */
+/* Ärztliche Direktion: eigene, herausgehobene Karte ganz oben - zeigt
+   ausschließlich Mitarbeiter mit gesetztem "Ärztliche Direktion"-Merkmal. */
 .direktion-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 18px;
   padding: 20px 22px;
   background: var(--color-surface);
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-md);
   transition: border-color 0.2s ease;
+}
+
+.direktion-card + .direktion-card {
+  margin-top: 12px;
 }
 
 .direktion-card:hover {
@@ -2403,86 +2409,235 @@ p {
 .direktion-card__rang {
   font-size: 12.5px;
   font-weight: 500;
+  color: var(--color-brass-text);
+}
+
+.direktion-card__beschreibung {
+  margin-top: 4px;
+  font-size: 12.5px;
   color: var(--color-text-muted);
+  line-height: 1.5;
 }
 
-.direktion-card__chevron {
-  color: var(--color-text-soft);
-  font-size: 18px;
-}
-
-.direktion-card--edit {
+/* Praxisleitungen: drei schlichte Übersichtskarten (Rhodes/Blackwater/
+   Valentine) nebeneinander. */
+.praxis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 18px;
 }
 
-.direktion-card--edit .org-row__name-input {
-  flex: 1;
+@media (max-width: 900px) {
+  .praxis-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-.direktion-card--edit .direktion-card__rang {
+.praxis-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.2s ease;
+}
+
+.praxis-card:hover {
+  border-color: var(--color-brass);
+}
+
+.praxis-card__kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.praxis-card__pin {
+  display: inline-flex;
+  color: var(--color-brass-text);
+}
+
+.praxis-card__standort {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-text);
+}
+
+.praxis-card__chefarzt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.praxis-card__label {
+  font-size: 11px;
+  color: var(--color-text-soft);
+}
+
+.praxis-card__label--gold {
+  color: var(--color-brass-text);
+  font-weight: 600;
+}
+
+.praxis-card__chefarzt-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15.5px;
+  color: var(--color-text);
+}
+
+.praxis-card__unbesetzt {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-style: italic;
+  color: var(--color-text-soft);
+}
+
+.praxis-card__divider {
+  height: 1px;
+  background: var(--color-hairline);
+}
+
+.praxis-card__fachrichtungen {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.praxis-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.praxis-card__footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-soft);
+}
+
+/* Badge-Pille: kleines, dezentes Label mit Icon - identische Optik in der
+   Anzeige (Praxisleitungen, Mitarbeiterliste, Katalog-Verwaltung) UND als
+   klickbarer Umschalter im Bearbeiten-Modus. */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-card-border);
+  color: var(--color-text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.badge-pill svg {
+  color: var(--color-brass-text);
   flex: 0 0 auto;
 }
 
-/* Tabellen für Leitung und Medizinisches Personal - dünne Trennlinien statt
-   Zellen-Rahmen, ruhiges Grid-Layout. */
-.staff-table {
+.badge-pill--umschalter {
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.badge-pill--umschalter:hover {
+  border-color: var(--color-brass);
+}
+
+.badge-pill--aktiv {
+  background: var(--color-brass-soft);
+  border-color: var(--color-brass);
+  color: var(--color-brass-text);
+}
+
+.badge-pill--verwaltung {
+  padding-right: 6px;
+}
+
+.badge-pill__entfernen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  color: var(--color-text-soft);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.badge-pill__entfernen:hover {
+  background: var(--color-oxblood-soft);
+  color: var(--color-oxblood-text);
+}
+
+/* Medizinisches Personal: kompakte Liste statt Tabelle - ein Eintrag pro
+   Mitarbeiter mit Avatar, Name/Rang und Badges. */
+.staff-list {
   border: 1px solid var(--color-card-border);
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 
-.staff-table__head {
-  padding: 12px 20px;
-  background: var(--color-surface-raised);
-  border-bottom: 1px solid var(--color-hairline);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-}
-
-.staff-table__body {
+.staff-list__item {
   display: flex;
-  flex-direction: column;
-}
-
-.staff-table__row {
-  padding: 14px 20px;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 20px;
   border-bottom: 1px solid var(--color-hairline);
   border-left: 2px solid transparent;
-  align-items: center;
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.staff-table__body .staff-table__row:last-child {
+.staff-list__item:last-child {
   border-bottom: none;
 }
 
-.staff-table__body .staff-table__row:not(.staff-table__row--empty):hover {
+.staff-list__item:not(.staff-list__item--empty):not(.staff-list__item--edit):hover {
   border-left-color: var(--color-brass);
   background: var(--color-surface-raised);
 }
 
-.staff-table__body .staff-table__row:hover .staff-table__cell--name {
+.staff-list__item:not(.staff-list__item--empty):not(.staff-list__item--edit):hover .staff-list__name {
   color: var(--color-brass-text);
 }
 
-.staff-table__row--leitung,
-.staff-table--leitung .staff-table__head {
-  display: grid;
-  grid-template-columns: 1.1fr 1.4fr 1.2fr 1.4fr 24px;
-  gap: 16px;
+.staff-list__item--empty {
+  color: var(--color-text-soft);
+  font-size: 12.5px;
+  font-style: italic;
 }
 
-.staff-table__row--personal,
-.staff-table--personal .staff-table__head {
-  display: grid;
-  grid-template-columns: 1.5fr 1.2fr 1.4fr 24px;
-  gap: 16px;
+.staff-list__avatar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-brass-soft);
+  color: var(--color-brass-text);
 }
 
-.staff-table__cell--name {
+.staff-list__info {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.staff-list__name {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 15px;
@@ -2490,66 +2645,88 @@ p {
   transition: color 0.2s ease;
 }
 
-.staff-table__cell--standort {
+.staff-list__rang {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-brass-text);
+}
+
+.staff-list__badges {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.staff-list__chevron {
+  flex: 0 0 auto;
+  color: var(--color-text-soft);
+  font-size: 16px;
+}
+
+/* Bearbeiten-Modus: kompakte, editierbare Karte statt der reinen
+   Listenzeile - Name/Rang/Standort/Ärztliche Direktion in einer Zeile,
+   darunter die Badge-Umschalter je Kategorie. */
+.staff-list__item--edit {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.staff-edit__zeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+}
+
+.staff-edit__name {
+  flex: 1 1 200px;
+}
+
+.staff-edit__rang,
+.staff-edit__standort {
+  /* Feste flex-basis (statt "auto") ist hier wichtig: nur so gewinnt sie
+     gegen die spätere, allgemeinere Regel ".org-row__rang-select { width:
+     100% }" (siehe weiter unten) - sonst würde dieses Feld trotz "flex: 0 0"
+     die volle Zeilenbreite einnehmen und umbrechen. */
+  flex: 0 0 160px;
+}
+
+.staff-edit__direktion {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.staff-edit__direktion input {
+  accent-color: var(--color-brass);
+}
+
+.staff-edit__badges {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.staff-edit__badges-label {
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-soft);
 }
 
-.staff-table__standort-icon {
-  display: inline-flex;
-  color: var(--color-brass-text);
-}
-
-.staff-table__cell--rang {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-}
-
-.staff-table__cell--abteilung {
-  font-size: 13px;
-  color: var(--color-text-muted);
-}
-
-.staff-table__placeholder {
-  color: var(--color-text-soft);
-}
-
-.staff-table__chevron {
-  color: var(--color-text-soft);
-  font-size: 16px;
-  text-align: right;
-}
-
-.staff-table__row--empty {
-  display: block;
-  color: var(--color-text-soft);
-  font-size: 12.5px;
-  font-style: italic;
-}
-
-.staff-table__row--edit {
-  gap: 14px;
-}
-
-.staff-table__row--edit .staff-table__cell--standort {
-  align-self: center;
-}
-
-/* Klare, ruhige Trennung zwischen den Standort-Gruppen in der Leitungs-
-   Tabelle (z. B. Rhodes-Leitung vs. Blackwater-Leitung) - die allererste
-   Gruppe direkt unter dem Tabellenkopf bekommt bewusst keine zusätzliche
-   Linie, damit es nicht doppelt wirkt. */
-.staff-table__row--gruppenstart:not(:first-child) {
-  border-top: 1px solid var(--color-card-border);
-  margin-top: 6px;
-  padding-top: 20px;
+.staff-edit__badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
 }
 
 .org-row__du {
@@ -2608,6 +2785,79 @@ p {
    kleinerer Abstand nach unten) */
 .staff-location-tabs {
   margin-bottom: 24px;
+}
+
+/* Badges verwalten (nur im Bearbeiten-Modus, nur für Admins) */
+.badge-katalog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.badge-katalog__gruppe {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.badge-katalog__label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+}
+
+.badge-katalog__liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge-katalog__leer {
+  font-size: 12.5px;
+}
+
+.badge-katalog__neu {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.badge-katalog__neu .org-row__rang-select {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 170px;
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.badge-katalog__neu .field-input {
+  flex: 1 1 220px;
+}
+
+/* Hinweis-Kasten unterhalb der Mitarbeiterliste - identische Optik wie der
+   Hinweis-Kasten im Handbuch (dezente Fläche, kein neues Komponentenmuster). */
+.staff-hinweis {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--color-text-soft);
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.staff-hinweis__icon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--color-brass-text);
 }
 
 
