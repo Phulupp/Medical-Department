@@ -2955,61 +2955,96 @@ p {
 /* --------------------------------------------------------------------------
    25. Handbuch (interne Dokumentenbibliothek)
    ---------------------------------------------------------------------------
-   Bewusst KEINE großen Dashboard-Karten: die Übersicht ist eine schlichte,
-   durch dünne Trennlinien gegliederte Liste; die Leseansicht orientiert sich
-   an hochwertiger Dokumentation (großzügige Abstände, ruhige Typografie)
-   statt an einer Wiki-/Infoseite. Nutzt ausschließlich bestehende Farb- und
-   Abstands-Tokens, keine neuen Werte.
+   Wirkt wie eine professionelle interne Wissensdatenbank statt wie eine
+   Wiki-/Infoseite: schmale, dauerhaft sichtbare Dokumentenliste links, rechts
+   ausschließlich das geöffnete Dokument - kompakt statt großzügig, dünne
+   Trennlinien statt großer Karten/Container. Nutzt ausschließlich bestehende
+   Farb- und Abstands-Tokens, keine neuen Werte.
    -------------------------------------------------------------------------- */
+.handbuch-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 44px;
+}
+
+/* Linke Seite: reine Dokumentenliste, bleibt beim Lesen/Scrollen sichtbar */
+.handbuch-sidebar {
+  flex: 0 0 216px;
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.handbuch-sidebar__titel {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+  margin-bottom: 14px;
+}
+
 .handbuch-liste {
   display: flex;
   flex-direction: column;
-  border-top: 1px solid var(--color-hairline);
-}
-
-.handbuch-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 28px;
-  width: 100%;
-  padding: 24px 6px;
+  gap: 2px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
   border-bottom: 1px solid var(--color-hairline);
+}
+
+.handbuch-liste-item {
+  display: block;
+  width: 100%;
   text-align: left;
-  transition: background 0.15s ease;
+  padding: 8px 12px;
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.handbuch-item:hover {
+.handbuch-liste-item:hover {
   background: var(--color-surface-soft);
-}
-
-.handbuch-item__haupt {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.handbuch-item__titel {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 19px;
   color: var(--color-text);
 }
 
-.handbuch-item__beschreibung {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  line-height: 1.5;
+.handbuch-liste-item--active {
+  color: var(--color-text);
+  font-weight: 600;
+  border-left-color: var(--color-brass);
+  background: var(--color-surface-soft);
 }
 
-.handbuch-item__meta {
-  flex-shrink: 0;
-  text-align: right;
+.handbuch-sidebar__leer {
+  padding: 0 0 16px;
+  text-align: left;
+  font-size: 12px;
+}
+
+.handbuch-sidebar__hinweis {
   font-size: 11.5px;
   color: var(--color-text-soft);
-  line-height: 1.7;
-  white-space: nowrap;
+  line-height: 1.6;
+  background: var(--color-surface-soft);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+/* Rechte Seite: ausschließlich das geöffnete Dokument, keine Karten */
+.handbuch-hauptbereich {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.handbuch-top-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
 .handbuch-zurueck {
@@ -3019,7 +3054,6 @@ p {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--color-text-soft);
-  margin-bottom: 32px;
   transition: color 0.15s ease;
 }
 
@@ -3027,17 +3061,19 @@ p {
   color: var(--color-brass-text);
 }
 
+/* Schlichte, dezente Informationsleiste in einer Zeile, dünne Trennlinie darunter */
 .handbuch-kopf {
   display: flex;
   flex-wrap: wrap;
-  column-gap: 32px;
-  row-gap: 6px;
-  padding-bottom: 22px;
+  column-gap: 28px;
+  row-gap: 4px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--color-hairline);
 }
 
 .handbuch-kopf__zeile {
-  font-size: 11.5px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .handbuch-kopf__label {
@@ -3050,55 +3086,53 @@ p {
   font-weight: 600;
 }
 
-.handbuch-aktionen {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 18px;
-}
-
-/* Leseansicht: ruhige, großzügige Dokumenten-Typografie - keine Karten,
-   keine zusätzlichen Container. */
+/* Leseansicht: kompakte, ruhige Dokumenten-Typografie - keine Karten, keine
+   unnötigen Container, wesentlich mehr Inhalt pro Bildschirm als zuvor. */
 .handbuch-inhalt {
-  max-width: 760px;
-  padding: 30px 0 8px;
-  font-size: 14.5px;
-  line-height: 1.85;
+  max-width: 720px;
+  padding: 18px 0 8px;
+  font-size: 13.5px;
+  line-height: 1.65;
   color: var(--color-text);
 }
 
 .handbuch-inhalt h1 {
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 23px;
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.01em;
-  margin: 42px 0 16px;
-}
-
-.handbuch-inhalt h1:first-child {
-  margin-top: 0;
+  margin: 0 0 16px;
 }
 
 .handbuch-inhalt h2 {
   font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 600;
+  font-size: 15.5px;
+  font-weight: 700;
   color: var(--color-brass-text);
-  margin: 36px 0 12px;
+  margin: 18px 0 6px;
+}
+
+/* Dünne Trennlinie zwischen Abschnitten statt großer Leerflächen - sitzt vor
+   jeder Abschnittsüberschrift außer der allerersten. */
+.handbuch-inhalt h2:not(:first-child) {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-hairline);
 }
 
 .handbuch-inhalt p {
-  margin: 0 0 16px;
+  margin: 0 0 8px;
 }
 
 .handbuch-inhalt ul,
 .handbuch-inhalt ol {
-  margin: 0 0 16px;
-  padding-left: 22px;
+  margin: 0 0 8px;
+  padding-left: 20px;
 }
 
 .handbuch-inhalt li {
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .handbuch-inhalt li::marker {
@@ -3108,7 +3142,7 @@ p {
 .handbuch-inhalt hr {
   border: none;
   border-top: 1px solid var(--color-hairline);
-  margin: 36px 0;
+  margin: 16px 0;
 }
 
 .handbuch-inhalt strong {
@@ -3138,43 +3172,40 @@ p {
 }
 
 .handbuch-editor__feld {
-  max-width: 760px;
-  min-height: 340px;
+  max-width: 720px;
+  min-height: 320px;
   max-height: none;
-  line-height: 1.85;
+  font-size: 13.5px;
+  line-height: 1.65;
 }
 
 .handbuch-editor__feld h1 {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 600;
-  margin: 24px 0 10px;
-}
-
-.handbuch-editor__feld h1:first-child {
-  margin-top: 0;
+  margin: 0 0 12px;
 }
 
 .handbuch-editor__feld h2 {
   font-family: var(--font-display);
-  font-size: 19px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--color-brass-text);
-  margin: 20px 0 8px;
+  margin: 14px 0 6px;
 }
 
 .handbuch-editor__feld p {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
 }
 
 .handbuch-editor__feld ul,
 .handbuch-editor__feld ol {
-  margin: 0 0 10px;
-  padding-left: 20px;
+  margin: 0 0 8px;
+  padding-left: 18px;
 }
 
 .handbuch-editor__feld hr {
   border: none;
   border-top: 1px solid var(--color-hairline);
-  margin: 20px 0;
+  margin: 14px 0;
 }

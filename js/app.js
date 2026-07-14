@@ -362,9 +362,9 @@
     adminLogListe: document.getElementById("admin-log-liste"),
 
     navHandbuchToggle: document.getElementById("nav-handbuch-toggle"),
-    handbuchUebersicht: document.getElementById("handbuch-uebersicht"),
     handbuchListe: document.getElementById("handbuch-liste"),
     handbuchLeer: document.getElementById("handbuch-leer"),
+    handbuchPlatzhalter: document.getElementById("handbuch-platzhalter"),
     handbuchDokumentAnsicht: document.getElementById("handbuch-dokument-ansicht"),
     handbuchBtnZurueck: document.getElementById("handbuch-btn-zurueck"),
     handbuchKopfTitel: document.getElementById("handbuch-kopf-titel"),
@@ -3537,6 +3537,17 @@
 
           renderHandbuchListe();
           if (aktivesHandbuchDokumentId) renderHandbuchDokument(aktivesHandbuchDokumentId);
+
+          // Falls die Handbuch-Seite gerade aktiv ist (z. B. direkt nach dem
+          // allerersten Laden der Standarddokumente, oder falls das zuvor
+          // geöffnete Dokument nicht mehr existiert): automatisch das erste
+          // Dokument öffnen, statt nur den leeren Platzhalter zu zeigen.
+          const viewHandbuchEl2 = document.getElementById("view-handbuch");
+          const handbuchIstGeradeAktiv = viewHandbuchEl2 && viewHandbuchEl2.classList.contains("view--active");
+          const aktuelleAuswahlNochGueltig = handbuchDokumente.some((d) => d.id === aktivesHandbuchDokumentId);
+          if (handbuchIstGeradeAktiv && !aktuelleAuswahlNochGueltig) {
+            praesentiereHandbuchStartzustand();
+          }
         },
         (fehler) => console.error("Fehler beim Laden des Handbuchs:", fehler)
       );
@@ -3565,8 +3576,9 @@
       });
   }
 
-  // Schlichte, elegante Liste statt großer Dashboard-Karten - jeder Eintrag
-  // zeigt Titel, kurze Beschreibung, letzte Änderung und letzten Bearbeiter.
+  // Schmale, dauerhaft sichtbare Seitenleiste statt Übersichtsseite -
+  // enthält ausschließlich die Dokumenttitel, der aktuell geöffnete Eintrag
+  // wird deutlich hervorgehoben (siehe .handbuch-liste-item--active).
   function renderHandbuchListe() {
     if (!el.handbuchListe) return;
     el.handbuchListe.innerHTML = "";
@@ -3575,38 +3587,50 @@
     handbuchDokumente.forEach((dok) => {
       const eintrag = document.createElement("button");
       eintrag.type = "button";
-      eintrag.className = "handbuch-item";
-      eintrag.innerHTML = `
-        <div class="handbuch-item__haupt">
-          <span class="handbuch-item__titel">${escapeHtml(dok.titel || "Ohne Titel")}</span>
-          ${dok.beschreibung ? `<span class="handbuch-item__beschreibung">${escapeHtml(dok.beschreibung)}</span>` : ""}
-        </div>
-        <div class="handbuch-item__meta">
-          <div>Zuletzt geändert: ${formatiereFirestoreZeitstempel(dok.letzteAenderung)}</div>
-          <div>von ${escapeHtml(dok.letzterBearbeiter || "—")}</div>
-        </div>
-      `;
+      eintrag.className = "handbuch-liste-item" + (dok.id === aktivesHandbuchDokumentId ? " handbuch-liste-item--active" : "");
+      eintrag.textContent = dok.titel || "Ohne Titel";
       eintrag.addEventListener("click", () => oeffneHandbuchDokument(dok.id));
       el.handbuchListe.appendChild(eintrag);
     });
   }
 
+  // Öffnet ein Dokument rechts neben der (weiterhin sichtbaren) Seitenleiste.
   function oeffneHandbuchDokument(id) {
     aktivesHandbuchDokumentId = id;
-    if (el.handbuchUebersicht) el.handbuchUebersicht.hidden = true;
+    if (el.handbuchPlatzhalter) el.handbuchPlatzhalter.hidden = true;
     if (el.handbuchDokumentAnsicht) el.handbuchDokumentAnsicht.hidden = false;
     // Sicherheitshalber immer im Lesemodus öffnen, nie mitten im
     // Bearbeitungsmodus eines zuvor geöffneten Dokuments.
     if (el.handbuchEditorWrapper) el.handbuchEditorWrapper.hidden = true;
     if (el.handbuchInhaltAnzeige) el.handbuchInhaltAnzeige.hidden = false;
     renderHandbuchDokument(id);
+    renderHandbuchListe(); // aktualisiert die Hervorhebung in der Seitenleiste
   }
 
-  function zeigeHandbuchUebersicht() {
+  // Entfernt die aktuelle Auswahl (z. B. über "Zurück zur Übersicht") - die
+  // Seitenleiste selbst bleibt dabei unverändert sichtbar, nur rechts
+  // erscheint wieder der schlichte Platzhalter-Hinweis.
+  function zeigeHandbuchPlatzhalter() {
     aktivesHandbuchDokumentId = null;
     if (el.handbuchDokumentAnsicht) el.handbuchDokumentAnsicht.hidden = true;
-    if (el.handbuchUebersicht) el.handbuchUebersicht.hidden = false;
+    if (el.handbuchPlatzhalter) el.handbuchPlatzhalter.hidden = false;
     renderHandbuchListe();
+  }
+
+  // Wird beim Öffnen des Handbuch-Reiters aufgerufen: bleibt beim zuletzt
+  // geöffneten Dokument (falls noch vorhanden), öffnet sonst automatisch das
+  // erste Dokument der Liste, oder zeigt den Platzhalter, falls es noch gar
+  // keine Dokumente gibt.
+  function praesentiereHandbuchStartzustand() {
+    if (aktivesHandbuchDokumentId && handbuchDokumente.some((d) => d.id === aktivesHandbuchDokumentId)) {
+      oeffneHandbuchDokument(aktivesHandbuchDokumentId);
+      return;
+    }
+    if (handbuchDokumente.length > 0) {
+      oeffneHandbuchDokument(handbuchDokumente[0].id);
+    } else {
+      zeigeHandbuchPlatzhalter();
+    }
   }
 
   // Aktualisiert Kopfzeile + Leseansicht eines Dokuments. Rührt bewusst
@@ -3618,7 +3642,7 @@
   function renderHandbuchDokument(id) {
     const dok = handbuchDokumente.find((d) => d.id === id);
     if (!dok) {
-      zeigeHandbuchUebersicht();
+      zeigeHandbuchPlatzhalter();
       return;
     }
 
@@ -3750,7 +3774,7 @@
   }
 
   if (el.handbuchBtnZurueck) {
-    el.handbuchBtnZurueck.addEventListener("click", () => zeigeHandbuchUebersicht());
+    el.handbuchBtnZurueck.addEventListener("click", () => zeigeHandbuchPlatzhalter());
   }
 
   if (el.handbuchBtnBearbeiten) {
@@ -4166,8 +4190,11 @@
 
       // Start-Seite zeigt ihre eigene, persönliche Begrüßung statt des
       // gemeinsamen Seitenkopfs - der wird für diese eine Seite ausgeblendet.
+      // Handbuch bekommt aus demselben Grund keinen eigenen Seitenkopf: die
+      // Seitenleiste dient dort bereits als Überschrift, und der Platz wird
+      // gebraucht, damit möglichst viel vom Dokument ohne Scrollen passt.
       const pageHeader = document.getElementById("page-header");
-      if (pageHeader) pageHeader.hidden = zielView === "start";
+      if (pageHeader) pageHeader.hidden = zielView === "start" || zielView === "handbuch";
 
       const meta = VIEW_META[zielView];
       if (meta) {
@@ -4181,7 +4208,7 @@
       }
 
       if (zielView === "handbuch") {
-        zeigeHandbuchUebersicht(); // immer mit der Übersicht starten, nie mitten in einem zuvor geöffneten Dokument
+        praesentiereHandbuchStartzustand(); // bleibt beim zuletzt offenen Dokument oder öffnet automatisch das erste
       }
       // "admin" wird nie hier erreicht - der Sonderfall weiter oben fängt
       // den Klick auf den Admin-Reiter bereits ab (siehe wechsleZuAdminAnsicht).
@@ -4295,7 +4322,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 87;
+  const APP_VERSION = 88;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
