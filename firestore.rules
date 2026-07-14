@@ -42,6 +42,18 @@ service cloud.firestore {
       return istEingeloggt() && eigenesUserDoc().isAdmin == true;
     }
 
+    // Darf der eingeloggte Nutzer das Handbuch (interne Dokumentenbibliothek)
+    // überhaupt SEHEN? Ausschließlich anhand des Rangs geprüft (rolle) -
+    // unabhängig von isAdmin, das stattdessen nur die BEARBEITUNG einzelner
+    // Dokumente steuert (siehe /handbuch/{dokument} weiter unten). Muss hier
+    // serverseitig geprüft werden, nicht nur im Frontend (js/app.js blendet
+    // den Reiter zwar aus, das allein wäre aber kein echter Schutz).
+    function darfHandbuchSehen() {
+      return istEingeloggt() && eigenesUserDoc().rolle in [
+        'Stellv. Oberarzt', 'Oberarzt', 'Stellv. Chefarzt', 'Chefarzt', 'Ärztliche Direktion'
+      ];
+    }
+
     // Prüft, ob die EIGENE zeitlich befristete Sperre (falls vorhanden)
     // bereits abgelaufen ist. "gesperrtBis" ist ein Timestamp-Feld, das nur
     // bei einer befristeten (nicht dauerhaften) Sperre gesetzt wird.
@@ -199,6 +211,19 @@ service cloud.firestore {
     }
     match /ankuendigungen/{dokument} {
       allow read, write: if istFreigegeben();
+    }
+
+    /* ------------------------------------------------------------------
+       handbuch/{dokument} — interne Dokumentenbibliothek (Einarbeitungs-
+       leitfaden, Dienstvorschriften, Beförderungsrichtlinien, ...). Lesen
+       ausschließlich für die in darfHandbuchSehen() genannten Ränge,
+       Bearbeiten (Anlegen/Ändern/Löschen) ausschließlich für Admins - genau
+       wie im Frontend (js/app.js), hier aber zusätzlich unabhängig vom
+       Frontend erzwungen.
+       ------------------------------------------------------------------ */
+    match /handbuch/{dokument} {
+      allow read: if istFreigegeben() && darfHandbuchSehen();
+      allow write: if istFreigegeben() && istAdmin();
     }
   }
 }
