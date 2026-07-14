@@ -2951,3 +2951,230 @@ p {
   line-height: 1.6;
   margin-bottom: 20px;
 }
+
+/* --------------------------------------------------------------------------
+   25. Handbuch (interne Dokumentenbibliothek)
+   ---------------------------------------------------------------------------
+   Bewusst KEINE großen Dashboard-Karten: die Übersicht ist eine schlichte,
+   durch dünne Trennlinien gegliederte Liste; die Leseansicht orientiert sich
+   an hochwertiger Dokumentation (großzügige Abstände, ruhige Typografie)
+   statt an einer Wiki-/Infoseite. Nutzt ausschließlich bestehende Farb- und
+   Abstands-Tokens, keine neuen Werte.
+   -------------------------------------------------------------------------- */
+.handbuch-liste {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.handbuch-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  width: 100%;
+  padding: 24px 6px;
+  border-bottom: 1px solid var(--color-hairline);
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.handbuch-item:hover {
+  background: var(--color-surface-soft);
+}
+
+.handbuch-item__haupt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.handbuch-item__titel {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--color-text);
+}
+
+.handbuch-item__beschreibung {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.handbuch-item__meta {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--color-text-soft);
+  line-height: 1.7;
+  white-space: nowrap;
+}
+
+.handbuch-zurueck {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-soft);
+  margin-bottom: 32px;
+  transition: color 0.15s ease;
+}
+
+.handbuch-zurueck:hover {
+  color: var(--color-brass-text);
+}
+
+.handbuch-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 32px;
+  row-gap: 6px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.handbuch-kopf__zeile {
+  font-size: 11.5px;
+}
+
+.handbuch-kopf__label {
+  color: var(--color-text-soft);
+  margin-right: 4px;
+}
+
+.handbuch-kopf__value {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.handbuch-aktionen {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+/* Leseansicht: ruhige, großzügige Dokumenten-Typografie - keine Karten,
+   keine zusätzlichen Container. */
+.handbuch-inhalt {
+  max-width: 760px;
+  padding: 30px 0 8px;
+  font-size: 14.5px;
+  line-height: 1.85;
+  color: var(--color-text);
+}
+
+.handbuch-inhalt h1 {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 42px 0 16px;
+}
+
+.handbuch-inhalt h1:first-child {
+  margin-top: 0;
+}
+
+.handbuch-inhalt h2 {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--color-brass-text);
+  margin: 36px 0 12px;
+}
+
+.handbuch-inhalt p {
+  margin: 0 0 16px;
+}
+
+.handbuch-inhalt ul,
+.handbuch-inhalt ol {
+  margin: 0 0 16px;
+  padding-left: 22px;
+}
+
+.handbuch-inhalt li {
+  margin-bottom: 6px;
+}
+
+.handbuch-inhalt li::marker {
+  color: var(--color-brass-text);
+}
+
+.handbuch-inhalt hr {
+  border: none;
+  border-top: 1px solid var(--color-hairline);
+  margin: 36px 0;
+}
+
+.handbuch-inhalt strong {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.handbuch-inhalt em {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+/* Bearbeitungsmodus: eigene Toolbar-Klasse statt ".format-toolbar", damit
+   der bestehende, generische Handler für Notizen/Ankündigungen/Wiki
+   unangetastet bleibt (der kennt nur Fett/Unterstrichen) - diese Toolbar
+   hier wird von einem eigenen, zusätzlichen Handler in js/app.js gesteuert. */
+.handbuch-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.handbuch-toolbar .format-btn {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.handbuch-editor__feld {
+  max-width: 760px;
+  min-height: 340px;
+  max-height: none;
+  line-height: 1.85;
+}
+
+.handbuch-editor__feld h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  margin: 24px 0 10px;
+}
+
+.handbuch-editor__feld h1:first-child {
+  margin-top: 0;
+}
+
+.handbuch-editor__feld h2 {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--color-brass-text);
+  margin: 20px 0 8px;
+}
+
+.handbuch-editor__feld p {
+  margin: 0 0 10px;
+}
+
+.handbuch-editor__feld ul,
+.handbuch-editor__feld ol {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.handbuch-editor__feld hr {
+  border: none;
+  border-top: 1px solid var(--color-hairline);
+  margin: 20px 0;
+}

@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=86" />
+  <link rel="stylesheet" href="css/style.css?v=87" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -151,6 +151,15 @@
           <button class="nav__item" data-view="infos"><span>Wiki</span></button>
           <button class="nav__item" id="nav-notizen-toggle" data-view="notizen"><span>Infos</span></button>
           <button class="nav__item" data-view="mitarbeiter"><span>Personal</span></button>
+          <!-- Nur für bestimmte Ränge sichtbar (Stellv. Oberarzt, Oberarzt,
+               Stellv. Chefarzt, Chefarzt, Ärztliche Direktion) - standardmäßig
+               per "hidden" ausgeblendet, wird von js/app.js
+               (aktualisiereHandbuchNavSichtbarkeit) erst eingeblendet, sobald
+               feststeht, dass der eingeloggte Nutzer wirklich berechtigt ist.
+               Nicht berechtigte Nutzer sehen diesen Reiter nie, auch nicht
+               kurz aufblitzend - zusätzlich serverseitig über
+               firestore.rules abgesichert. -->
+          <button class="nav__item" id="nav-handbuch-toggle" data-view="handbuch" hidden><span>Handbuch</span></button>
           <button class="nav__item" data-view="kontakte"><span>Kontakte</span></button>
           <button class="nav__item" data-view="einstellungen"><span>Einstellungen</span></button>
           <!-- Nur für Admins sichtbar - standardmäßig per "hidden" ausgeblendet,
@@ -560,6 +569,80 @@
       </section>
 
       <!-- ============================ -->
+      <!-- VIEW: HANDBUCH (interne Dokumentenbibliothek - nur für Stellv.
+           Oberarzt, Oberarzt, Stellv. Chefarzt, Chefarzt und Ärztliche
+           Direktion sichtbar; der Reiter selbst ist für alle anderen
+           unsichtbar, siehe nav-handbuch-toggle oben) -->
+      <!-- ============================ -->
+      <section class="view" id="view-handbuch">
+        <!-- Zustand 1: Dokumentenübersicht (schlichte Liste statt Karten) -->
+        <div id="handbuch-uebersicht">
+          <div class="handbuch-liste" id="handbuch-liste">
+            <!-- wird per JavaScript befüllt -->
+          </div>
+          <p class="empty-state" id="handbuch-leer" hidden>Es sind noch keine Dokumente im Handbuch vorhanden.</p>
+        </div>
+
+        <!-- Zustand 2: Vollständige Leseansicht eines einzelnen Dokuments
+             (bzw. Bearbeitungsmodus für Administratoren) -->
+        <div id="handbuch-dokument-ansicht" hidden>
+          <button type="button" class="handbuch-zurueck" id="handbuch-btn-zurueck">← Zurück zur Übersicht</button>
+
+          <div class="handbuch-kopf">
+            <div class="handbuch-kopf__zeile">
+              <span class="handbuch-kopf__label">Dokument:</span>
+              <strong class="handbuch-kopf__value" id="handbuch-kopf-titel">—</strong>
+            </div>
+            <div class="handbuch-kopf__zeile">
+              <span class="handbuch-kopf__label">Version:</span>
+              <span class="handbuch-kopf__value" id="handbuch-kopf-version">—</span>
+            </div>
+            <div class="handbuch-kopf__zeile">
+              <span class="handbuch-kopf__label">Zuletzt aktualisiert:</span>
+              <span class="handbuch-kopf__value" id="handbuch-kopf-datum">—</span>
+            </div>
+            <div class="handbuch-kopf__zeile">
+              <span class="handbuch-kopf__label">Bearbeitet von:</span>
+              <span class="handbuch-kopf__value" id="handbuch-kopf-bearbeiter">—</span>
+            </div>
+          </div>
+
+          <!-- Nur für Admins sichtbar - standardmäßig per "hidden" ausgeblendet,
+               wird von js/app.js erst eingeblendet, sobald feststeht, dass der
+               eingeloggte Nutzer wirklich Admin ist. -->
+          <div class="handbuch-aktionen">
+            <button type="button" class="btn btn--ghost" id="handbuch-btn-bearbeiten" hidden>Bearbeiten</button>
+          </div>
+
+          <!-- Leseansicht: hochwertige Dokumentendarstellung, keine Karten -->
+          <div class="handbuch-inhalt" id="handbuch-inhalt-anzeige"></div>
+
+          <!-- Bearbeitungsmodus (nur Admins): derselbe Inhalt wechselt an
+               Ort und Stelle in einen Rich-Text-Editor, kein separates
+               Fenster/Modal. -->
+          <div class="handbuch-editor" id="handbuch-editor-wrapper" hidden>
+            <div class="handbuch-toolbar" data-target="handbuch-editor-feld">
+              <button type="button" class="format-btn" data-handbuch-format="h1" title="Überschrift 1">H1</button>
+              <button type="button" class="format-btn" data-handbuch-format="h2" title="Überschrift 2">H2</button>
+              <span class="format-toolbar__divider"></span>
+              <button type="button" class="format-btn" data-handbuch-format="bold" title="Fett"><strong>F</strong></button>
+              <button type="button" class="format-btn" data-handbuch-format="italic" title="Kursiv"><em>K</em></button>
+              <span class="format-toolbar__divider"></span>
+              <button type="button" class="format-btn" data-handbuch-format="ul" title="Aufzählung">☰</button>
+              <button type="button" class="format-btn" data-handbuch-format="ol" title="Nummerierung">1.</button>
+              <span class="format-toolbar__divider"></span>
+              <button type="button" class="format-btn" data-handbuch-format="hr" title="Horizontale Linie">―</button>
+            </div>
+            <div class="rich-editor handbuch-editor__feld" id="handbuch-editor-feld" contenteditable="true" data-placeholder="Inhalt eintragen..."></div>
+            <div class="info-form-actions">
+              <button type="button" class="btn btn--primary" id="handbuch-btn-speichern">Speichern</button>
+              <button type="button" class="btn btn--ghost" id="handbuch-btn-abbrechen">Abbrechen</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================ -->
       <!-- VIEW: KONTAKTE (Telegramm-Verzeichnis) -->
       <!-- ============================ -->
       <section class="view" id="view-kontakte">
@@ -850,10 +933,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=86"></script>
-  <script src="js/app.js?v=86"></script>
+  <script src="js/firebase-config.js?v=87"></script>
+  <script src="js/app.js?v=87"></script>
   <!-- Login-/Benutzersystem: eigenes ES-Modul mit dem modernen Firebase
        Modular SDK (siehe js/auth.js für den ausführlich kommentierten Code) -->
-  <script type="module" src="js/auth.js?v=86"></script>
+  <script type="module" src="js/auth.js?v=87"></script>
 </body>
 </html>
