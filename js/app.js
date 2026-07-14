@@ -35,15 +35,16 @@
     "Ärztliche Direktion",
   ];
 
-  // Die Stationierungen (RDR2-Roleplay-Städte) inkl. Farbcode - passend zur
-  // farblichen Kennzeichnung im Spiel selbst.
+  // Die drei tatsächlich existierenden Standorte der Black Wolf Medical.
+  // "Ärztliche Direktion" ist bewusst KEIN eigener Standort mehr, sondern
+  // eine übergeordnete Funktion, die ein Mitarbeiter zusätzlich zu seinem
+  // Standort/Rang innehaben kann (siehe Feld "direktion" je Mitarbeiter-Slot
+  // weiter unten) - so kann z. B. Chris Moon gleichzeitig Chefarzt von
+  // Rhodes UND Ärztlicher Direktor sein, ohne doppelt in der Liste zu stehen.
   const STATIONEN = {
-    direktion: { label: "Ärztliche Direktion", max: 1, farbe: null },
-    rhodes: { label: "Rhodes", max: 8, farbe: "green" },
-    blackwater: { label: "Blackwater", max: 8, farbe: "red" },
-    valentine: { label: "Valentine", max: 8, farbe: null },
-    strawberry: { label: "Strawberry", max: 8, farbe: null },
-    saintdenis: { label: "Saint Denis", max: 8, farbe: null },
+    rhodes: { label: "Rhodes", max: 8 },
+    blackwater: { label: "Blackwater", max: 8 },
+    valentine: { label: "Valentine", max: 8 },
   };
 
   // Kleine, zurückhaltende Icons (Strichzeichnung, "currentColor") für die
@@ -64,27 +65,78 @@
   // Greif-Punkt-Icon für Drag & Drop (Reihenfolge der Medikamente per Maus verschieben)
   const ICON_DRAG =
     '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><circle cx="9" cy="6" r="1.4"></circle><circle cx="15" cy="6" r="1.4"></circle><circle cx="9" cy="12" r="1.4"></circle><circle cx="15" cy="12" r="1.4"></circle><circle cx="9" cy="18" r="1.4"></circle><circle cx="15" cy="18" r="1.4"></circle></svg>';
+  // Kleines Personen-Symbol für die Mitarbeiterzahl je Standort (Praxisleitung)
+  const ICON_USERS =
+    '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 19c0-3 3-5 6-5s6 2 6 5"></path><circle cx="8.5" cy="8" r="3.2"></circle><path d="M14.2 4.3c1.6 0.4 2.8 1.9 2.8 3.7 0 1.8-1.2 3.3-2.8 3.7"></path><path d="M15.5 14.1c2.7 0.4 5 2.3 5 4.9"></path></svg>';
+  // Info-Symbol für den Hinweis-Kasten unterhalb der Mitarbeiterliste
+  const ICON_INFO =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="11" x2="12" y2="16.5"></line><circle cx="12" cy="7.6" r="1" fill="currentColor" stroke="none"></circle></svg>';
+  // Kleines "x" zum Entfernen eines Badges aus dem Katalog (Bearbeiten-Modus)
+  const ICON_X_KLEIN =
+    '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"></line><line x1="19" y1="5" x2="5" y2="19"></line></svg>';
+
+  // Icon-Set für die Badges der Mitarbeiter (medizinische Fachgebiete +
+  // interne Zuständigkeiten). Zurückhaltende Strichzeichnungen, passend zum
+  // restlichen Icon-Stil dieser Seite. Zusätzliche, von Admins selbst neu
+  // angelegte Badges (die hier nicht aufgeführt sind) bekommen automatisch
+  // das generische Etiketten-Icon (siehe badgeIcon() weiter unten).
+  const BADGE_ICONS = {
+    allgemeinmedizin:
+      '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4v7a5 5 0 0 0 10 0V4"></path><line x1="19" y1="6" x2="19" y2="10"></line><circle cx="19" cy="12.3" r="1.7"></circle></svg>',
+    chirurgie:
+      '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5 8.5 15.5"></path><path d="M8.5 15.5 5 19"></path><circle cx="6.3" cy="17.7" r="1.4"></circle><path d="M14 5l5 5"></path></svg>',
+    zahnheilkunde:
+      '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4c-2.6 0-4.6 1.7-4.6 4.3 0 2.7 1 4 1.3 6.7.2 1.7.7 3 1.6 3 1.1 0 1-2.6 1.7-4 .7 1.4.6 4 1.7 4 .9 0 1.4-1.3 1.6-3 .3-2.7 1.3-4 1.3-6.7C16.6 5.7 14.6 4 12 4Z"></path></svg>',
+    pharmazie:
+      '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3"></rect><line x1="12" y1="9" x2="12" y2="15"></line></svg>',
+    ausbilder:
+      '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8.5 12 4l9.5 4.5-9.5 4.5-9.5-4.5Z"></path><path d="M6.5 10.6v4.4c0 1.7 2.5 3 5.5 3s5.5-1.3 5.5-3v-4.4"></path></svg>',
+    verwaltung:
+      '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="1.5"></rect><path d="M9 4V3.3A1.3 1.3 0 0 1 10.3 2h3.4A1.3 1.3 0 0 1 15 3.3V4"></path><line x1="9" y1="10" x2="15" y2="10"></line><line x1="9" y1="13.5" x2="15" y2="13.5"></line><line x1="9" y1="17" x2="13" y2="17"></line></svg>',
+  };
+  // Generisches Etiketten-Icon für Badges ohne eigenes Symbol (z. B. neu
+  // angelegte, individuelle Badges eines Admins).
+  const ICON_BADGE_GENERISCH =
+    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M11.6 3H5a2 2 0 0 0-2 2v6.6c0 .5.2 1 .6 1.4l8.4 8.4c.8.8 2 .8 2.8 0l6.6-6.6c.8-.8.8-2 0-2.8L12.9 3.6c-.4-.4-.9-.6-1.3-.6Z"></path><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none"></circle></svg>';
+
+  function badgeIcon(label) {
+    const key = (label || "").trim().toLowerCase();
+    return BADGE_ICONS[key] || ICON_BADGE_GENERISCH;
+  }
 
   // Standard-Mitarbeiter-/Stationsliste: FESTE Anzahl Plätze je Station
   // (reines Organisations-Tool für die Mitarbeiter-Seite - hat NICHTS mit
-  // dem Login zu tun). Leere Plätze haben name: "". "abteilung" ist nur für
-  // Medizinisches Personal relevant (z. B. "Innere Medizin") - bei Leitungs-
-  // Rängen wird stattdessen immer der feste Text "Ärztliche Leitung" gezeigt.
+  // dem Login zu tun). Leere Plätze haben name: "". Jeder Platz trägt neben
+  // Name/Rang zusätzlich zwei getrennte Badge-Felder - "specialties" für
+  // medizinische Fachgebiete und "badges" für interne Zuständigkeiten (siehe
+  // Kommentar bei PERSONAL_BADGES_DOC weiter unten) - sowie das Feld
+  // "direktion": true/false für die Zugehörigkeit zur Ärztlichen Direktion.
   function erzeugeLeereStation(anzahl) {
     const plaetze = [];
-    for (let i = 0; i < anzahl; i++) plaetze.push({ name: "", rolle: "Anwärter", abteilung: "" });
+    for (let i = 0; i < anzahl; i++) plaetze.push(neuerLeererPlatz());
     return plaetze;
   }
 
+  function neuerLeererPlatz() {
+    return { name: "", rolle: "Anwärter", specialties: [], badges: [], direktion: false };
+  }
+
   const DEFAULT_STATIONEN = {
-    direktion: [{ name: "Chris Moon", rolle: "Ärztliche Direktion" }],
+    rhodes: [
+      { name: "Chris Moon", rolle: "Chefarzt", specialties: ["Allgemeinmedizin", "Chirurgie"], badges: ["Verwaltung", "Ausbilder"], direktion: true },
+      ...erzeugeLeereStation(7),
+    ],
     blackwater: erzeugeLeereStation(8),
-    // Chris Moon führt zusätzlich zu seiner Ärztlichen Direktion auch als
-    // Chefarzt die Station Rhodes - zwei unterschiedliche Rollen, bewusst so.
-    rhodes: [{ name: "Chris Moon", rolle: "Chefarzt" }, ...erzeugeLeereStation(7)],
     valentine: erzeugeLeereStation(8),
-    strawberry: erzeugeLeereStation(8),
-    saintdenis: erzeugeLeereStation(8),
+  };
+
+  // Standard-Badge-Katalog - siehe PERSONAL_BADGES_DOC. Bewusst in zwei
+  // getrennte Listen aufgeteilt (medizinische Fachgebiete vs. interne
+  // Zuständigkeiten), damit sich später z. B. leicht "alle mit Fachgebiet
+  // Chirurgie" filtern lässt, ohne beides vermischen zu müssen.
+  const DEFAULT_PERSONAL_BADGES = {
+    fachgebiete: ["Allgemeinmedizin", "Chirurgie", "Zahnheilkunde", "Pharmazie"],
+    zustaendigkeiten: ["Ausbilder", "Verwaltung"],
   };
 
   const STORAGE_KEY_LEGACY = "medicalDepartment.medikamente.v1";
@@ -92,6 +144,11 @@
 
   const MEDIKAMENTE_DOC = "department/medikamente";
   const MITARBEITER_DOC = "department/mitarbeiter";
+  // Verwalteter Badge-Katalog (siehe Abschnitt 10b) - getrennt in
+  // medizinische Fachgebiete ("fachgebiete") und interne Zuständigkeiten
+  // ("zustaendigkeiten"). Admins können hier jederzeit neue Badges anlegen
+  // oder bestehende entfernen, ganz ohne Code-Änderung.
+  const PERSONAL_BADGES_DOC = "department/personal-badges";
   const INFOS_DOC = "department/infos";
   const PRESENCE_COLLECTION = "presence";
   const NOTIZEN_COLLECTION = "notizen";
@@ -245,6 +302,7 @@
   let unsubNotizen = null;
   let unsubVerkaufslog = null;
   let unsubMitarbeiter = null;
+  let unsubPersonalBadges = null;
   let unsubBenutzerliste = null;
   let unsubInfos = null;
   let unsubAnkuendigungen = null;
@@ -252,7 +310,11 @@
   let handbuchDokumente = [];       // Live-Liste aller Handbuch-Dokumente (nur geladen, wenn berechtigt)
   let aktivesHandbuchDokumentId = null; // id des gerade geöffneten Dokuments (oder null = Übersicht)
   let handbuchSeedLaeuft = false;   // verhindert doppeltes Anlegen der Standarddokumente
-  let stationenDaten = { direktion: [], blackwater: [], rhodes: [] }; // Feste Plätze je Station
+  let stationenDaten = { blackwater: [], rhodes: [], valentine: [] }; // Feste Plätze je Standort
+  // Verwalteter Badge-Katalog (siehe PERSONAL_BADGES_DOC) - wird beim Start
+  // geladen und live aktuell gehalten, damit neue/entfernte Badges sofort
+  // überall (Anzeige + Bearbeiten-Modus) sichtbar werden.
+  let personalBadgesKatalog = { fachgebiete: [], zustaendigkeiten: [] };
   let benutzerListe = [];          // Alle Accounts (nur für Admins geladen) - für die Benutzerverwaltung
   let bekanntePendingUids = null;  // null = Liste noch nie geladen (verhindert Toast beim allerersten Laden)
   let benutzerSuche = "";          // Suchbegriff im Admin Panel (Filter nach Benutzername)
@@ -816,6 +878,7 @@
     abonniereNotizen();
     abonniereVerkaufslog();
     abonniereMitarbeiterliste();
+    abonnierePersonalBadges();
     abonniereInfos();
     abonniereAnkuendigungen();
     abonniereKontakte();
@@ -1100,18 +1163,35 @@
   let aktiveStationReiter = "rhodes"; // Welche Station beim Medizinischen Personal gerade angezeigt wird
   let mitarbeiterSuchbegriff = ""; // Filtert Leitung + Medizinisches Personal nach Name/Position/Abteilung
 
+  // Feste Rangfolge (höchster Rang zuerst) - bestimmt die Sortierung
+  // innerhalb eines Standorts sowie bei der Suche.
+  const RANGFOLGE = ["Chefarzt", "Stellv. Chefarzt", "Oberarzt", "Stellv. Oberarzt", "Facharzt", "Assistenzarzt", "Anwärter"];
+  const STATIONS_SCHLUESSEL = Object.keys(STATIONEN);
+
+  function rangIndex(rolle) {
+    const i = RANGFOLGE.indexOf(rolle);
+    return i === -1 ? RANGFOLGE.length : i;
+  }
+
   function renderMitarbeiterListe() {
     if (!el.staffGrid) return;
     renderBenutzerBadge(); // Badge-Avatar aktualisieren, sobald die Liste geladen ist
 
-    // Schutz gegen Fokus-Verlust: Wenn gerade ein Namensfeld/Rang-Dropdown in
-    // Benutzung ist (Tippen oder gerade ausgewählt), wird die Liste NICHT
-    // mitten drin komplett neu aufgebaut - das würde das Feld/Dropdown
-    // zerstören und den Fokus/die Eingabe verlieren. Der nächste Render
-    // (z. B. nach dem Verlassen des Feldes) holt den aktuellen Stand nach.
+    // Schutz gegen Fokus-Verlust: Wenn gerade ein Namensfeld/Rang-Dropdown/
+    // Eingabefeld in Benutzung ist (Tippen oder gerade ausgewählt), wird die
+    // Liste NICHT mitten drin komplett neu aufgebaut - das würde das Feld/
+    // Dropdown zerstören und den Fokus/die Eingabe verlieren. Der nächste
+    // Render (z. B. nach dem Verlassen des Feldes) holt den aktuellen Stand
+    // nach.
+    // Checkboxen (z. B. "Ärztliche Direktion") sind bewusst ausgenommen: ein
+    // Klick darauf ist eine einmalige, abgeschlossene Aktion (kein
+    // fortlaufendes Tippen wie bei Textfeldern) - würde man den Re-Render
+    // hier ebenfalls blockieren, bliebe z. B. die Direktion-Karte ganz oben
+    // so lange veraltet, bis die Checkbox den Fokus verliert.
     const aktivesElement = document.activeElement;
     const istEingabeInBearbeitung =
-      el.staffGrid.contains(aktivesElement) && (aktivesElement.tagName === "INPUT" || aktivesElement.tagName === "SELECT");
+      el.staffGrid.contains(aktivesElement) &&
+      ((aktivesElement.tagName === "INPUT" && aktivesElement.type !== "checkbox") || aktivesElement.tagName === "SELECT");
     if (istEingabeInBearbeitung) {
       return;
     }
@@ -1128,43 +1208,25 @@
       toggleBtn.classList.toggle("btn--ghost-active", bearbeitenAktiv);
     }
 
-    // Ausschließlich anhand der VORHANDENEN Ränge und Standorte gegliedert -
-    // keine feste Namensliste, keine Umbenennung bestehender Ränge.
-    // "Leitung" fasst alle Führungsränge zusammen (Ärztliche Direktion,
-    // Chefarzt, Stellv. Chefarzt, Oberarzt, Stellv. Oberarzt), "Medizinisches
-    // Personal" den Rest. Die Standorte (STATIONEN, ohne "direktion") bilden
-    // in der Leitung die Gruppierung je Zeile, beim Personal eigene Tabs.
-    const LEITUNGS_RANGFOLGE = ["Ärztliche Direktion", "Chefarzt", "Stellv. Chefarzt", "Oberarzt", "Stellv. Oberarzt"];
-    const TEAM_RANGFOLGE = ["Facharzt", "Assistenzarzt", "Anwärter"];
-    const ALLE_RAENGE = [...LEITUNGS_RANGFOLGE, ...TEAM_RANGFOLGE];
-    const STATIONS_SCHLUESSEL = Object.keys(STATIONEN).filter((k) => k !== "direktion");
     if (!STATIONS_SCHLUESSEL.includes(aktiveStationReiter)) aktiveStationReiter = STATIONS_SCHLUESSEL[0];
-
-    function rangIndex(rolle) {
-      const i = ALLE_RAENGE.indexOf(rolle);
-      return i === -1 ? ALLE_RAENGE.length : i;
-    }
-
-    function istLeitungsRang(rolle) {
-      return LEITUNGS_RANGFOLGE.includes(rolle);
-    }
 
     function treffferSuche(slot) {
       if (!mitarbeiterSuchbegriff) return true;
       const begriff = mitarbeiterSuchbegriff.toLowerCase();
+      const badgeText = [...(slot.specialties || []), ...(slot.badges || [])].join(" ").toLowerCase();
       return (
         (slot.name && slot.name.toLowerCase().includes(begriff)) ||
         (slot.rolle && slot.rolle.toLowerCase().includes(begriff)) ||
-        (slot.abteilung && slot.abteilung.toLowerCase().includes(begriff))
+        badgeText.includes(begriff)
       );
     }
 
-    // Alle Personen aus allen Stationen (inkl. Direktion) einsammeln - jede
-    // Person "weiß", aus welchem Station+Slot sie stammt (wichtig fürs
-    // Bearbeiten).
+    // Alle Personen aller drei Standorte einsammeln - jede Person "weiß",
+    // aus welchem Standort+Slot sie stammt (wichtig fürs Bearbeiten/
+    // Verschieben).
     function alleEintraege() {
       const ergebnis = [];
-      ["direktion", ...STATIONS_SCHLUESSEL].forEach((stationKey) => {
+      STATIONS_SCHLUESSEL.forEach((stationKey) => {
         (stationenDaten[stationKey] || []).forEach((slot, index) => {
           ergebnis.push({ stationKey, index, slot });
         });
@@ -1175,181 +1237,200 @@
     const eintraege = alleEintraege();
     const istDu = (slot) => aktuellerNutzer && slot.name && slot.name.toLowerCase() === aktuellerNutzer.name.toLowerCase();
 
-    /* ---------------------------------------------------------------------
-       Ärztliche Direktion: eigene, herausgehobene Karte ganz oben.
-       --------------------------------------------------------------------- */
-    const direktionsEintrag = eintraege.find((e) => e.stationKey === "direktion");
-    const direktionSlot = direktionsEintrag ? direktionsEintrag.slot : { name: "", rolle: "Ärztliche Direktion" };
-    const zeigeDirektion = (direktionSlot.name && treffferSuche(direktionSlot)) || bearbeitenAktiv;
+    // Badge-Pille (Icon + Text) - identische Optik in der Anzeige UND als
+    // klickbarer Umschalter im Bearbeiten-Modus (siehe badgeUmschalter).
+    function badgePille(label) {
+      return `<span class="badge-pill">${badgeIcon(label)}<span>${escapeHtml(label)}</span></span>`;
+    }
 
-    const direktionHtml = !zeigeDirektion
-      ? ""
-      : `
+    // Alle Badges einer Person, in fester Katalog-Reihenfolge (erst
+    // Fachgebiete, dann Zuständigkeiten) statt in Speicher-Reihenfolge -
+    // dadurch bleibt die Anzeige stabil, auch wenn der Katalog sich ändert.
+    function badgesFuerSlot(slot) {
+      const fachgebiete = personalBadgesKatalog.fachgebiete.filter((f) => (slot.specialties || []).includes(f));
+      const zustaendigkeiten = personalBadgesKatalog.zustaendigkeiten.filter((z) => (slot.badges || []).includes(z));
+      return [...fachgebiete, ...zustaendigkeiten];
+    }
+
+    /* ---------------------------------------------------------------------
+       Ärztliche Direktion: eigener, herausgehobener Bereich ganz oben. Zeigt
+       ausschließlich Personen, bei denen "direktion: true" gesetzt ist - das
+       ist keine eigene Station mehr, sondern eine zusätzliche Funktion, die
+       ein Mitarbeiter parallel zu seinem Standort/Rang innehat (siehe
+       Checkbox "Ärztliche Direktion" im Bearbeiten-Modus weiter unten).
+       --------------------------------------------------------------------- */
+    const direktionsEintraege = eintraege.filter((e) => e.slot.name && e.slot.direktion && treffferSuche(e.slot));
+
+    function direktionKarte(e) {
+      const { slot } = e;
+      return `
+        <div class="direktion-card">
+          <span class="direktion-card__icon" aria-hidden="true">${ICON_CADUCEUS}</span>
+          <span class="direktion-card__info">
+            <span class="direktion-card__name">${escapeHtml(slot.name)}${istDu(slot) ? '<span class="org-row__du">Du</span>' : ""}</span>
+            <span class="direktion-card__rang">Ärztliche Direktion</span>
+            <span class="direktion-card__beschreibung">Verantwortlich für sämtliche medizinischen Angelegenheiten der Black Wolf Medical.</span>
+          </span>
+        </div>
+      `;
+    }
+
+    const direktionHtml =
+      !direktionsEintraege.length && !bearbeitenAktiv
+        ? ""
+        : `
         <section class="org-chapter org-chapter--direktion">
           <h2 class="org-chapter__titel">Ärztliche Direktion</h2>
           ${
-            bearbeitenAktiv
-              ? `
-              <div class="direktion-card direktion-card--edit">
-                <span class="direktion-card__icon" aria-hidden="true">${ICON_CADUCEUS}</span>
-                <input
-                  type="text"
-                  class="org-row__name-input"
-                  placeholder="Name eintragen..."
-                  value="${escapeHtml(direktionSlot.name)}"
-                  data-role="slot-name"
-                  data-station="direktion"
-                  data-index="0"
-                />
-                <span class="direktion-card__rang">Ärztliche Direktion</span>
-              </div>
-            `
-              : `
-              <div class="direktion-card">
-                <span class="direktion-card__icon" aria-hidden="true">${ICON_CADUCEUS}</span>
-                <span class="direktion-card__info">
-                  <span class="direktion-card__name">${escapeHtml(direktionSlot.name)}${istDu(direktionSlot) ? '<span class="org-row__du">Du</span>' : ""}</span>
-                  <span class="direktion-card__rang">Ärztliche Direktion</span>
-                </span>
-                <span class="direktion-card__chevron" aria-hidden="true">›</span>
-              </div>
-            `
+            direktionsEintraege.length
+              ? direktionsEintraege.map(direktionKarte).join("")
+              : `<p class="empty-state">Noch niemandem zugewiesen - setze unten bei einem Mitarbeiter das Häkchen "Ärztliche Direktion".</p>`
           }
         </section>
       `;
 
     /* ---------------------------------------------------------------------
-       Leitung: eine Tabelle über alle Standorte, auf jeder Zeile mit
-       Standort beschriftet, Gruppen zusätzlich per Trennlinie abgesetzt.
+       Praxisleitungen: je eine schlichte Übersichtskarte für Rhodes,
+       Blackwater und Valentine - Standort, Chefarzt und (optional) die an
+       diesem Standort vorhandenen Fachrichtungen.
        --------------------------------------------------------------------- */
-    function leitungZeile(e, { ersteInGruppe }) {
-      const { stationKey, index, slot } = e;
-      // Jede neue Standort-Gruppe bekommt eine dezente Trennlinie/Abstand nach
-      // oben, damit z. B. Rhodes-Leitung optisch klar von Blackwater-Leitung
-      // abgesetzt ist (die erste Gruppe im Table bekommt per CSS keine
-      // zusätzliche Linie, damit es nicht direkt unter dem Tabellenkopf hängt).
-      const gruppenStartClass = ersteInGruppe ? " staff-table__row--gruppenstart" : "";
+    function fachrichtungenFuerStation(stationKey) {
+      const vorhanden = new Set();
+      eintraege
+        .filter((e) => e.stationKey === stationKey && e.slot.name)
+        .forEach((e) => (e.slot.specialties || []).forEach((f) => vorhanden.add(f)));
+      return personalBadgesKatalog.fachgebiete.filter((f) => vorhanden.has(f));
+    }
 
-      if (bearbeitenAktiv) {
-        // Standort ist im Bearbeiten-Modus ein echtes Auswahlfeld: Beim Wechsel
-        // wird die Person in einen freien Platz der Zielstation verschoben.
-        const standortSelectHtml = `
-          <select class="org-row__rang-select" data-role="slot-standort" data-station="${stationKey}" data-index="${index}">
-            ${STATIONS_SCHLUESSEL.map(
-              (k) => `<option value="${k}" ${k === stationKey ? "selected" : ""}>${escapeHtml(STATIONEN[k].label)}</option>`
-            ).join("")}
-          </select>
-        `;
-        return `
-          <div class="staff-table__row staff-table__row--edit staff-table__row--leitung${gruppenStartClass}">
-            <span class="staff-table__cell staff-table__cell--standort">${standortSelectHtml}</span>
-            <input
-              type="text"
-              class="org-row__name-input staff-table__cell--name"
-              placeholder="Name eintragen..."
-              value="${escapeHtml(slot.name)}"
-              data-role="slot-name"
-              data-station="${stationKey}"
-              data-index="${index}"
-            />
-            <select class="org-row__rang-select staff-table__cell--rang" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
-              ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${r}</option>`).join("")}
-            </select>
-            <span class="staff-table__cell staff-table__cell--abteilung">Ärztliche Leitung</span>
-          </div>
-        `;
-      }
-
-      // Standort wird bewusst auf JEDER Zeile angezeigt (nicht nur bei der
-      // ersten einer Gruppe) - zusammen mit der Trennlinie oben ist so auf
-      // einen Blick klar, wer zu welchem Standort gehört.
-      const standortHtml = `<span class="staff-table__standort-icon" aria-hidden="true">${ICON_PIN}</span>${escapeHtml(STATIONEN[stationKey].label)}`;
+    function praxisKarte(stationKey) {
+      const chefEintrag = eintraege.find((e) => e.stationKey === stationKey && e.slot.name && e.slot.rolle === "Chefarzt");
+      const anzahl = eintraege.filter((e) => e.stationKey === stationKey && e.slot.name).length;
+      const fachrichtungen = fachrichtungenFuerStation(stationKey);
 
       return `
-        <div class="staff-table__row staff-table__row--leitung${gruppenStartClass}">
-          <span class="staff-table__cell staff-table__cell--standort">${standortHtml}</span>
-          <span class="staff-table__cell staff-table__cell--name">${escapeHtml(slot.name)}${istDu(slot) ? '<span class="org-row__du">Du</span>' : ""}</span>
-          <span class="staff-table__cell staff-table__cell--rang">${escapeHtml(slot.rolle)}</span>
-          <span class="staff-table__cell staff-table__cell--abteilung">Ärztliche Leitung</span>
-          <span class="staff-table__chevron" aria-hidden="true">›</span>
+        <div class="praxis-card">
+          <div class="praxis-card__kopf">
+            <span class="praxis-card__pin" aria-hidden="true">${ICON_PIN}</span>
+            <span class="praxis-card__standort">${escapeHtml(STATIONEN[stationKey].label)}</span>
+          </div>
+          <div class="praxis-card__chefarzt">
+            <span class="praxis-card__label">Chefarzt</span>
+            <span class="praxis-card__chefarzt-name">${
+              chefEintrag ? escapeHtml(chefEintrag.slot.name) : '<span class="praxis-card__unbesetzt">Unbesetzt</span>'
+            }</span>
+          </div>
+          ${
+            fachrichtungen.length
+              ? `
+              <div class="praxis-card__divider"></div>
+              <div class="praxis-card__fachrichtungen">
+                <span class="praxis-card__label praxis-card__label--gold">Fachrichtungen</span>
+                <div class="praxis-card__badges">${fachrichtungen.map(badgePille).join("")}</div>
+              </div>
+            `
+              : ""
+          }
+          <div class="praxis-card__divider"></div>
+          <div class="praxis-card__footer">
+            <span aria-hidden="true">${ICON_USERS}</span>${anzahl} Mitarbeiter
+          </div>
         </div>
       `;
     }
 
-    const leitungZeilenDaten = STATIONS_SCHLUESSEL.flatMap((stationKey) =>
-      eintraege
-        .filter((e) => e.stationKey === stationKey && e.slot.name && istLeitungsRang(e.slot.rolle) && treffferSuche(e.slot))
-        .sort((a, b) => rangIndex(a.slot.rolle) - rangIndex(b.slot.rolle))
-        .map((e, i) => ({ e, ersteInGruppe: i === 0 }))
-    );
-
-    const leitungHtml = `
+    const praxisHtml = `
       <section class="org-chapter">
-        <h2 class="org-chapter__titel">Leitung</h2>
-        <div class="staff-table staff-table--leitung">
-          <div class="staff-table__head staff-table__row--leitung">
-            <span>Standort</span><span>Name</span><span>Position</span><span>Abteilung</span><span></span>
-          </div>
-          <div class="staff-table__body">
-            ${
-              leitungZeilenDaten.length
-                ? leitungZeilenDaten.map(({ e, ersteInGruppe }) => leitungZeile(e, { ersteInGruppe })).join("")
-                : `<p class="empty-state">Keine Treffer.</p>`
-            }
-          </div>
+        <h2 class="org-chapter__titel">Praxisleitungen</h2>
+        <div class="praxis-grid">
+          ${STATIONS_SCHLUESSEL.map(praxisKarte).join("")}
         </div>
       </section>
     `;
 
     /* ---------------------------------------------------------------------
-       Medizinisches Personal: Tabs pro Standort + Tabelle (Name/Position/
-       Abteilung) für den gerade aktiven Standort.
+       Medizinisches Personal: Standort-Tabs + kompakte Liste (kein Table
+       mehr) - jeder Mitarbeiter als schlichter Listeneintrag mit Name, Rang
+       und seinen Badges.
        --------------------------------------------------------------------- */
-    function personalZeile(e) {
+    function badgeUmschalter(stationKey, index, kategorie, katalogListe, ausgewaehlt) {
+      return katalogListe
+        .map(
+          (label) => `
+          <button
+            type="button"
+            class="badge-pill badge-pill--umschalter ${ausgewaehlt.includes(label) ? "badge-pill--aktiv" : ""}"
+            data-role="slot-badge-umschalten"
+            data-kategorie="${kategorie}"
+            data-station="${stationKey}"
+            data-index="${index}"
+            data-label="${escapeHtml(label)}"
+          >${badgeIcon(label)}<span>${escapeHtml(label)}</span></button>
+        `
+        )
+        .join("");
+    }
+
+    function personalEintragEdit(e) {
       const { stationKey, index, slot } = e;
-      if (bearbeitenAktiv) {
-        return `
-          <div class="staff-table__row staff-table__row--edit staff-table__row--personal">
+      return `
+        <div class="staff-list__item staff-list__item--edit">
+          <div class="staff-edit__zeile">
             <input
               type="text"
-              class="org-row__name-input staff-table__cell--name"
+              class="org-row__name-input staff-edit__name"
               placeholder="Name eintragen..."
               value="${escapeHtml(slot.name)}"
               data-role="slot-name"
               data-station="${stationKey}"
               data-index="${index}"
             />
-            <select class="org-row__rang-select staff-table__cell--rang" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
+            <select class="org-row__rang-select staff-edit__rang" data-role="slot-rolle" data-station="${stationKey}" data-index="${index}">
               ${STATIONS_RAENGE.map((r) => `<option value="${r}" ${r === slot.rolle ? "selected" : ""}>${r}</option>`).join("")}
             </select>
-            <input
-              type="text"
-              class="org-row__name-input staff-table__cell--abteilung"
-              placeholder="Abteilung, z. B. Innere Medizin"
-              value="${escapeHtml(slot.abteilung || "")}"
-              data-role="slot-abteilung"
-              data-station="${stationKey}"
-              data-index="${index}"
-            />
+            <select class="org-row__rang-select staff-edit__standort" data-role="slot-standort" data-station="${stationKey}" data-index="${index}">
+              ${STATIONS_SCHLUESSEL.map(
+                (k) => `<option value="${k}" ${k === stationKey ? "selected" : ""}>${escapeHtml(STATIONEN[k].label)}</option>`
+              ).join("")}
+            </select>
+            <label class="staff-edit__direktion">
+              <input type="checkbox" data-role="slot-direktion" data-station="${stationKey}" data-index="${index}" ${
+        slot.direktion ? "checked" : ""
+      } />
+              Ärztliche Direktion
+            </label>
           </div>
-        `;
-      }
-      if (!slot.name) {
-        return `<div class="staff-table__row staff-table__row--empty"><span>Unbesetzt</span></div>`;
-      }
-      return `
-        <div class="staff-table__row staff-table__row--personal">
-          <span class="staff-table__cell staff-table__cell--name">${escapeHtml(slot.name)}${istDu(slot) ? '<span class="org-row__du">Du</span>' : ""}</span>
-          <span class="staff-table__cell staff-table__cell--rang">${escapeHtml(slot.rolle)}</span>
-          <span class="staff-table__cell staff-table__cell--abteilung">${slot.abteilung ? escapeHtml(slot.abteilung) : '<span class="staff-table__placeholder">—</span>'}</span>
-          <span class="staff-table__chevron" aria-hidden="true">›</span>
+          <div class="staff-edit__badges">
+            <span class="staff-edit__badges-label">Medizinische Fachgebiete</span>
+            <div class="staff-edit__badges-row">${badgeUmschalter(stationKey, index, "fachgebiete", personalBadgesKatalog.fachgebiete, slot.specialties || [])}</div>
+            <span class="staff-edit__badges-label">Interne Zuständigkeiten</span>
+            <div class="staff-edit__badges-row">${badgeUmschalter(stationKey, index, "zustaendigkeiten", personalBadgesKatalog.zustaendigkeiten, slot.badges || [])}</div>
+          </div>
         </div>
       `;
     }
 
-    const personalZeilenDaten = eintraege
+    function personalEintrag(e) {
+      const { slot } = e;
+      if (!slot.name) {
+        return `<div class="staff-list__item staff-list__item--empty"><span>Unbesetzt</span></div>`;
+      }
+      const badges = badgesFuerSlot(slot);
+      return `
+        <div class="staff-list__item">
+          <span class="staff-list__avatar" aria-hidden="true">${ICON_CADUCEUS}</span>
+          <span class="staff-list__info">
+            <span class="staff-list__name">${escapeHtml(slot.name)}${istDu(slot) ? '<span class="org-row__du">Du</span>' : ""}</span>
+            <span class="staff-list__rang">${escapeHtml(slot.rolle)}</span>
+          </span>
+          <span class="staff-list__badges">${badges.map(badgePille).join("")}</span>
+          <span class="staff-list__chevron" aria-hidden="true">›</span>
+        </div>
+      `;
+    }
+
+    const personalEintraegeGefiltert = eintraege
       .filter((e) => e.stationKey === aktiveStationReiter)
-      .filter((e) => (e.slot.name ? !istLeitungsRang(e.slot.rolle) && treffferSuche(e.slot) : !mitarbeiterSuchbegriff))
+      .filter((e) => (e.slot.name ? treffferSuche(e.slot) : !mitarbeiterSuchbegriff))
       .sort((a, b) => {
         if (!a.slot.name && b.slot.name) return 1;
         if (a.slot.name && !b.slot.name) return -1;
@@ -1368,25 +1449,76 @@
       <section class="org-chapter org-chapter--personal">
         <h2 class="org-chapter__titel">Medizinisches Personal</h2>
         <div class="org-tabs staff-location-tabs">${personalTabsHtml}</div>
-        <div class="staff-table staff-table--personal">
-          <div class="staff-table__head staff-table__row--personal">
-            <span>Name</span><span>Position</span><span>Abteilung</span><span></span>
+        <div class="staff-list">
+          ${
+            personalEintraegeGefiltert.length
+              ? personalEintraegeGefiltert.map((e) => (bearbeitenAktiv ? personalEintragEdit(e) : personalEintrag(e))).join("")
+              : `<p class="empty-state">Keine Treffer.</p>`
+          }
+        </div>
+      </section>
+    `;
+
+    /* ---------------------------------------------------------------------
+       Badges verwalten (nur im Bearbeiten-Modus, nur für Admins sichtbar) -
+       Katalog-Einträge entfernen sowie neue Fachgebiete/Zuständigkeiten
+       anlegen, ganz ohne Code-Änderung.
+       --------------------------------------------------------------------- */
+    function badgeKatalogZeile(kategorie, liste) {
+      if (!liste.length) return `<p class="empty-state badge-katalog__leer">Noch keine Einträge.</p>`;
+      return liste
+        .map(
+          (label) => `
+          <span class="badge-pill badge-pill--verwaltung">
+            ${badgeIcon(label)}<span>${escapeHtml(label)}</span>
+            <button type="button" class="badge-pill__entfernen" data-role="badge-katalog-entfernen" data-kategorie="${kategorie}" data-label="${escapeHtml(
+              label
+            )}" title="Badge entfernen" aria-label="„${escapeHtml(label)}“ aus dem Katalog entfernen">${ICON_X_KLEIN}</button>
+          </span>
+        `
+        )
+        .join("");
+    }
+
+    const badgeKatalogHtml = !bearbeitenAktiv
+      ? ""
+      : `
+      <section class="org-chapter">
+        <h2 class="org-chapter__titel">Badges verwalten</h2>
+        <div class="badge-katalog">
+          <div class="badge-katalog__gruppe">
+            <span class="badge-katalog__label">Medizinische Fachgebiete</span>
+            <div class="badge-katalog__liste">${badgeKatalogZeile("fachgebiete", personalBadgesKatalog.fachgebiete)}</div>
           </div>
-          <div class="staff-table__body">
-            ${
-              personalZeilenDaten.length
-                ? personalZeilenDaten.map((e) => personalZeile(e)).join("")
-                : `<p class="empty-state">Keine Treffer.</p>`
-            }
+          <div class="badge-katalog__gruppe">
+            <span class="badge-katalog__label">Interne Zuständigkeiten</span>
+            <div class="badge-katalog__liste">${badgeKatalogZeile("zustaendigkeiten", personalBadgesKatalog.zustaendigkeiten)}</div>
+          </div>
+          <div class="badge-katalog__neu">
+            <select id="badge-katalog-kategorie" class="org-row__rang-select">
+              <option value="fachgebiete">Neues Fachgebiet</option>
+              <option value="zustaendigkeiten">Neue Zuständigkeit</option>
+            </select>
+            <input type="text" id="badge-katalog-neu-input" class="field-input" placeholder="Name des Badges..." autocomplete="off" />
+            <button type="button" class="btn btn--ghost" id="badge-katalog-hinzufuegen-btn">Hinzufügen</button>
           </div>
         </div>
       </section>
     `;
 
+    const hinweisHtml = `
+      <div class="staff-hinweis">
+        <span class="staff-hinweis__icon" aria-hidden="true">${ICON_INFO}</span>
+        <span>Die Badges zeigen Fachrichtungen und Zuständigkeiten der Mitarbeiter. Änderungen können ausschließlich von Administratoren vorgenommen werden.</span>
+      </div>
+    `;
+
     el.staffGrid.innerHTML = `
       ${direktionHtml}
-      ${leitungHtml}
+      ${praxisHtml}
       ${personalHtml}
+      ${badgeKatalogHtml}
+      ${hinweisHtml}
     `;
   }
 
@@ -1400,7 +1532,8 @@
     });
   }
 
-  // Änderungen an Name-Feldern/Rang-Dropdowns direkt in der Mitarbeiter-Tabelle
+  // Änderungen an Name-Feldern/Rang-/Standort-Dropdowns und der "Ärztliche
+  // Direktion"-Checkbox direkt in der Mitarbeiterliste
   if (document.body) {
     document.addEventListener("change", (event) => {
       const target = event.target;
@@ -1410,7 +1543,11 @@
         return;
       }
       if (target.dataset.role === "slot-standort") {
-        verschiebeLeitungMitglied(target.dataset.station, Number(target.dataset.index), target.value);
+        verschiebeMitarbeiterStandort(target.dataset.station, Number(target.dataset.index), target.value);
+        return;
+      }
+      if (target.dataset.role === "slot-direktion") {
+        aktualisiereDirektion(target.dataset.station, Number(target.dataset.index), target.checked);
       }
     });
 
@@ -1426,36 +1563,56 @@
       true
     );
 
-    // Abteilung-Feld (nur Medizinisches Personal, nicht Leitung): ebenfalls
-    // erst beim Verlassen des Feldes speichern.
-    document.addEventListener(
-      "blur",
-      (event) => {
-        const target = event.target;
-        if (!el.staffGrid || !el.staffGrid.contains(target)) return;
-        if (target.dataset.role !== "slot-abteilung") return;
-        aktualisiereSlot(target.dataset.station, Number(target.dataset.index), { abteilung: target.value.trim() });
-      },
-      true
-    );
-
     document.addEventListener("keydown", (event) => {
       if (event.key !== "Enter") return;
       const target = event.target;
+      if (target.id === "badge-katalog-neu-input") {
+        event.preventDefault();
+        const btn = document.getElementById("badge-katalog-hinzufuegen-btn");
+        if (btn) btn.click();
+        return;
+      }
       if (!el.staffGrid || !el.staffGrid.contains(target)) return;
-      if (target.dataset.role === "slot-name" || target.dataset.role === "slot-abteilung") target.blur();
+      if (target.dataset.role === "slot-name") target.blur();
     });
 
-    // Standort-Tabs beim Medizinischen Personal umschalten
+    // Standort-Tabs, Badge-Umschalter (Bearbeiten-Modus) und Badge-Katalog-
+    // Verwaltung (Entfernen/Hinzufügen) - alles per Klick-Delegation.
     document.addEventListener("click", (event) => {
-      const target = event.target.closest('[data-role="staff-tab"]');
-      if (!target || !el.staffGrid || !el.staffGrid.contains(target)) return;
-      aktiveStationReiter = target.dataset.station;
-      renderMitarbeiterListe();
+      const tab = event.target.closest('[data-role="staff-tab"]');
+      if (tab && el.staffGrid && el.staffGrid.contains(tab)) {
+        aktiveStationReiter = tab.dataset.station;
+        renderMitarbeiterListe();
+        return;
+      }
+
+      const badgeUmschaltBtn = event.target.closest('[data-role="slot-badge-umschalten"]');
+      if (badgeUmschaltBtn && el.staffGrid && el.staffGrid.contains(badgeUmschaltBtn)) {
+        toggleMitarbeiterBadge(
+          badgeUmschaltBtn.dataset.station,
+          Number(badgeUmschaltBtn.dataset.index),
+          badgeUmschaltBtn.dataset.kategorie,
+          badgeUmschaltBtn.dataset.label
+        );
+        return;
+      }
+
+      const entfernenBtn = event.target.closest('[data-role="badge-katalog-entfernen"]');
+      if (entfernenBtn && el.staffGrid && el.staffGrid.contains(entfernenBtn)) {
+        entferneBadgeAusKatalog(entfernenBtn.dataset.kategorie, entfernenBtn.dataset.label);
+        return;
+      }
+
+      if (event.target.id === "badge-katalog-hinzufuegen-btn") {
+        const kategorieSelect = document.getElementById("badge-katalog-kategorie");
+        const neuInput = document.getElementById("badge-katalog-neu-input");
+        if (!kategorieSelect || !neuInput) return;
+        fuegeBadgeHinzu(kategorieSelect.value, neuInput.value);
+      }
     });
   }
 
-  // Mitarbeiter-Suche (Leitung + Medizinisches Personal, live beim Tippen)
+  // Mitarbeiter-Suche (live beim Tippen)
   if (el.staffSearchInput) {
     el.staffSearchInput.addEventListener("input", () => {
       mitarbeiterSuchbegriff = el.staffSearchInput.value.trim();
@@ -1475,11 +1632,46 @@
     speichereMitarbeiterliste();
   }
 
-  // Verschiebt ein Leitungsmitglied in einen freien Platz einer anderen
-  // Station (Standort-Wechsel über das Dropdown in der Leitungs-Tabelle).
-  // Der alte Platz wird dabei geleert, nicht gelöscht - die feste Platzanzahl
-  // je Station bleibt unverändert.
-  function verschiebeLeitungMitglied(vonStation, vonIndex, nachStation) {
+  // Setzt/entfernt die Zugehörigkeit zur Ärztlichen Direktion für einen
+  // Mitarbeiter - unabhängig von Standort und Rang, damit z. B. ein
+  // Chefarzt gleichzeitig Ärztlicher Direktor sein kann, ohne doppelt in der
+  // Liste zu erscheinen.
+  function aktualisiereDirektion(station, index, wert) {
+    if (!istAdmin()) {
+      zeigeToast("Nur Admins dürfen die Mitarbeiter-Liste bearbeiten.");
+      renderMitarbeiterListe();
+      return;
+    }
+    if (!stationenDaten[station] || !stationenDaten[station][index]) return;
+    stationenDaten[station][index].direktion = !!wert;
+    speichereMitarbeiterliste();
+  }
+
+  // Schaltet ein Fachgebiet ("fachgebiete" -> Feld "specialties") oder eine
+  // interne Zuständigkeit ("zustaendigkeiten" -> Feld "badges") für einen
+  // Mitarbeiter an/aus. Bewusst zwei getrennte Firestore-Felder (siehe
+  // PERSONAL_BADGES_DOC), damit sich später z. B. leicht "alle mit
+  // Fachgebiet Chirurgie" oder "alle Ausbilder" filtern lässt.
+  function toggleMitarbeiterBadge(station, index, kategorie, label) {
+    if (!istAdmin()) {
+      zeigeToast("Nur Admins dürfen die Mitarbeiter-Liste bearbeiten.");
+      renderMitarbeiterListe();
+      return;
+    }
+    if (!stationenDaten[station] || !stationenDaten[station][index]) return;
+    const feld = kategorie === "fachgebiete" ? "specialties" : "badges";
+    const slot = stationenDaten[station][index];
+    const bisher = Array.isArray(slot[feld]) ? slot[feld] : [];
+    slot[feld] = bisher.includes(label) ? bisher.filter((b) => b !== label) : [...bisher, label];
+    speichereMitarbeiterliste();
+  }
+
+  // Verschiebt einen Mitarbeiter in einen freien Platz eines anderen
+  // Standorts (Standort-Wechsel über das Dropdown). Der alte Platz wird
+  // dabei geleert, nicht gelöscht - die feste Platzanzahl je Standort
+  // bleibt unverändert. Badges und die Zugehörigkeit zur Ärztlichen
+  // Direktion wandern mit der Person mit.
+  function verschiebeMitarbeiterStandort(vonStation, vonIndex, nachStation) {
     if (!istAdmin()) {
       zeigeToast("Nur Admins dürfen die Mitarbeiter-Liste bearbeiten.");
       renderMitarbeiterListe(); // Auswahl zurücksetzen
@@ -1501,15 +1693,17 @@
     stationenDaten[nachStation][zielIndex] = {
       name: person.name,
       rolle: person.rolle,
-      abteilung: person.abteilung || "",
+      specialties: Array.isArray(person.specialties) ? [...person.specialties] : [],
+      badges: Array.isArray(person.badges) ? [...person.badges] : [],
+      direktion: !!person.direktion,
     };
-    stationenDaten[vonStation][vonIndex] = { name: "", rolle: "Anwärter", abteilung: "" };
+    stationenDaten[vonStation][vonIndex] = neuerLeererPlatz();
 
     speichereMitarbeiterliste();
   }
 
   /* ------------------------------------------------------------------------
-     10b. Firestore: Mitarbeiter-/Stationsliste (nur Mitarbeiter-Seite,
+     10b. Firestore: Mitarbeiter-/Standortliste (nur Personal-Seite,
           NICHTS mit dem Login zu tun)
      ------------------------------------------------------------------------ */
   function abonniereMitarbeiterliste() {
@@ -1521,10 +1715,15 @@
       unsubMitarbeiter = docRef(MITARBEITER_DOC).onSnapshot(
         (doc) => {
           if (doc.exists && doc.data().stationen) {
-            stationenDaten = doc.data().stationen;
-            normalisiereStationenDaten();
+            const geladen = doc.data().stationen;
+            if (istAlteDatenstruktur(geladen)) {
+              migriereZuNeuerStruktur(geladen);
+            } else {
+              stationenDaten = geladen;
+              normalisiereStationenDaten();
+            }
           } else if (doc.exists && Array.isArray(doc.data().liste)) {
-            // Migration von der alten, flachen Liste (vor den festen Plätzen)
+            // Migration von der ganz alten, flachen Liste (vor den festen Plätzen)
             migriereAlteFlacheListe(doc.data().liste);
           } else {
             stationenDaten = JSON.parse(JSON.stringify(DEFAULT_STATIONEN));
@@ -1549,38 +1748,108 @@
     });
   }
 
-  // Stellt sicher, dass jede Station exakt die richtige Anzahl Plätze hat
-  // (falls sich STATIONEN.max mal ändert oder Daten unvollständig sind).
-  function normalisiereStationenDaten() {
-    Object.keys(STATIONEN).forEach((key) => {
-      const max = STATIONEN[key].max;
-      if (!Array.isArray(stationenDaten[key])) stationenDaten[key] = [];
-      while (stationenDaten[key].length < max) stationenDaten[key].push({ name: "", rolle: "Anwärter" });
-      if (stationenDaten[key].length > max) stationenDaten[key] = stationenDaten[key].slice(0, max);
+  // Erkennt die alte Datenstruktur (mit eigener "direktion"-Station und/oder
+  // ohne die Felder "specialties"/"badges" je Mitarbeiter) - Grundlage für
+  // die einmalige, automatische Migration in migriereZuNeuerStruktur().
+  function istAlteDatenstruktur(geladen) {
+    if (geladen.direktion || geladen.strawberry || geladen.saintdenis) return true;
+    return STATIONS_SCHLUESSEL.some((key) => {
+      const liste = geladen[key];
+      return Array.isArray(liste) && liste.some((slot) => slot && slot.name && !Array.isArray(slot.specialties));
     });
   }
 
-  // Wandelt eine alte, flache Mitarbeiterliste (Version mit "liste: [...]"
-  // und einem "station"-Feld pro Person) einmalig in die neuen, festen
-  // Plätze um - bestehende Einträge bleiben dabei erhalten.
+  // Wandelt die alte Datenstruktur (mit eigener "direktion"-Station, ohne
+  // Badge-Felder) einmalig in die neue um - bestehende Namen/Ränge bleiben
+  // erhalten. Ein in der alten "direktion"-Station hinterlegter Name wird,
+  // falls er auch an einem der drei echten Standorte vorkommt (Namensabgleich,
+  // ohne Groß-/Kleinschreibung), NICHT doppelt angelegt, sondern dort nur mit
+  // "direktion: true" markiert. Wird er nirgends gefunden, wird er
+  // stattdessen als neuer Chefarzt-Eintrag in Rhodes ergänzt, damit der Name
+  // nicht verloren geht.
+  function migriereZuNeuerStruktur(alteDaten) {
+    const neu = {};
+    STATIONS_SCHLUESSEL.forEach((key) => {
+      const alteListe = Array.isArray(alteDaten[key]) ? alteDaten[key] : [];
+      neu[key] = alteListe.map((slot) => ({
+        name: slot && slot.name ? slot.name : "",
+        rolle: slot && slot.rolle ? slot.rolle : "Anwärter",
+        specialties: slot && Array.isArray(slot.specialties) ? slot.specialties : [],
+        badges: slot && Array.isArray(slot.badges) ? slot.badges : [],
+        direktion: !!(slot && slot.direktion),
+      }));
+    });
+
+    const alteDirektion = Array.isArray(alteDaten.direktion) ? alteDaten.direktion.find((p) => p && p.name) : null;
+    if (alteDirektion) {
+      const gesuchterName = alteDirektion.name.trim().toLowerCase();
+      let gefunden = false;
+      STATIONS_SCHLUESSEL.forEach((key) => {
+        neu[key].forEach((slot) => {
+          if (!gefunden && slot.name && slot.name.trim().toLowerCase() === gesuchterName) {
+            slot.direktion = true;
+            gefunden = true;
+          }
+        });
+      });
+      if (!gefunden) {
+        const freierPlatz = neu.rhodes ? neu.rhodes.findIndex((slot) => !slot.name) : -1;
+        if (freierPlatz !== -1) {
+          neu.rhodes[freierPlatz] = { name: alteDirektion.name, rolle: "Chefarzt", specialties: [], badges: [], direktion: true };
+        }
+      }
+    }
+
+    stationenDaten = neu;
+    normalisiereStationenDaten();
+    speichereMitarbeiterliste();
+  }
+
+  // Stellt sicher, dass jeder Standort exakt die richtige Anzahl Plätze hat
+  // (falls sich STATIONEN.max mal ändert oder Daten unvollständig sind) und
+  // entfernt dabei gleichzeitig alte, nicht mehr verwendete Standort-
+  // Schlüssel (z. B. "direktion", "strawberry", "saintdenis" aus früheren
+  // Versionen), indem das Objekt komplett neu aufgebaut wird.
+  function normalisiereStationenDaten() {
+    const neu = {};
+    Object.keys(STATIONEN).forEach((key) => {
+      const max = STATIONEN[key].max;
+      const bestehend = Array.isArray(stationenDaten[key]) ? stationenDaten[key] : [];
+      const bereinigt = bestehend.map((slot) => ({
+        name: slot && slot.name ? slot.name : "",
+        rolle: slot && slot.rolle ? slot.rolle : "Anwärter",
+        specialties: slot && Array.isArray(slot.specialties) ? slot.specialties : [],
+        badges: slot && Array.isArray(slot.badges) ? slot.badges : [],
+        direktion: !!(slot && slot.direktion),
+      }));
+      while (bereinigt.length < max) bereinigt.push(neuerLeererPlatz());
+      neu[key] = bereinigt.length > max ? bereinigt.slice(0, max) : bereinigt;
+    });
+    stationenDaten = neu;
+  }
+
+  // Wandelt eine ganz alte, flache Mitarbeiterliste (Version mit
+  // "liste: [...]" und einem "station"-Feld pro Person, von vor den festen
+  // Plätzen) einmalig in die neue Struktur um - bestehende Einträge bleiben
+  // dabei erhalten.
   function migriereAlteFlacheListe(alteListe) {
-    stationenDaten = JSON.parse(JSON.stringify(DEFAULT_STATIONEN));
+    const alt = { direktion: [], rhodes: erzeugeLeereStation(8), blackwater: erzeugeLeereStation(8), valentine: erzeugeLeereStation(8) };
 
     const direktionsPerson = alteListe.find((p) => p.station === "direktion");
     if (direktionsPerson) {
-      stationenDaten.direktion[0] = { name: direktionsPerson.name, rolle: "Ärztliche Direktion" };
+      alt.direktion = [{ name: direktionsPerson.name, rolle: "Ärztliche Direktion" }];
     }
 
     ["blackwater", "rhodes"].forEach((stationKey) => {
       const mitglieder = alteListe.filter((p) => p.station === stationKey);
       mitglieder.forEach((person, index) => {
-        if (index < stationenDaten[stationKey].length) {
-          stationenDaten[stationKey][index] = { name: person.name, rolle: person.rolle };
+        if (index < alt[stationKey].length) {
+          alt[stationKey][index] = { name: person.name, rolle: person.rolle };
         }
       });
     });
 
-    speichereMitarbeiterliste();
+    migriereZuNeuerStruktur(alt);
   }
 
   function speichereMitarbeiterliste() {
@@ -1590,6 +1859,103 @@
         console.error("Mitarbeiterliste konnte nicht gespeichert werden:", fehler);
         zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
       });
+  }
+
+  /* ------------------------------------------------------------------------
+     10c. Firestore: Badge-Katalog (Fachgebiete/Zuständigkeiten) - getrennt
+          von der Mitarbeiterliste, damit Admins Badges verwalten können,
+          ohne Code zu ändern (siehe PERSONAL_BADGES_DOC).
+     ------------------------------------------------------------------------ */
+  function abonnierePersonalBadges() {
+    if (unsubPersonalBadges) return Promise.resolve(); // bereits abonniert
+
+    return new Promise((resolve) => {
+      let ersterDurchlauf = true;
+
+      unsubPersonalBadges = docRef(PERSONAL_BADGES_DOC).onSnapshot(
+        (doc) => {
+          if (doc.exists && Array.isArray(doc.data().fachgebiete)) {
+            personalBadgesKatalog = {
+              fachgebiete: doc.data().fachgebiete,
+              zustaendigkeiten: Array.isArray(doc.data().zustaendigkeiten) ? doc.data().zustaendigkeiten : [],
+            };
+          } else {
+            personalBadgesKatalog = {
+              fachgebiete: [...DEFAULT_PERSONAL_BADGES.fachgebiete],
+              zustaendigkeiten: [...DEFAULT_PERSONAL_BADGES.zustaendigkeiten],
+            };
+            speicherePersonalBadges();
+          }
+
+          renderMitarbeiterListe();
+
+          if (ersterDurchlauf) {
+            ersterDurchlauf = false;
+            resolve();
+          }
+        },
+        (fehler) => {
+          console.error("Fehler beim Laden des Badge-Katalogs:", fehler);
+          if (ersterDurchlauf) {
+            ersterDurchlauf = false;
+            resolve();
+          }
+        }
+      );
+    });
+  }
+
+  function speicherePersonalBadges() {
+    docRef(PERSONAL_BADGES_DOC)
+      .set({ ...personalBadgesKatalog, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch((fehler) => {
+        console.error("Badge-Katalog konnte nicht gespeichert werden:", fehler);
+        zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
+      });
+  }
+
+  // Legt ein neues Badge im Katalog an (Admins können so jederzeit weitere
+  // Fachgebiete/Zuständigkeiten ergänzen, ohne Code-Änderung).
+  function fuegeBadgeHinzu(kategorie, label) {
+    if (!istAdmin()) {
+      zeigeToast("Nur Admins dürfen Badges verwalten.");
+      return;
+    }
+    const bereinigt = (label || "").trim();
+    if (!bereinigt) return;
+    if (!Array.isArray(personalBadgesKatalog[kategorie])) return;
+    const gibtEsSchon = personalBadgesKatalog[kategorie].some((b) => b.toLowerCase() === bereinigt.toLowerCase());
+    if (gibtEsSchon) {
+      zeigeToast("Dieses Badge gibt es schon.");
+      return;
+    }
+    personalBadgesKatalog[kategorie] = [...personalBadgesKatalog[kategorie], bereinigt];
+    speicherePersonalBadges();
+  }
+
+  // Entfernt ein Badge dauerhaft aus dem Katalog UND von allen Mitarbeitern,
+  // denen es aktuell zugewiesen ist - verhindert "Karteileichen"-Badges, die
+  // im Katalog gar nicht mehr existieren, aber irgendwo noch angezeigt würden.
+  function entferneBadgeAusKatalog(kategorie, label) {
+    if (!istAdmin()) {
+      zeigeToast("Nur Admins dürfen Badges verwalten.");
+      return;
+    }
+    if (!Array.isArray(personalBadgesKatalog[kategorie])) return;
+    personalBadgesKatalog[kategorie] = personalBadgesKatalog[kategorie].filter((b) => b !== label);
+    speicherePersonalBadges();
+
+    const feld = kategorie === "fachgebiete" ? "specialties" : "badges";
+    let geaendert = false;
+    STATIONS_SCHLUESSEL.forEach((stationKey) => {
+      (stationenDaten[stationKey] || []).forEach((slot) => {
+        if (Array.isArray(slot[feld]) && slot[feld].includes(label)) {
+          slot[feld] = slot[feld].filter((b) => b !== label);
+          geaendert = true;
+        }
+      });
+    });
+    if (geaendert) speichereMitarbeiterliste();
   }
 
   /* ------------------------------------------------------------------------
@@ -4322,7 +4688,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 88;
+  const APP_VERSION = 90;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
