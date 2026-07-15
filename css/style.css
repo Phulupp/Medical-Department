@@ -2910,6 +2910,112 @@ p {
   outline: none;
 }
 
+/* Zwei-Spalten-Layout wie bei der Infos-Seite (Rollen-Filter links,
+   Kontaktübersicht rechts) - nutzt bewusst dieselbe .wiki-layout-Komponente,
+   keine neue Layout-Sprache. */
+.kontakte-layout {
+  margin-top: 32px;
+}
+
+.kontakte-rollen-toggle {
+  width: 100%;
+  justify-content: center;
+  margin: 4px 0 16px;
+}
+
+.kontakte-schnellinfo-box {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.kontakte-schnellinfo__zeile {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.kontakte-schnellinfo__wert {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: var(--color-text);
+  text-align: right;
+}
+
+/* Admin-Panel zur Verwaltung der Beruf/Rolle-Werte - optisch am
+   Badge-Katalog der Personal-Seite angelehnt. */
+.rollen-katalog {
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 8px;
+}
+
+.rollen-katalog__liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Schmale Sidebar (200px) - jede Rolle bekommt eine eigene, gestapelte
+   Zeile statt nebeneinander liegender Felder, damit nichts überläuft. */
+.rollen-katalog__zeile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.rollen-katalog__zeile:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.rollen-katalog__zeile .field-input {
+  padding: 7px 10px;
+  font-size: 12.5px;
+}
+
+.rollen-katalog__zeile-aktionen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.rollen-katalog__speichern-btn {
+  padding: 5px 10px;
+  font-size: 11px;
+  flex: 1;
+}
+
+.rollen-katalog__hinweis {
+  font-size: 10.5px;
+  color: var(--color-text-soft);
+  white-space: normal;
+}
+
+.rollen-katalog__neu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rollen-katalog__neu .field-input {
+  padding: 8px 10px;
+  font-size: 12.5px;
+}
+
 .kontakt-list {
   display: flex;
   flex-direction: column;
@@ -2922,9 +3028,16 @@ p {
   gap: 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-card-border);
+  border-left: 2px solid transparent;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
   padding: 12px 16px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.kontakt-row:hover {
+  border-left-color: var(--color-brass);
+  background: var(--color-surface-raised);
 }
 
 .kontakt-row__nummer {
@@ -2952,7 +3065,12 @@ p {
   font-weight: 700;
   font-size: 14.5px;
   color: var(--color-text);
-  flex: 0 0 220px;
+  flex: 0 0 190px;
+  min-width: 0;
+}
+
+.kontakt-row__rolle {
+  flex: 0 0 auto;
 }
 
 .kontakt-row__notiz {
@@ -2962,10 +3080,54 @@ p {
   font-style: italic;
 }
 
+.kontakt-row__aktionen {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .kontakt-row__meta {
   font-size: 11px;
   color: var(--color-text-soft);
   flex-shrink: 0;
+}
+
+/* Beruf/Rolle-Badge - dezente, leicht variierende Farben aus den fünf
+   bestehenden Akzentfarben (siehe kontaktRollenFarbe() in js/app.js). */
+.kontakt-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.kontakt-badge--oxblood {
+  background: var(--color-oxblood-soft);
+  color: var(--color-oxblood-text);
+}
+
+.kontakt-badge--sage {
+  background: var(--color-sage-soft);
+  color: var(--color-sage-text);
+}
+
+.kontakt-badge--personal {
+  background: var(--color-personal-soft);
+  color: var(--color-personal-text);
+}
+
+.kontakt-badge--slate {
+  background: var(--color-slate-soft);
+  color: var(--color-slate-text);
+}
+
+.kontakt-badge--brass {
+  background: var(--color-brass-soft);
+  color: var(--color-brass-text);
 }
 
 .kontakt-edit-form {
