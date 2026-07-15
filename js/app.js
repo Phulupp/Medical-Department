@@ -169,6 +169,49 @@
   // zugewiesen, damit die Badge-Farbe stabil bleibt, ohne pro Rolle manuell
   // eine Farbe pflegen zu müssen.
   const KONTAKT_ROLLEN_FARBEN = ["personal", "oxblood", "sage", "brass", "slate"];
+
+  // Verwalteter Themen-Katalog für die Infos-Seite (Notizen) - NICHT zu
+  // verwechseln mit den festen Reitern "Allgemeine Infos/Personal/
+  // Herstellung" (NOTIZ_KATEGORIEN weiter unten, unverändert). "Thema" ist
+  // ein zusätzliches, rein organisatorisches Etikett je Eintrag (Wichtig/
+  // Information/Intern/Besprechung/Sonstiges), das Admins jederzeit ohne
+  // Code-Änderung erweitern/umbenennen/löschen können - genau wie der
+  // Beruf/Rolle-Katalog der Kontakte-Seite.
+  const NOTIZEN_THEMEN_DOC = "department/notizen-themen";
+  const NOTIZ_THEMA_FALLBACK = "Sonstiges";
+  const DEFAULT_NOTIZ_THEMEN = ["Wichtig", "Information", "Intern", "Besprechung", NOTIZ_THEMA_FALLBACK];
+  // Feste Start-Farbzuordnung (dieselben fünf bestehenden Akzentfarben wie
+  // überall sonst) - für individuell von Admins angelegte Themen wird
+  // deterministisch per Namens-Hash eine davon verwendet.
+  const NOTIZ_THEMA_FARBEN_STANDARD = {
+    Wichtig: "brass",
+    Information: "personal",
+    Intern: "sage",
+    Besprechung: "personal",
+    Sonstiges: "slate",
+  };
+  const NOTIZ_THEMA_FARBEN = ["brass", "personal", "sage", "oxblood", "slate"];
+  const NOTIZEN_SEITENGROESSE = 5; // Einträge je Pagination-Seite
+
+  // Verwalteter Kategorien-Katalog für die Medizin-Wiki-Seite - vorher waren
+  // Kategorien reine Freitext-Werte (nur per <datalist> als Vorschlag), jetzt
+  // liegt der Katalog in Firestore und Admins können Kategorien anlegen,
+  // umbenennen (mit Kaskade auf betroffene Wiki-Einträge) oder löschen -
+  // genau wie beim Themen-Katalog der Infos-Seite/Rollen-Katalog der
+  // Kontakte-Seite. "Sonstiges" ist wieder der feste, löschsichere
+  // Auffangwert für Einträge ohne (mehr) gültige Kategorie.
+  const WIKI_KATEGORIEN_DOC = "department/wiki-kategorien";
+  const WIKI_KATEGORIE_FALLBACK = "Sonstiges";
+  const DEFAULT_WIKI_KATEGORIEN = ["Allgemeine Medizin", "Impfungen", "Veterinärmedizin", WIKI_KATEGORIE_FALLBACK];
+  const WIKI_KATEGORIE_FARBEN_STANDARD = {
+    "Allgemeine Medizin": "slate",
+    Impfungen: "sage",
+    Veterinärmedizin: "brass",
+    Sonstiges: "slate",
+  };
+  const WIKI_KATEGORIE_FARBEN = ["brass", "personal", "sage", "oxblood", "slate"];
+  const WIKI_SEITENGROESSE = 8; // Einträge je Pagination-Seite (siehe Mockup)
+
   const ANKUENDIGUNGEN_COLLECTION = "ankuendigungen";
   const HANDBUCH_COLLECTION = "handbuch";
   const ONLINE_SCHWELLE_MS = 45 * 1000;   // Nach 45s ohne Update gilt jemand als offline
@@ -332,6 +375,7 @@
   let personalBadgesKatalog = { fachgebiete: [], zustaendigkeiten: [] };
   let unsubKontakteRollen = null;
   let kontakteRollenKatalog = [];  // Live-Liste der Rollen (siehe KONTAKTE_ROLLEN_DOC)
+  let kontakteRollenFarben = {};   // Rolle -> Akzentfarbe (siehe KONTAKTE_ROLLEN_DOC), von Admins änderbar
   let aktiveKontaktRolle = "alle"; // Filter in der Kontakte-Sidebar ("alle" = kein Filter)
   let benutzerListe = [];          // Alle Accounts (nur für Admins geladen) - für die Benutzerverwaltung
   let bekanntePendingUids = null;  // null = Liste noch nie geladen (verhindert Toast beim allerersten Laden)
@@ -340,6 +384,9 @@
   let unsubAdminLog = null;
   let adminLogEintraege = [];      // Die letzten Aktivitäts-Log-Einträge (nur für Admins geladen)
   let infosListe = [];             // Dynamische Infos-Seite
+  let unsubWikiKategorien = null;
+  let wikiKategorienKatalog = [];  // Live-Liste der Kategorien (siehe WIKI_KATEGORIEN_DOC)
+  let wikiKategorienVerwaltungOffen = false; // Auf-/Zuklappen des Admin-Panels in der Sidebar
   let speicherTimer = null;
   let heartbeatTimer = null;
   let onlineRecomputeTimer = null;
@@ -380,9 +427,18 @@
     boardEmpty: document.getElementById("board-empty"),
 
     formNote: document.getElementById("form-note"),
+    notizTitelInput: document.getElementById("notiz-titel-input"),
     noteInput: document.getElementById("note-input"),
+    notizThemaInput: document.getElementById("notiz-thema-input"),
+    notizHervorhebenLabel: document.getElementById("notiz-hervorheben-label"),
+    notizHervorhebenInput: document.getElementById("notiz-hervorheben-input"),
     notesList: document.getElementById("notes-list"),
     notesEmpty: document.getElementById("notes-empty"),
+    notesThemaFilter: document.getElementById("notes-thema-filter"),
+    notesSortSelect: document.getElementById("notes-sort-select"),
+    btnToggleNotizenThemen: document.getElementById("btn-toggle-notizen-themen"),
+    notizenThemenVerwaltung: document.getElementById("notizen-themen-verwaltung"),
+    notesPagination: document.getElementById("notes-pagination"),
 
     formKontakt: document.getElementById("form-kontakt"),
     kontaktNummerInput: document.getElementById("kontakt-nummer-input"),
@@ -427,7 +483,12 @@
     infoTextInput: document.getElementById("info-text-input"),
     infoHinweisInput: document.getElementById("info-hinweis-input"),
     infoKategorieInput: document.getElementById("info-kategorie-input"),
-    infosGrid: document.getElementById("infos-grid"),
+    wikiTableBody: document.getElementById("wiki-table-body"),
+    wikiKategorienListe: document.getElementById("wiki-kategorien-liste"),
+    btnToggleWikiKategorien: document.getElementById("btn-toggle-wiki-kategorien"),
+    wikiKategorienVerwaltung: document.getElementById("wiki-kategorien-verwaltung"),
+    wikiSchnellinfo: document.getElementById("wiki-schnellinfo"),
+    wikiPagination: document.getElementById("wiki-pagination"),
 
     navAdminToggle: document.getElementById("nav-admin-toggle"),
     navAdminBadge: document.getElementById("nav-admin-badge"),
@@ -672,6 +733,24 @@
           ziel.appendChild(neu);
           return;
         }
+        if (tag === "I" || tag === "EM") {
+          const neu = document.createElement("em");
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+        if (tag === "UL" || tag === "OL") {
+          const neu = document.createElement(tag.toLowerCase());
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
+        if (tag === "LI") {
+          const neu = document.createElement("li");
+          bereinigeKinder(kind, neu);
+          ziel.appendChild(neu);
+          return;
+        }
         if (tag === "SPAN" || tag === "FONT" || tag === "MARK") {
           // Chrome erzeugt bei execCommand("foreColor") ein <font color="...">
           // (klassisches HTML-Attribut, keine CSS-style-Eigenschaft!) - daher
@@ -706,13 +785,21 @@
     return ergebnis.innerHTML;
   }
 
-  // Formatierungsleisten mit den Feldern verbinden. Alle drei Rich-Editoren
+  // Formatierungsleisten mit den Feldern verbinden. Alle Rich-Editoren
   // (Ankündigungen, Notizen, Medizin-Wiki) sind contenteditable-Felder -
-  // Fett/Unterstrichen/Schriftfarbe wirken überall sofort WYSIWYG (kein
-  // **/__ mehr). Der **/__-Markdown-Zweig unten bleibt nur noch als
-  // Rückfallebene für den Fall bestehen, dass irgendwo doch noch ein
-  // reines Textfeld mit .format-toolbar verbunden wird.
-  document.querySelectorAll(".format-toolbar").forEach((toolbar) => {
+  // Fett/Unterstrichen/Kursiv/Listen/Schriftfarbe wirken überall sofort
+  // WYSIWYG (kein **/__ mehr). Der **/__-Markdown-Zweig unten bleibt nur
+  // noch als Rückfallebene für den Fall bestehen, dass irgendwo doch noch
+  // ein reines Textfeld mit .format-toolbar verbunden wird.
+  //
+  // In eine eigene Funktion ausgelagert (statt nur einmalig beim Start über
+  // alle zu diesem Zeitpunkt vorhandenen ".format-toolbar"-Elemente zu
+  // laufen), damit auch NEU erzeugte Toolbars - z. B. im Bearbeiten-Formular
+  // eines einzelnen Notiz-Eintrags, das erst später per JavaScript in den
+  // DOM eingefügt wird - genauso funktionieren. Für alle bestehenden,
+  // bereits beim Laden vorhandenen Seiten (Ankündigungen, Medizin-Wiki)
+  // ändert sich dadurch nichts.
+  function bindeFormatToolbar(toolbar) {
     const feld = document.getElementById(toolbar.dataset.target);
     if (!feld) return;
 
@@ -721,11 +808,14 @@
     toolbar.querySelectorAll(".format-btn[data-format]").forEach((btn) => {
       if (istRichEditor) {
         // "mousedown" statt "click" + preventDefault, damit das Editor-Feld
-        // beim Klick auf den Button nicht den Fokus/die Markierung verliert
+        // beim Klick auf den Button nicht den Fokus/die Markierung verliert.
+        // btn.dataset.format entspricht direkt einem gültigen execCommand-
+        // Namen ("bold"/"italic"/"underline"/"insertUnorderedList"/
+        // "insertOrderedList"), daher genügt ein einziger generischer Aufruf.
         btn.addEventListener("mousedown", (event) => {
           event.preventDefault();
           feld.focus();
-          document.execCommand(btn.dataset.format === "bold" ? "bold" : "underline");
+          document.execCommand(btn.dataset.format);
         });
         return;
       }
@@ -785,7 +875,9 @@
         if (popover) popover.hidden = true;
       });
     });
-  });
+  }
+
+  document.querySelectorAll(".format-toolbar").forEach(bindeFormatToolbar);
 
   // Farb-Popover bei Klick außerhalb schließen
   document.addEventListener("click", (event) => {
@@ -907,6 +999,8 @@
     abonniereAnkuendigungen();
     abonniereKontakte();
     abonniereKontakteRollen();
+    abonniereNotizenThemen();
+    abonniereWikiKategorien();
 
     aktualisiereUhrzeit();
     wendeStartseitenPraeferenzAn();
@@ -2567,6 +2661,12 @@
   let aktiveNotizKategorie = "allgemein"; // Standard-Kategorie beim Öffnen der Seite
   let letzteNotizen = [];                 // Zwischenspeicher für Kategorie-Filterung ohne Neu-Laden
   let notizenSuche = "";
+  let unsubNotizenThemen = null;
+  let notizenThemenKatalog = [];   // Live-Liste der Themen (siehe NOTIZEN_THEMEN_DOC)
+  let notizenThemenVerwaltungOffen = false;
+  let aktivesNotizThema = "alle";  // Themen-Filter ("alle" = kein Filter)
+  let notizSortierung = "neueste"; // "neueste" oder "aelteste"
+  let notizenSeite = 1;            // aktuelle Pagination-Seite
 
   const navNotizenToggle = document.getElementById("nav-notizen-toggle");
   const notizenTabs = document.querySelectorAll(".org-tabs__tab[data-kategorie]");
@@ -2579,6 +2679,7 @@
 
   function wechsleZuNotizenAnsicht(kategorie) {
     aktiveNotizKategorie = kategorie;
+    notizenSeite = 1; // Beim Wechsel des Reiters immer wieder auf Seite 1 beginnen
 
     // Topbar: "Infos" als aktiv markieren, alle anderen Hauptpunkte
     // deaktivieren. Die Kategorie selbst wird direkt auf der Seite über
@@ -2673,6 +2774,17 @@
   }
   aktualisierePlatzhalterNotizfeld();
 
+  // Leitet für alte Einträge (vor Einführung des Titel-Felds) eine
+  // vernünftige Überschrift aus dem bisherigen Text ab, statt eine leere
+  // Titel-Zeile anzuzeigen - rein zur Anzeige, verändert nichts in Firestore.
+  function ableiteNotizTitelFallback(html) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html || "";
+    const reinerText = (tmp.textContent || "").trim().replace(/\s+/g, " ");
+    if (!reinerText) return "(Ohne Titel)";
+    return reinerText.length > 70 ? reinerText.slice(0, 70).trim() + "…" : reinerText;
+  }
+
   function abonniereNotizen() {
     unsubNotizen = db
       .collection(NOTIZEN_COLLECTION)
@@ -2686,13 +2798,18 @@
             // Alte "wichtig"-Notizen (aus der Zeit vor dieser Umstellung)
             // werden automatisch als "Allgemeine Infos" behandelt.
             const kategorie = d.kategorie && NOTIZ_KATEGORIEN[d.kategorie] ? d.kategorie : "allgemein";
+            const millis = d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now();
             notizen.push({
               id: doc.id,
+              titel: d.titel && d.titel.trim() ? d.titel : ableiteNotizTitelFallback(d.text),
               text: d.text,
               autor: d.autor,
               rolle: d.rolle || "",
               kategorie: kategorie,
-              millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
+              thema: d.thema || "",
+              hervorgehoben: !!d.hervorgehoben,
+              millis,
+              aktualisiertMillis: d.zuletztBearbeitet && d.zuletztBearbeitet.toMillis ? d.zuletztBearbeitet.toMillis() : millis,
             });
           });
           letzteNotizen = notizen;
@@ -2700,6 +2817,141 @@
         },
         (fehler) => console.error("Fehler beim Laden der Notizen:", fehler)
       );
+  }
+
+  /* ------------------------------------------------------------------------
+     10b3. Firestore: Themen-Katalog der Infos-Seite (siehe NOTIZEN_THEMEN_DOC)
+     - NICHT zu verwechseln mit den festen Reitern (NOTIZ_KATEGORIEN oben).
+     ------------------------------------------------------------------------ */
+  function normalisiertesNotizThema(thema) {
+    const wert = (thema || "").trim();
+    if (wert && notizenThemenKatalog.includes(wert)) return wert;
+    return NOTIZ_THEMA_FALLBACK;
+  }
+
+  function notizThemaFarbe(name) {
+    const bereinigt = (name || "").trim();
+    if (NOTIZ_THEMA_FARBEN_STANDARD[bereinigt]) return NOTIZ_THEMA_FARBEN_STANDARD[bereinigt];
+    const schluessel = bereinigt.toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < schluessel.length; i++) hash = (hash * 31 + schluessel.charCodeAt(i)) >>> 0;
+    return NOTIZ_THEMA_FARBEN[hash % NOTIZ_THEMA_FARBEN.length];
+  }
+
+  function notizThemaBadge(thema) {
+    const anzeige = normalisiertesNotizThema(thema);
+    const farbe = notizThemaFarbe(anzeige);
+    return `<span class="note-item__kategorie note-item__kategorie--${farbe}">${escapeHtml(anzeige)}</span>`;
+  }
+
+  function notizThemenOptionen(aktuellesThema) {
+    const ausgewaehlt = normalisiertesNotizThema(aktuellesThema);
+    return notizenThemenKatalog
+      .map((t) => `<option value="${escapeHtml(t)}"${t === ausgewaehlt ? " selected" : ""}>${escapeHtml(t)}</option>`)
+      .join("");
+  }
+
+  function abonniereNotizenThemen() {
+    if (unsubNotizenThemen) return;
+    unsubNotizenThemen = docRef(NOTIZEN_THEMEN_DOC).onSnapshot(
+      (doc) => {
+        let geaendert = false;
+        if (doc.exists && Array.isArray(doc.data().themen) && doc.data().themen.length) {
+          notizenThemenKatalog = doc.data().themen;
+        } else {
+          notizenThemenKatalog = [...DEFAULT_NOTIZ_THEMEN];
+          geaendert = true;
+        }
+        if (!notizenThemenKatalog.includes(NOTIZ_THEMA_FALLBACK)) {
+          notizenThemenKatalog = [...notizenThemenKatalog, NOTIZ_THEMA_FALLBACK];
+          geaendert = true;
+        }
+        if (geaendert) speichereNotizenThemen();
+        aktualisiereNotizThemaAuswahl();
+        renderNotizen();
+      },
+      (fehler) => console.error("Fehler beim Laden der Info-Themen:", fehler)
+    );
+  }
+
+  function speichereNotizenThemen() {
+    docRef(NOTIZEN_THEMEN_DOC)
+      .set({ themen: notizenThemenKatalog, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch((fehler) => {
+        console.error("Info-Themen konnten nicht gespeichert werden:", fehler);
+        zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
+      });
+  }
+
+  // Hält das Themen-Auswahlfeld im "Neuen Eintrag erstellen"-Formular UND
+  // den Themen-Filter in der Filterleiste aktuell.
+  function aktualisiereNotizThemaAuswahl() {
+    if (el.notizThemaInput) {
+      const vorher = el.notizThemaInput.value;
+      el.notizThemaInput.innerHTML = notizenThemenKatalog.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
+      if (notizenThemenKatalog.includes(vorher)) el.notizThemaInput.value = vorher;
+    }
+
+    if (el.notesThemaFilter) {
+      const vorherFilter = el.notesThemaFilter.options.length ? el.notesThemaFilter.value : aktivesNotizThema;
+      el.notesThemaFilter.innerHTML =
+        `<option value="alle">Alle Kategorien</option>` +
+        notizenThemenKatalog.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
+      el.notesThemaFilter.value = vorherFilter === "alle" || notizenThemenKatalog.includes(vorherFilter) ? vorherFilter : "alle";
+    }
+  }
+
+  // Legt ein neues Thema im Katalog an (Admins können so jederzeit weitere
+  // Kategorien ergänzen, ohne Code-Änderung).
+  function fuegeNotizThemaHinzu(name) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Kategorien verwalten.");
+    const bereinigt = (name || "").trim();
+    if (!bereinigt) return;
+    if (notizenThemenKatalog.some((t) => t.toLowerCase() === bereinigt.toLowerCase())) {
+      zeigeToast("Diese Kategorie gibt es schon.");
+      return;
+    }
+    notizenThemenKatalog = [...notizenThemenKatalog, bereinigt];
+    speichereNotizenThemen();
+  }
+
+  // Benennt ein Thema um UND überträgt die Änderung (Kaskade) auf alle
+  // Einträge, die aktuell dieses Thema tragen.
+  function benenneNotizThemaUm(alterName, neuerNameRoh) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Kategorien verwalten.");
+    if (alterName === NOTIZ_THEMA_FALLBACK) return zeigeToast('„Sonstiges“ kann nicht umbenannt werden.');
+    const neuerName = (neuerNameRoh || "").trim();
+    if (!neuerName) return zeigeToast("Bitte einen Namen eingeben.");
+    if (neuerName === alterName) return;
+    if (notizenThemenKatalog.some((t) => t.toLowerCase() === neuerName.toLowerCase())) {
+      zeigeToast("Diese Kategorie gibt es schon.");
+      return;
+    }
+
+    notizenThemenKatalog = notizenThemenKatalog.map((t) => (t === alterName ? neuerName : t));
+    speichereNotizenThemen();
+
+    const betroffene = letzteNotizen.filter((n) => n.thema === alterName);
+    if (betroffene.length) {
+      const batch = db.batch();
+      betroffene.forEach((n) => batch.update(db.collection(NOTIZEN_COLLECTION).doc(n.id), { thema: neuerName }));
+      batch.commit().catch((fehler) => console.error("Themen-Umbenennung konnte nicht auf alle Einträge übertragen werden:", fehler));
+    }
+    if (aktivesNotizThema === alterName) aktivesNotizThema = neuerName;
+    zeigeToast(`Kategorie in „${neuerName}“ umbenannt.`);
+  }
+
+  // Entfernt ein Thema dauerhaft aus dem Katalog - bewusst OHNE Kaskade auf
+  // bestehende Einträge: ein Eintrag mit einem inzwischen gelöschten Thema
+  // wird automatisch als "Sonstiges" angezeigt und gezählt (siehe
+  // normalisiertesNotizThema).
+  function entferneNotizThema(name) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Kategorien verwalten.");
+    if (name === NOTIZ_THEMA_FALLBACK) return zeigeToast('„Sonstiges“ kann nicht gelöscht werden.');
+    notizenThemenKatalog = notizenThemenKatalog.filter((t) => t !== name);
+    speichereNotizenThemen();
+    if (aktivesNotizThema === name) aktivesNotizThema = "alle";
+    renderNotizen();
   }
 
   /* ------------------------------------------------------------------------
@@ -2724,27 +2976,50 @@
     return KONTAKTE_ROLLEN_FALLBACK;
   }
 
-  // Feste, zurückhaltende Farbzuordnung für die Standard-Rollen; für neu von
-  // Admins angelegte Rollen wird deterministisch (per Namens-Hash) eine der
-  // fünf bestehenden Akzentfarben verwendet - es werden KEINE neuen Farben
-  // erfunden, nur die immer schon vorhandenen (oxblood/sage/personal/slate/
-  // brass) unterschiedlich kombiniert.
-  const KONTAKT_ROLLEN_FARBEN_FEST = {
-    bürger: "slate",
-    arzt: "personal",
-    sheriff: "oxblood",
-    rancher: "sage",
-    schmied: "brass",
-    schreiner: "personal",
-    sonstiges: "slate",
+  // Start-Farbzuordnung für die Standard-Rollen - wird beim allerersten Laden
+  // in Firestore geschrieben und ist DANACH von Admins frei änderbar (siehe
+  // "Rollen verwalten"-Panel/setzeKontaktRollenFarbe). Es werden KEINE neuen
+  // Farben erfunden, nur die immer schon vorhandenen fünf Akzentfarben
+  // (oxblood/sage/personal/slate/brass) unterschiedlich zugewiesen.
+  const DEFAULT_KONTAKTE_ROLLEN_FARBEN = {
+    "Bürger": "slate",
+    Arzt: "oxblood",
+    Sheriff: "personal",
+    Rancher: "sage",
+    Schmied: "brass",
+    Schreiner: "slate",
+    Sonstiges: "slate",
   };
 
+  // Auswahl-Optionen für den Farb-Dropdown im "Rollen verwalten"-Panel -
+  // dieselben fünf Akzentfarben, mit deutscher Bezeichnung.
+  const KONTAKT_ROLLEN_FARBOPTIONEN = [
+    { wert: "oxblood", label: "Rot" },
+    { wert: "personal", label: "Blau" },
+    { wert: "sage", label: "Grün" },
+    { wert: "brass", label: "Gold" },
+    { wert: "slate", label: "Grau" },
+  ];
+
   function kontaktRollenFarbe(name) {
-    const bereinigt = (name || "").trim().toLowerCase();
-    if (KONTAKT_ROLLEN_FARBEN_FEST[bereinigt]) return KONTAKT_ROLLEN_FARBEN_FEST[bereinigt];
+    const bereinigt = (name || "").trim();
+    if (kontakteRollenFarben[bereinigt]) return kontakteRollenFarben[bereinigt];
+    // Für Rollen ohne (noch) zugewiesene Farbe: deterministisch (per
+    // Namens-Hash) eine der fünf Akzentfarben verwenden, statt irgendeine
+    // Rolle dauerhaft ungefärbt zu lassen.
+    const schluessel = bereinigt.toLowerCase();
     let hash = 0;
-    for (let i = 0; i < bereinigt.length; i++) hash = (hash * 31 + bereinigt.charCodeAt(i)) >>> 0;
+    for (let i = 0; i < schluessel.length; i++) hash = (hash * 31 + schluessel.charCodeAt(i)) >>> 0;
     return KONTAKT_ROLLEN_FARBEN[hash % KONTAKT_ROLLEN_FARBEN.length];
+  }
+
+  // Admins können die Farbe einer Rolle jederzeit ändern (siehe
+  // "Rollen verwalten"-Panel) - unabhängig vom Namen, ohne Code-Änderung.
+  function setzeKontaktRollenFarbe(rolle, farbe) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Rollen verwalten.");
+    if (!KONTAKT_ROLLEN_FARBEN.includes(farbe)) return;
+    kontakteRollenFarben = { ...kontakteRollenFarben, [rolle]: farbe };
+    speichereKontakteRollen();
   }
 
   function kontaktRollenBadge(beruf) {
@@ -2963,12 +3238,24 @@
       return;
     }
 
+    const farbAuswahl = (rolle) => {
+      const aktuelleFarbe = kontaktRollenFarbe(rolle);
+      return `
+        <select class="field-input rollen-katalog__farbe-select" data-role="rollen-farbe-auswahl" data-rolle="${escapeHtml(rolle)}" title="Badge-Farbe">
+          ${KONTAKT_ROLLEN_FARBOPTIONEN.map(
+            (opt) => `<option value="${opt.wert}"${opt.wert === aktuelleFarbe ? " selected" : ""}>${opt.label}</option>`
+          ).join("")}
+        </select>
+      `;
+    };
+
     const zeilen = kontakteRollenKatalog
       .map((rolle) => {
         const gesperrt = rolle === KONTAKTE_ROLLEN_FALLBACK;
         return `
           <div class="rollen-katalog__zeile">
             <input type="text" class="field-input" value="${escapeHtml(rolle)}" data-role="rollen-umbenennen-input" data-alt="${escapeHtml(rolle)}" ${gesperrt ? "disabled" : ""} />
+            ${farbAuswahl(rolle)}
             ${
               gesperrt
                 ? `<span class="rollen-katalog__hinweis" title="Fester Auffangwert für Kontakte ohne (mehr) gültige Rolle">Standardwert – nicht änderbar</span>`
@@ -3001,16 +3288,25 @@
 
     unsubKontakteRollen = docRef(KONTAKTE_ROLLEN_DOC).onSnapshot(
       (doc) => {
+        let geaendert = false;
         if (doc.exists && Array.isArray(doc.data().rollen) && doc.data().rollen.length) {
           kontakteRollenKatalog = doc.data().rollen;
         } else {
           kontakteRollenKatalog = [...DEFAULT_KONTAKTE_ROLLEN];
-          speichereKontakteRollen();
+          geaendert = true;
+        }
+        if (doc.exists && doc.data().farben && typeof doc.data().farben === "object") {
+          kontakteRollenFarben = { ...doc.data().farben };
+        } else {
+          kontakteRollenFarben = { ...DEFAULT_KONTAKTE_ROLLEN_FARBEN };
+          geaendert = true;
         }
         // Der Auffangwert "Sonstiges" muss immer vorhanden sein.
         if (!kontakteRollenKatalog.includes(KONTAKTE_ROLLEN_FALLBACK)) {
           kontakteRollenKatalog = [...kontakteRollenKatalog, KONTAKTE_ROLLEN_FALLBACK];
+          geaendert = true;
         }
+        if (geaendert) speichereKontakteRollen();
         aktualisiereKontaktBerufAuswahl();
         renderKontakte();
       },
@@ -3020,7 +3316,7 @@
 
   function speichereKontakteRollen() {
     docRef(KONTAKTE_ROLLEN_DOC)
-      .set({ rollen: kontakteRollenKatalog, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
+      .set({ rollen: kontakteRollenKatalog, farben: kontakteRollenFarben, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
       .catch((fehler) => {
         console.error("Kontakt-Rollen konnten nicht gespeichert werden:", fehler);
         zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
@@ -3055,6 +3351,11 @@
     }
 
     kontakteRollenKatalog = kontakteRollenKatalog.map((r) => (r === alterName ? neuerName : r));
+    // Farbzuweisung unter dem neuen Namen fortführen (nicht auf Standardfarbe zurückfallen).
+    if (kontakteRollenFarben[alterName]) {
+      const { [alterName]: farbeDesAltenNamens, ...rest } = kontakteRollenFarben;
+      kontakteRollenFarben = { ...rest, [neuerName]: farbeDesAltenNamens };
+    }
     speichereKontakteRollen();
 
     const betroffene = letzteKontakte.filter((k) => k.beruf === alterName);
@@ -3075,6 +3376,10 @@
     if (!istAdmin()) return zeigeToast("Nur Admins dürfen Rollen verwalten.");
     if (name === KONTAKTE_ROLLEN_FALLBACK) return zeigeToast('„Sonstiges“ kann nicht gelöscht werden.');
     kontakteRollenKatalog = kontakteRollenKatalog.filter((r) => r !== name);
+    if (kontakteRollenFarben[name]) {
+      const { [name]: entfernteFarbe, ...rest } = kontakteRollenFarben;
+      kontakteRollenFarben = rest;
+    }
     speichereKontakteRollen();
     if (aktiveKontaktRolle === name) aktiveKontaktRolle = "alle";
     renderKontakte();
@@ -3248,86 +3553,388 @@
         if (btn) btn.click();
       }
     });
+
+    el.kontakteRollenVerwaltung.addEventListener("change", (event) => {
+      const farbSelect = event.target.closest('[data-role="rollen-farbe-auswahl"]');
+      if (!farbSelect) return;
+      setzeKontaktRollenFarbe(farbSelect.dataset.rolle, farbSelect.value);
+    });
+  }
+
+  // Reine Anzeige-Berechnung für die Pagination-Buttons: erste Seite,
+  // letzte Seite und ein kleines Fenster um die aktuelle Seite herum,
+  // Lücken dazwischen als "…" markiert - bleibt auch bei vielen Seiten
+  // schmal und übersichtlich.
+  function berechnePaginationSeiten(aktuelle, gesamt) {
+    const seiten = [];
+    for (let i = 1; i <= gesamt; i++) {
+      if (i === 1 || i === gesamt || (i >= aktuelle - 1 && i <= aktuelle + 1)) seiten.push(i);
+    }
+    const ergebnis = [];
+    let letzte = 0;
+    seiten.forEach((s) => {
+      if (letzte && s - letzte > 1) ergebnis.push("…");
+      ergebnis.push(s);
+      letzte = s;
+    });
+    return ergebnis;
+  }
+
+  function aktualisiereNotizFormularSichtbarkeit() {
+    if (el.notizHervorhebenLabel) el.notizHervorhebenLabel.hidden = !istAdmin();
   }
 
   function renderNotizen() {
+    aktualisiereNotizFormularSichtbarkeit();
+    if (el.btnToggleNotizenThemen) el.btnToggleNotizenThemen.hidden = !istAdmin();
+    renderNotizenThemenVerwaltung();
+
+    if (!el.notesList) return;
+
+    const aktivesElement = document.activeElement;
+    if (
+      el.notesList.contains(aktivesElement) &&
+      (aktivesElement.tagName === "INPUT" || aktivesElement.tagName === "SELECT" || aktivesElement.isContentEditable)
+    ) {
+      return; // Nicht mitten im Tippen/Bearbeiten neu aufbauen
+    }
+
     let notizen = letzteNotizen.filter((n) => n.kategorie === aktiveNotizKategorie);
+
+    if (aktivesNotizThema !== "alle") {
+      notizen = notizen.filter((n) => normalisiertesNotizThema(n.thema) === aktivesNotizThema);
+    }
 
     const begriff = notizenSuche.trim().toLowerCase();
     if (begriff) {
       notizen = notizen.filter(
-        (n) => n.text.toLowerCase().includes(begriff) || n.autor.toLowerCase().includes(begriff)
+        (n) =>
+          n.titel.toLowerCase().includes(begriff) ||
+          n.text.toLowerCase().includes(begriff) ||
+          n.autor.toLowerCase().includes(begriff)
       );
     }
+
+    // Hervorgehobene ("Wichtig" markierte) Einträge zuerst, unabhängig von
+    // der gewählten Sortierung - innerhalb der beiden Gruppen greift die
+    // gewählte Sortierung (neueste/älteste zuerst).
+    notizen.sort((a, b) => {
+      if (a.hervorgehoben !== b.hervorgehoben) return a.hervorgehoben ? -1 : 1;
+      return notizSortierung === "aelteste" ? a.millis - b.millis : b.millis - a.millis;
+    });
+
+    const gesamtSeiten = Math.max(1, Math.ceil(notizen.length / NOTIZEN_SEITENGROESSE));
+    if (notizenSeite > gesamtSeiten) notizenSeite = gesamtSeiten;
+    if (notizenSeite < 1) notizenSeite = 1;
+    const start = (notizenSeite - 1) * NOTIZEN_SEITENGROESSE;
+    const seiteEintraege = notizen.slice(start, start + NOTIZEN_SEITENGROESSE);
 
     el.notesList.innerHTML = "";
     el.notesEmpty.hidden = notizen.length !== 0;
     if (el.notesEmpty && notizen.length === 0) {
-      if (begriff) {
-        el.notesEmpty.textContent = "Keine Notizen gefunden, die zu deiner Suche passen.";
+      if (begriff || aktivesNotizThema !== "alle") {
+        el.notesEmpty.textContent = "Keine Einträge gefunden, die zu deiner Suche/Auswahl passen.";
       } else {
         const kategorieInfo = NOTIZ_KATEGORIEN[aktiveNotizKategorie];
-        el.notesEmpty.textContent = `Noch keine „${kategorieInfo.label}"-Notizen vorhanden.`;
+        el.notesEmpty.textContent = `Noch keine „${kategorieInfo.label}"-Einträge vorhanden.`;
       }
     }
 
-    notizen.forEach((notiz) => {
-      const darfLoeschen = istAdmin() || (aktuellerNutzer && aktuellerNutzer.name === notiz.autor);
-      const loeschButton = darfLoeschen
-        ? `<button type="button" class="icon-btn icon-btn--delete note-item__delete" data-role="delete-notiz" data-id="${notiz.id}" title="Notiz löschen">${ICON_TRASH}</button>`
+    seiteEintraege.forEach((notiz) => {
+      const darfBearbeiten = istAdmin() || (aktuellerNutzer && aktuellerNutzer.name === notiz.autor);
+      const aktionen = darfBearbeiten
+        ? `
+          <button type="button" class="icon-btn icon-btn--edit" data-role="toggle-edit-notiz" data-id="${notiz.id}" title="Eintrag bearbeiten">${ICON_EDIT}</button>
+          <button type="button" class="icon-btn icon-btn--delete note-item__delete" data-role="delete-notiz" data-id="${notiz.id}" title="Eintrag löschen">${ICON_TRASH}</button>
+        `
         : "";
       const rolleText = notiz.rolle ? ` (${escapeHtml(notiz.rolle)})` : "";
 
       const eintrag = document.createElement("div");
-      eintrag.className = `note-item note-item--${notiz.kategorie}`;
+      eintrag.className = `note-item note-item--${notiz.kategorie}${notiz.hervorgehoben ? " note-item--pinned" : ""}`;
       eintrag.innerHTML = `
         <div class="note-item__body">
+          <div class="note-item__kopf">
+            <h4 class="note-item__titel">${escapeHtml(notiz.titel)}</h4>
+            ${notizThemaBadge(notiz.thema)}
+          </div>
           <div class="note-item__text">${verarbeiteRichInhalt(notiz.text)}</div>
           <div class="note-item__meta">— ${escapeHtml(notiz.autor)}${rolleText} · ${formatiereZeitstempel(notiz.millis)} Uhr</div>
         </div>
-        ${loeschButton}
+        <div class="note-item__aktionen">${aktionen}</div>
       `;
       el.notesList.appendChild(eintrag);
+
+      if (darfBearbeiten) {
+        const bearbeitenForm = document.createElement("div");
+        bearbeitenForm.className = "note-item-edit";
+        bearbeitenForm.id = `notiz-edit-${notiz.id}`;
+        bearbeitenForm.hidden = true;
+        bearbeitenForm.innerHTML = `
+          <input type="text" class="field-input" value="${escapeHtml(notiz.titel)}" placeholder="Titel..." maxlength="140" data-role="edit-notiz-titel" />
+          <div class="format-toolbar" data-target="notiz-edit-text-${notiz.id}">
+            <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
+            <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
+            <button type="button" class="format-btn" data-format="italic" title="Kursiv"><em>K</em></button>
+            <span class="format-toolbar__divider"></span>
+            <button type="button" class="format-btn" data-format="insertUnorderedList" title="Aufzählung"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="4.5" cy="6" r="1.1" fill="currentColor" stroke="none"></circle><circle cx="4.5" cy="12" r="1.1" fill="currentColor" stroke="none"></circle><circle cx="4.5" cy="18" r="1.1" fill="currentColor" stroke="none"></circle><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line></svg></button>
+            <button type="button" class="format-btn" data-format="insertOrderedList" title="Nummerierung"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><text x="1.5" y="8.5" font-size="6.5" fill="currentColor" stroke="none" font-family="sans-serif">1</text><text x="1.5" y="14.5" font-size="6.5" fill="currentColor" stroke="none" font-family="sans-serif">2</text><text x="1.5" y="20.5" font-size="6.5" fill="currentColor" stroke="none" font-family="sans-serif">3</text><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line></svg></button>
+          </div>
+          <div class="notes-form__main">
+            <div class="rich-editor" id="notiz-edit-text-${notiz.id}" contenteditable="true">${notiz.text}</div>
+          </div>
+          <div class="notes-form__fusszeile">
+            <select class="field-input notes-form__thema-select" data-role="edit-notiz-thema">${notizThemenOptionen(notiz.thema)}</select>
+            <label class="notes-form__hervorheben" ${istAdmin() ? "" : "hidden"}>
+              <input type="checkbox" data-role="edit-notiz-hervorheben" ${notiz.hervorgehoben ? "checked" : ""} />
+              Als „Wichtig" hervorheben
+            </label>
+            <button type="button" class="btn btn--primary" data-role="confirm-edit-notiz" data-id="${notiz.id}">Speichern</button>
+          </div>
+        `;
+        el.notesList.appendChild(bearbeitenForm);
+        // Die neu erzeugte Toolbar dieses Bearbeiten-Formulars ist beim
+        // initialen Seitenaufbau noch nicht gebunden gewesen (existierte ja
+        // noch nicht) - deshalb hier explizit nachholen (siehe bindeFormatToolbar).
+        bearbeitenForm.querySelectorAll(".format-toolbar").forEach(bindeFormatToolbar);
+      }
     });
+
+    renderNotizenPagination(notizen.length, gesamtSeiten);
+  }
+
+  function renderNotizenPagination(gesamtEintraege, gesamtSeiten) {
+    if (!el.notesPagination) return;
+    if (gesamtEintraege === 0) {
+      el.notesPagination.innerHTML = "";
+      return;
+    }
+
+    const start = (notizenSeite - 1) * NOTIZEN_SEITENGROESSE + 1;
+    const ende = Math.min(notizenSeite * NOTIZEN_SEITENGROESSE, gesamtEintraege);
+
+    const seitenZahlen = berechnePaginationSeiten(notizenSeite, gesamtSeiten)
+      .map((s) =>
+        s === "…"
+          ? `<span class="notes-pagination__ellipsis">…</span>`
+          : `<button type="button" class="notes-pagination__btn${s === notizenSeite ? " notes-pagination__btn--aktiv" : ""}" data-seite="${s}">${s}</button>`
+      )
+      .join("");
+
+    el.notesPagination.innerHTML = `
+      <span class="notes-pagination__info">${start}–${ende} von ${gesamtEintraege} Einträgen</span>
+      <div class="notes-pagination__buttons">
+        <button type="button" class="notes-pagination__btn notes-pagination__btn--nav" data-seite="${notizenSeite - 1}" ${notizenSeite <= 1 ? "disabled" : ""} title="Vorherige Seite">«</button>
+        ${seitenZahlen}
+        <button type="button" class="notes-pagination__btn notes-pagination__btn--nav" data-seite="${notizenSeite + 1}" ${notizenSeite >= gesamtSeiten ? "disabled" : ""} title="Nächste Seite">»</button>
+      </div>
+    `;
+  }
+
+  // Admin-Panel "Themen verwalten" - analog zum Rollen-Panel der
+  // Kontakte-Seite (dieselben CSS-Klassen wiederverwendet).
+  function renderNotizenThemenVerwaltung() {
+    if (!el.notizenThemenVerwaltung) return;
+    const admin = istAdmin();
+    el.notizenThemenVerwaltung.hidden = !admin || !notizenThemenVerwaltungOffen;
+    if (!admin || !notizenThemenVerwaltungOffen) return;
+
+    const aktivesElement = document.activeElement;
+    if (el.notizenThemenVerwaltung.contains(aktivesElement) && (aktivesElement.tagName === "INPUT" || aktivesElement.tagName === "SELECT")) {
+      return;
+    }
+
+    const zeilen = notizenThemenKatalog
+      .map((thema) => {
+        const gesperrt = thema === NOTIZ_THEMA_FALLBACK;
+        return `
+          <div class="rollen-katalog__zeile">
+            <input type="text" class="field-input" value="${escapeHtml(thema)}" data-role="thema-umbenennen-input" data-alt="${escapeHtml(thema)}" ${gesperrt ? "disabled" : ""} />
+            ${
+              gesperrt
+                ? `<span class="rollen-katalog__hinweis" title="Fester Auffangwert für Einträge ohne (mehr) gültiges Thema">Standardwert – nicht änderbar</span>`
+                : `
+                  <div class="rollen-katalog__zeile-aktionen">
+                    <button type="button" class="btn btn--ghost rollen-katalog__speichern-btn" data-role="thema-umbenennen" data-alt="${escapeHtml(thema)}">Speichern</button>
+                    <button type="button" class="badge-pill__entfernen" data-role="thema-entfernen" data-thema="${escapeHtml(thema)}" title="Thema löschen">${ICON_X_KLEIN}</button>
+                  </div>
+                `
+            }
+          </div>
+        `;
+      })
+      .join("");
+
+    el.notizenThemenVerwaltung.innerHTML = `
+      <div class="rollen-katalog__liste">${zeilen}</div>
+      <div class="rollen-katalog__neu">
+        <input type="text" id="thema-katalog-neu-input" class="field-input" placeholder="Neue Kategorie..." autocomplete="off" />
+        <button type="button" class="btn btn--ghost" id="thema-katalog-hinzufuegen-btn">Hinzufügen</button>
+      </div>
+    `;
   }
 
   el.formNote.addEventListener("submit", (event) => {
     event.preventDefault();
+    const titel = el.notizTitelInput ? el.notizTitelInput.value.trim() : "";
     const text = el.noteInput.innerHTML.trim();
     const nurText = el.noteInput.textContent.trim();
+    if (!titel) {
+      zeigeToast("Bitte einen Titel eingeben.");
+      return;
+    }
     if (!nurText || !aktuellerNutzer) return;
+
+    const thema = normalisiertesNotizThema(el.notizThemaInput ? el.notizThemaInput.value : "");
+    const hervorgehoben = istAdmin() && el.notizHervorhebenInput ? el.notizHervorhebenInput.checked : false;
 
     db.collection(NOTIZEN_COLLECTION)
       .add({
+        titel,
         text: sanitisiereRichText(text),
         autor: aktuellerNutzer.name,
         rolle: aktuellerNutzer.rolle,
         kategorie: aktiveNotizKategorie,
+        thema,
+        hervorgehoben,
         zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
+        zuletztBearbeitet: firebase.firestore.FieldValue.serverTimestamp(),
       })
       .then(() => {
+        el.notizTitelInput.value = "";
         el.noteInput.innerHTML = "";
+        if (el.notizHervorhebenInput) el.notizHervorhebenInput.checked = false;
       })
       .catch((fehler) => {
-        console.error("Notiz konnte nicht gespeichert werden:", fehler);
-        zeigeToast("Notiz konnte nicht gespeichert werden.");
+        console.error("Eintrag konnte nicht gespeichert werden:", fehler);
+        zeigeToast("Eintrag konnte nicht gespeichert werden.");
       });
   });
 
   el.notesList.addEventListener("click", (event) => {
+    const toggleBtn = event.target.closest('[data-role="toggle-edit-notiz"]');
+    if (toggleBtn) {
+      const form = document.getElementById(`notiz-edit-${toggleBtn.dataset.id}`);
+      if (form) {
+        form.hidden = !form.hidden;
+        if (!form.hidden) form.querySelector('[data-role="edit-notiz-titel"]').focus();
+      }
+      return;
+    }
+
+    const confirmBtn = event.target.closest('[data-role="confirm-edit-notiz"]');
+    if (confirmBtn) {
+      const form = confirmBtn.closest(".note-item-edit");
+      const titel = form.querySelector('[data-role="edit-notiz-titel"]').value.trim();
+      const textFeld = document.getElementById(`notiz-edit-text-${confirmBtn.dataset.id}`);
+      const text = textFeld.innerHTML.trim();
+      const nurText = textFeld.textContent.trim();
+      const thema = normalisiertesNotizThema(form.querySelector('[data-role="edit-notiz-thema"]').value);
+      const hervorhebenInput = form.querySelector('[data-role="edit-notiz-hervorheben"]');
+      const hervorgehoben = istAdmin() && hervorhebenInput ? hervorhebenInput.checked : undefined;
+
+      if (!titel) return zeigeToast("Bitte einen Titel eingeben.");
+      if (!nurText) return zeigeToast("Der Eintrag darf nicht leer sein.");
+
+      const aenderung = {
+        titel,
+        text: sanitisiereRichText(text),
+        thema,
+        zuletztBearbeitet: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      if (hervorgehoben !== undefined) aenderung.hervorgehoben = hervorgehoben;
+
+      db.collection(NOTIZEN_COLLECTION)
+        .doc(confirmBtn.dataset.id)
+        .update(aenderung)
+        .then(() => zeigeToast("Eintrag aktualisiert."))
+        .catch((fehler) => {
+          console.error("Eintrag konnte nicht aktualisiert werden:", fehler);
+          zeigeToast("Eintrag konnte nicht aktualisiert werden.");
+        });
+      return;
+    }
+
     const btn = event.target.closest('[data-role="delete-notiz"]');
     if (!btn) return;
 
     oeffneBestaetigungsModal(
-      "Notiz löschen",
-      "Möchtest du diese Notiz wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "Eintrag löschen",
+      "Möchtest du diesen Eintrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
       () => {
         db.collection(NOTIZEN_COLLECTION).doc(btn.dataset.id).delete().catch(() => {
-          zeigeToast("Notiz konnte nicht gelöscht werden.");
+          zeigeToast("Eintrag konnte nicht gelöscht werden.");
         });
       }
     );
   });
+
+  if (el.notesThemaFilter) {
+    el.notesThemaFilter.addEventListener("change", (event) => {
+      aktivesNotizThema = event.target.value;
+      notizenSeite = 1;
+      renderNotizen();
+    });
+  }
+
+  if (el.notesSortSelect) {
+    el.notesSortSelect.addEventListener("change", (event) => {
+      notizSortierung = event.target.value;
+      notizenSeite = 1;
+      renderNotizen();
+    });
+  }
+
+  if (el.notesPagination) {
+    el.notesPagination.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-seite]");
+      if (!btn || btn.disabled) return;
+      const ziel = Number(btn.dataset.seite);
+      if (!ziel || ziel < 1) return;
+      notizenSeite = ziel;
+      renderNotizen();
+    });
+  }
+
+  if (el.btnToggleNotizenThemen) {
+    el.btnToggleNotizenThemen.addEventListener("click", () => {
+      notizenThemenVerwaltungOffen = !notizenThemenVerwaltungOffen;
+      renderNotizenThemenVerwaltung();
+    });
+  }
+
+  if (el.notizenThemenVerwaltung) {
+    el.notizenThemenVerwaltung.addEventListener("click", (event) => {
+      const entfernenBtn = event.target.closest('[data-role="thema-entfernen"]');
+      if (entfernenBtn) {
+        entferneNotizThema(entfernenBtn.dataset.thema);
+        return;
+      }
+
+      const umbenennenBtn = event.target.closest('[data-role="thema-umbenennen"]');
+      if (umbenennenBtn) {
+        const zeile = umbenennenBtn.closest(".rollen-katalog__zeile");
+        const input = zeile.querySelector('[data-role="thema-umbenennen-input"]');
+        benenneNotizThemaUm(umbenennenBtn.dataset.alt, input.value);
+        return;
+      }
+
+      if (event.target.id === "thema-katalog-hinzufuegen-btn") {
+        const neuInput = document.getElementById("thema-katalog-neu-input");
+        if (!neuInput) return;
+        fuegeNotizThemaHinzu(neuInput.value);
+      }
+    });
+
+    el.notizenThemenVerwaltung.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      if (event.target.id === "thema-katalog-neu-input") {
+        event.preventDefault();
+        const btn = document.getElementById("thema-katalog-hinzufuegen-btn");
+        if (btn) btn.click();
+      }
+    });
+  }
 
   /* ------------------------------------------------------------------------
      10c. Verkaufslog: Kundennamen-Vorschläge (Datalist + Tab-Vervollständigung
@@ -3820,6 +4427,8 @@
   /* ------------------------------------------------------------------------
      11b. Infos-Seite (eigenständig, admin-verwaltet)
      ------------------------------------------------------------------------ */
+  let infosGeladen = false; // wird true, sobald abonniereInfos() einmal geladen hat (siehe ergaenzeFehlendeWikiKategorien)
+
   function abonniereInfos() {
     unsubInfos = docRef(INFOS_DOC).onSnapshot(
       (doc) => {
@@ -3829,34 +4438,17 @@
           infosListe = DEFAULT_INFOS.map((i) => ({ ...i }));
           speichereInfos();
         }
+        infosGeladen = true;
         renderInfos();
       },
       (fehler) => console.error("Fehler beim Laden der Infos:", fehler)
     );
   }
 
-  // Einfache, wiederverwendbare Symbol-Sets (rein SVG, eine Akzentfarbe) -
-  // rein visuelle Kategorisierungshilfe, keine willkürliche Deko.
-  const WIKI_ICONS = {
-    spritze: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="9" width="10" height="6" rx="1"/><line x1="16" y1="12" x2="21" y2="12"/><line x1="6" y1="9" x2="3" y2="6"/><line x1="8" y1="9" x2="8" y2="6.5"/><line x1="10" y1="9" x2="10" y2="6.5"/><line x1="4" y1="18" x2="8" y2="14"/></svg>`,
-    verband: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/></svg>`,
-    flasche: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3h4v3.5l2 2.5v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V9l2-2.5z"/><line x1="10" y1="3" x2="14" y2="3"/><line x1="8" y1="13" x2="16" y2="13"/></svg>`,
-    kapsel: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="6" rx="3"/><line x1="12" y1="9" x2="12" y2="15"/></svg>`,
-    generisch: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="4" width="10" height="4" rx="1"/><path d="M8 8h8v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2z"/></svg>`,
-  };
-
-  function symbolFuerInfo(titel) {
-    const t = (titel || "").toLowerCase();
-    if (t.includes("spritze") || t.includes("injekt")) return WIKI_ICONS.spritze;
-    if (t.includes("salbe") || t.includes("verband") || t.includes("bandage") || t.includes("schiene")) return WIKI_ICONS.verband;
-    if (t.includes("gift") || t.includes("trank") || t.includes("saft") || t.includes("cola") || t.includes("tee")) return WIKI_ICONS.flasche;
-    if (t.includes("tablette") || t.includes("kapsel") || t.includes("pille") || t.includes("vitamin")) return WIKI_ICONS.kapsel;
-    return WIKI_ICONS.generisch;
-  }
-
   let infosSuchbegriff = "";
   let aktiveInfoKategorie = "__alle__";
   let infoSortierung = "az";
+  let wikiSeite = 1; // aktuelle Pagination-Seite
 
   function speichereInfos() {
     docRef(INFOS_DOC)
@@ -3867,53 +4459,325 @@
       });
   }
 
+  /* ------------------------------------------------------------------------
+     11b2. Firestore: Kategorien-Katalog der Medizin-Wiki-Seite (siehe
+           WIKI_KATEGORIEN_DOC) - admin-verwaltet (Hinzufügen/Umbenennen mit
+           Kaskade/Löschen ohne Kaskade), genau wie der Themen-Katalog der
+           Infos-Seite und der Rollen-Katalog der Kontakte-Seite.
+     ------------------------------------------------------------------------ */
+  function normalisierteWikiKategorie(kategorie) {
+    const wert = (kategorie || "").trim();
+    if (wert && wikiKategorienKatalog.includes(wert)) return wert;
+    return WIKI_KATEGORIE_FALLBACK;
+  }
+
+  function wikiKategorieFarbe(name) {
+    const bereinigt = (name || "").trim();
+    if (WIKI_KATEGORIE_FARBEN_STANDARD[bereinigt]) return WIKI_KATEGORIE_FARBEN_STANDARD[bereinigt];
+    const schluessel = bereinigt.toLowerCase();
+    let hash = 0;
+    for (let i = 0; i < schluessel.length; i++) hash = (hash * 31 + schluessel.charCodeAt(i)) >>> 0;
+    return WIKI_KATEGORIE_FARBEN[hash % WIKI_KATEGORIE_FARBEN.length];
+  }
+
+  function wikiKategorieBadge(kategorie) {
+    const anzeige = normalisierteWikiKategorie(kategorie);
+    const farbe = wikiKategorieFarbe(anzeige);
+    return `<span class="wiki-row__kategorie wiki-row__kategorie--${farbe}">${escapeHtml(anzeige)}</span>`;
+  }
+
+  function wikiKategorienOptionen(aktuelleKategorie) {
+    const ausgewaehlt = normalisierteWikiKategorie(aktuelleKategorie);
+    return wikiKategorienKatalog
+      .map((k) => `<option value="${escapeHtml(k)}"${k === ausgewaehlt ? " selected" : ""}>${escapeHtml(k)}</option>`)
+      .join("");
+  }
+
+  function abonniereWikiKategorien() {
+    if (unsubWikiKategorien) return;
+    unsubWikiKategorien = docRef(WIKI_KATEGORIEN_DOC).onSnapshot(
+      (doc) => {
+        let geaendert = false;
+        if (doc.exists && Array.isArray(doc.data().kategorien) && doc.data().kategorien.length) {
+          wikiKategorienKatalog = doc.data().kategorien;
+        } else {
+          wikiKategorienKatalog = [...DEFAULT_WIKI_KATEGORIEN];
+          geaendert = true;
+        }
+        if (!wikiKategorienKatalog.includes(WIKI_KATEGORIE_FALLBACK)) {
+          wikiKategorienKatalog = [...wikiKategorienKatalog, WIKI_KATEGORIE_FALLBACK];
+          geaendert = true;
+        }
+        if (geaendert) speichereWikiKategorien();
+        aktualisiereInfoKategorieAuswahl();
+        renderInfos();
+      },
+      (fehler) => console.error("Fehler beim Laden der Wiki-Kategorien:", fehler)
+    );
+  }
+
+  function speichereWikiKategorien() {
+    docRef(WIKI_KATEGORIEN_DOC)
+      .set({ kategorien: wikiKategorienKatalog, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch((fehler) => {
+        console.error("Wiki-Kategorien konnten nicht gespeichert werden:", fehler);
+        zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
+      });
+  }
+
+  // Hält das Kategorie-Auswahlfeld im Erstellen/Bearbeiten-Formular aktuell.
+  // Bei einem noch komplett leeren Formular (neuer Eintrag) wird bewusst die
+  // erste "echte" Kategorie statt gleich "Sonstiges" vorausgewählt - wirkt
+  // einladender, ändert aber nichts an normalisierteWikiKategorie() selbst
+  // (leere/unbekannte Kategorie-WERTE in echten Daten fallen weiterhin auf
+  // "Sonstiges" zurück, das betrifft nur diese Vorauswahl im Formular).
+  function aktualisiereInfoKategorieAuswahl() {
+    if (!el.infoKategorieInput) return;
+    const vorher = el.infoKategorieInput.value;
+    const startwert = vorher || wikiKategorienKatalog.find((k) => k !== WIKI_KATEGORIE_FALLBACK) || wikiKategorienKatalog[0] || "";
+    el.infoKategorieInput.innerHTML = wikiKategorienOptionen(startwert);
+    if (wikiKategorienKatalog.includes(vorher)) el.infoKategorieInput.value = vorher;
+  }
+
+  // Migrations-Sicherheitsnetz: Die Kategorie war vor dieser Umstellung ein
+  // reines Freitextfeld (nur per <datalist> vorgeschlagen). Damit bereits
+  // vorhandene Einträge mit einem Kategorie-Wert, der (noch) nicht im neuen
+  // Katalog steht, nicht plötzlich unter "Sonstiges" verschwinden, wird jeder
+  // in echten Einträgen vorkommende Kategorie-Wert automatisch in den Katalog
+  // übernommen - aber ausdrücklich nur EIN EINZIGES Mal pro Sitzung (sobald
+  // sowohl der Katalog als auch die Infos-Liste einmal geladen wurden), nicht
+  // bei jedem renderInfos()-Aufruf. Würde diese Prüfung dauerhaft laufen,
+  // hätte ein Admin nie wirklich eine Kategorie löschen können: Einträge mit
+  // der gerade gelöschten Kategorie (kein Kaskaden-Update, siehe
+  // entferneWikiKategorie) hätten die Migration beim nächsten Rendern sofort
+  // wieder in den Katalog zurückgeschrieben.
+  let wikiKategorienMigrationErledigt = false;
+
+  function ergaenzeFehlendeWikiKategorien() {
+    if (wikiKategorienMigrationErledigt) return;
+    if (!wikiKategorienKatalog.length || !infosGeladen) return; // beide Seiten müssen erst geladen sein
+    wikiKategorienMigrationErledigt = true;
+
+    const fehlende = [];
+    infosListe.forEach((info) => {
+      const k = (info.kategorie || "").trim();
+      if (k && !wikiKategorienKatalog.includes(k) && !fehlende.includes(k)) fehlende.push(k);
+    });
+    if (fehlende.length) {
+      wikiKategorienKatalog = [...wikiKategorienKatalog, ...fehlende];
+      speichereWikiKategorien();
+    }
+  }
+
+  function fuegeWikiKategorieHinzu(name) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Kategorien verwalten.");
+    const bereinigt = (name || "").trim();
+    if (!bereinigt) return;
+    if (wikiKategorienKatalog.some((k) => k.toLowerCase() === bereinigt.toLowerCase())) {
+      zeigeToast("Diese Kategorie gibt es schon.");
+      return;
+    }
+    wikiKategorienKatalog = [...wikiKategorienKatalog, bereinigt];
+    speichereWikiKategorien();
+  }
+
+  // Benennt eine Kategorie um UND überträgt die Änderung auf alle
+  // betroffenen Wiki-Einträge (die Wiki-Liste liegt als ein einzelnes Array
+  // in Firestore, deshalb genügt hier ein einzelnes speichereInfos() statt
+  // eines db.batch() wie bei Kontakten/Notizen).
+  function benenneWikiKategorieUm(alterName, neuerNameRoh) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Kategorien verwalten.");
+    if (alterName === WIKI_KATEGORIE_FALLBACK) return zeigeToast('„Sonstiges“ kann nicht umbenannt werden.');
+    const neuerName = (neuerNameRoh || "").trim();
+    if (!neuerName) return zeigeToast("Bitte einen Namen eingeben.");
+    if (neuerName === alterName) return;
+    if (wikiKategorienKatalog.some((k) => k.toLowerCase() === neuerName.toLowerCase())) {
+      zeigeToast("Diese Kategorie gibt es schon.");
+      return;
+    }
+
+    // Erst BEIDE In-Memory-Zustände (Katalog + betroffene Einträge)
+    // vollständig konsistent aktualisieren und ERST DANACH etwas speichern -
+    // sonst könnte ein (in Tests synchron feuernder) Firestore-Listener
+    // zwischendurch einen Zwischenstand sehen, in dem der alte Name schon aus
+    // dem Katalog verschwunden, aber noch nicht von allen Einträgen
+    // übernommen wurde, und ihn über die Migrations-Automatik fälschlich
+    // wieder zurückschreiben (siehe ergaenzeFehlendeWikiKategorien).
+    wikiKategorienKatalog = wikiKategorienKatalog.map((k) => (k === alterName ? neuerName : k));
+    let geaendert = false;
+    infosListe.forEach((info) => {
+      if (info.kategorie === alterName) {
+        info.kategorie = neuerName;
+        geaendert = true;
+      }
+    });
+
+    speichereWikiKategorien();
+    if (geaendert) speichereInfos();
+
+    if (aktiveInfoKategorie === alterName) aktiveInfoKategorie = neuerName;
+    zeigeToast(`Kategorie in „${neuerName}“ umbenannt.`);
+  }
+
+  // Entfernt eine Kategorie dauerhaft aus dem Katalog - bewusst OHNE Kaskade
+  // auf bestehende Wiki-Einträge: ein Eintrag mit einer inzwischen gelöschten
+  // Kategorie wird automatisch als "Sonstiges" angezeigt und gezählt (siehe
+  // normalisierteWikiKategorie).
+  function entferneWikiKategorie(name) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Kategorien verwalten.");
+    if (name === WIKI_KATEGORIE_FALLBACK) return zeigeToast('„Sonstiges“ kann nicht gelöscht werden.');
+    wikiKategorienKatalog = wikiKategorienKatalog.filter((k) => k !== name);
+    speichereWikiKategorien();
+    if (aktiveInfoKategorie === name) aktiveInfoKategorie = "__alle__";
+    wikiSeite = 1;
+    renderInfos();
+  }
+
+  function renderWikiKategorienVerwaltung() {
+    if (!el.wikiKategorienVerwaltung) return;
+    const admin = istAdmin();
+    if (el.btnToggleWikiKategorien) el.btnToggleWikiKategorien.hidden = !admin;
+    el.wikiKategorienVerwaltung.hidden = !admin || !wikiKategorienVerwaltungOffen;
+    if (!admin || !wikiKategorienVerwaltungOffen) return;
+
+    const aktivesElement = document.activeElement;
+    if (el.wikiKategorienVerwaltung.contains(aktivesElement) && (aktivesElement.tagName === "INPUT" || aktivesElement.tagName === "SELECT")) {
+      return;
+    }
+
+    const zeilen = wikiKategorienKatalog
+      .map((kategorie) => {
+        const gesperrt = kategorie === WIKI_KATEGORIE_FALLBACK;
+        return `
+          <div class="rollen-katalog__zeile">
+            <input type="text" class="field-input" value="${escapeHtml(kategorie)}" data-role="wiki-kategorie-umbenennen-input" data-alt="${escapeHtml(kategorie)}" ${gesperrt ? "disabled" : ""} />
+            ${
+              gesperrt
+                ? `<span class="rollen-katalog__hinweis" title="Fester Auffangwert für Einträge ohne (mehr) gültige Kategorie">Standardwert – nicht änderbar</span>`
+                : `
+                  <div class="rollen-katalog__zeile-aktionen">
+                    <button type="button" class="btn btn--ghost rollen-katalog__speichern-btn" data-role="wiki-kategorie-umbenennen" data-alt="${escapeHtml(kategorie)}">Speichern</button>
+                    <button type="button" class="badge-pill__entfernen" data-role="wiki-kategorie-entfernen" data-kategorie="${escapeHtml(kategorie)}" title="Kategorie löschen">${ICON_X_KLEIN}</button>
+                  </div>
+                `
+            }
+          </div>
+        `;
+      })
+      .join("");
+
+    el.wikiKategorienVerwaltung.innerHTML = `
+      <div class="rollen-katalog__liste">${zeilen}</div>
+      <div class="rollen-katalog__neu">
+        <input type="text" id="wiki-kategorie-neu-input" class="field-input" placeholder="Neue Kategorie..." autocomplete="off" />
+        <button type="button" class="btn btn--ghost" id="wiki-kategorie-hinzufuegen-btn">Hinzufügen</button>
+      </div>
+    `;
+  }
+
+  // "Übersicht"-Kasten unten in der Sidebar - rein informativ, kein Filter
+  // (analog zur Schnellinfo-Box der Kontakte-Seite).
+  function renderWikiSchnellinfo() {
+    if (!el.wikiSchnellinfo) return;
+    const heute = new Date();
+    const istHeute = (iso) => {
+      if (!iso) return false;
+      const d = new Date(iso);
+      return d.getFullYear() === heute.getFullYear() && d.getMonth() === heute.getMonth() && d.getDate() === heute.getDate();
+    };
+    const heuteHinzugefuegt = infosListe.filter((info) => istHeute(info.erstelltAm)).length;
+
+    el.wikiSchnellinfo.innerHTML = `
+      <div class="kontakte-schnellinfo__zeile">
+        <span>Einträge insgesamt</span><span class="kontakte-schnellinfo__wert">${infosListe.length}</span>
+      </div>
+      <div class="kontakte-schnellinfo__zeile">
+        <span>Heute hinzugefügt</span><span class="kontakte-schnellinfo__wert">${heuteHinzugefuegt}</span>
+      </div>
+      <div class="kontakte-schnellinfo__zeile">
+        <span>Kategorien</span><span class="kontakte-schnellinfo__wert">${wikiKategorienKatalog.length}</span>
+      </div>
+    `;
+  }
+
+  // Pagination-Leiste - dieselbe Logik/Optik wie auf der Infos(Notizen)-Seite
+  // (siehe berechnePaginationSeiten/renderNotizenPagination), hier mit der
+  // für die Wiki-Seite passenden Seitengröße (siehe WIKI_SEITENGROESSE).
+  function renderWikiPagination(gesamtEintraege, gesamtSeiten) {
+    if (!el.wikiPagination) return;
+    if (gesamtEintraege === 0) {
+      el.wikiPagination.innerHTML = "";
+      return;
+    }
+
+    const start = (wikiSeite - 1) * WIKI_SEITENGROESSE + 1;
+    const ende = Math.min(wikiSeite * WIKI_SEITENGROESSE, gesamtEintraege);
+
+    const seitenZahlen = berechnePaginationSeiten(wikiSeite, gesamtSeiten)
+      .map((s) =>
+        s === "…"
+          ? `<span class="notes-pagination__ellipsis">…</span>`
+          : `<button type="button" class="notes-pagination__btn${s === wikiSeite ? " notes-pagination__btn--aktiv" : ""}" data-seite="${s}">${s}</button>`
+      )
+      .join("");
+
+    el.wikiPagination.innerHTML = `
+      <span class="notes-pagination__info">${start}–${ende} von ${gesamtEintraege} Einträgen</span>
+      <div class="notes-pagination__buttons">
+        <button type="button" class="notes-pagination__btn notes-pagination__btn--nav" data-seite="${wikiSeite - 1}" ${wikiSeite <= 1 ? "disabled" : ""} title="Vorherige Seite">«</button>
+        ${seitenZahlen}
+        <button type="button" class="notes-pagination__btn notes-pagination__btn--nav" data-seite="${wikiSeite + 1}" ${wikiSeite >= gesamtSeiten ? "disabled" : ""} title="Nächste Seite">»</button>
+      </div>
+    `;
+  }
+
   function renderInfos() {
-    if (!el.infosGrid) return;
+    if (!el.wikiTableBody) return;
     el.infosAdminForm.hidden = !istAdmin();
 
-    // Kategorien rein dynamisch aus den vorhandenen Einträgen ableiten -
-    // keine feste Liste im Code. Einträge ohne eigene Kategorie zählen zu
-    // "Sonstiges", damit nichts unsichtbar wird.
+    ergaenzeFehlendeWikiKategorien();
+    renderWikiKategorienVerwaltung();
+    renderWikiSchnellinfo();
+
+    // Zählung je Kategorie - Grundlage ist immer der Katalog (nicht mehr rein
+    // aus den Einträgen abgeleitet), damit auch (noch) leere Kategorien in
+    // der Sidebar sichtbar sind.
     const kategorieZaehlung = {};
     infosListe.forEach((info) => {
-      const k = (info.kategorie || "").trim() || "Sonstiges";
+      const k = normalisierteWikiKategorie(info.kategorie);
       kategorieZaehlung[k] = (kategorieZaehlung[k] || 0) + 1;
     });
-    const kategorien = Object.keys(kategorieZaehlung).sort((a, b) => a.localeCompare(b, "de"));
 
-    const kategorienListeEl = document.getElementById("wiki-kategorien-liste");
-    if (kategorienListeEl) {
+    if (el.wikiKategorienListe) {
       const alleAktiv = aktiveInfoKategorie === "__alle__";
-      kategorienListeEl.innerHTML = `
+      el.wikiKategorienListe.innerHTML = `
         <button type="button" class="wiki-kategorie ${alleAktiv ? "wiki-kategorie--active" : ""}" data-kategorie="__alle__">
           <span>Alle Medikamente</span><span class="wiki-kategorie__count">${infosListe.length}</span>
         </button>
-        ${kategorien
+        ${wikiKategorienKatalog
           .map(
             (k) => `
               <button type="button" class="wiki-kategorie ${k === aktiveInfoKategorie ? "wiki-kategorie--active" : ""}" data-kategorie="${escapeHtml(k)}">
-                <span>${escapeHtml(k)}</span><span class="wiki-kategorie__count">${kategorieZaehlung[k]}</span>
+                <span>${escapeHtml(k)}</span><span class="wiki-kategorie__count">${kategorieZaehlung[k] || 0}</span>
               </button>
             `
           )
           .join("")}
       `;
-      kategorienListeEl.querySelectorAll(".wiki-kategorie").forEach((btn) => {
+      el.wikiKategorienListe.querySelectorAll(".wiki-kategorie").forEach((btn) => {
         btn.addEventListener("click", () => {
           aktiveInfoKategorie = btn.dataset.kategorie;
+          wikiSeite = 1;
           renderInfos();
         });
       });
     }
 
-    // Datalist fürs Kategorie-Eingabefeld im Admin-Formular aktuell halten
-    const datalist = document.getElementById("info-kategorien-liste");
-    if (datalist) datalist.innerHTML = kategorien.map((k) => `<option value="${escapeHtml(k)}"></option>`).join("");
-
-    // Filtern: Kategorie + Suche
+    // Filtern: Kategorie + Suche (Titel/Inhalt/Kategorie - Zusatz-Hinweis
+    // bleibt wie bisher ebenfalls durchsuchbar)
     const begriff = infosSuchbegriff.trim().toLowerCase();
     let gefiltert = infosListe.filter((info) => {
-      const k = (info.kategorie || "").trim() || "Sonstiges";
+      const k = normalisierteWikiKategorie(info.kategorie);
       const kategoriePasst = aktiveInfoKategorie === "__alle__" || k === aktiveInfoKategorie;
       if (!kategoriePasst) return false;
       if (!begriff) return true;
@@ -3930,35 +4794,46 @@
     const mainTitel = document.getElementById("wiki-main-titel");
     if (mainTitel) mainTitel.textContent = aktiveInfoKategorie === "__alle__" ? "Alle Medikamente" : aktiveInfoKategorie;
 
-    el.infosGrid.innerHTML = "";
+    const gesamtSeiten = Math.max(1, Math.ceil(gefiltert.length / WIKI_SEITENGROESSE));
+    if (wikiSeite > gesamtSeiten) wikiSeite = gesamtSeiten;
+    if (wikiSeite < 1) wikiSeite = 1;
+    const start = (wikiSeite - 1) * WIKI_SEITENGROESSE;
+    const seiteEintraege = gefiltert.slice(start, start + WIKI_SEITENGROESSE);
+
+    el.wikiTableBody.innerHTML = "";
     document.getElementById("infos-empty").hidden = gefiltert.length !== 0;
 
-    gefiltert.forEach((info) => {
-      const card = document.createElement("div");
-      card.className = "info-card";
-      const kategorieLabel = (info.kategorie || "").trim() || "Sonstiges";
+    seiteEintraege.forEach((info) => {
       const aktionsButtons = istAdmin()
         ? `
-          <button type="button" class="icon-btn icon-btn--edit info-card__edit" data-role="edit-info" data-id="${info.id}" title="Eintrag bearbeiten">${ICON_EDIT}</button>
-          <button type="button" class="icon-btn icon-btn--delete info-card__delete" data-role="delete-info" data-id="${info.id}" title="Eintrag löschen">${ICON_TRASH}</button>
+          <button type="button" class="wiki-row__action wiki-row__action--bearbeiten" data-role="edit-info" data-id="${info.id}">Bearbeiten</button>
+          <button type="button" class="wiki-row__action wiki-row__action--loeschen" data-role="delete-info" data-id="${info.id}">Löschen</button>
         `
         : "";
-      card.innerHTML = `
-        <span class="info-card__icon">${symbolFuerInfo(info.titel)}</span>
-        ${aktionsButtons}
-        <span class="info-card__name">${escapeHtml(info.titel)}</span>
-        <span class="info-card__kategorie">${escapeHtml(kategorieLabel)}</span>
-        <span class="info-card__text">${verarbeiteRichInhalt(info.text)}</span>
-        ${info.hinweis ? `<span class="info-card__hint">${formatiereNotizText(info.hinweis)}</span>` : ""}
+      const row = document.createElement("div");
+      row.className = "wiki-row";
+      row.innerHTML = `
+        <div class="wiki-row__name-col">
+          <span class="wiki-row__name">${escapeHtml(info.titel)}</span>
+          ${wikiKategorieBadge(info.kategorie)}
+        </div>
+        <div class="wiki-row__beschreibung-wrap">
+          <div class="wiki-row__beschreibung">${verarbeiteRichInhalt(info.text)}</div>
+          ${info.hinweis ? `<span class="info-card__hint">${formatiereNotizText(info.hinweis)}</span>` : ""}
+        </div>
+        <div class="wiki-row__aktionen">${aktionsButtons}</div>
       `;
-      el.infosGrid.appendChild(card);
+      el.wikiTableBody.appendChild(row);
     });
+
+    renderWikiPagination(gefiltert.length, gesamtSeiten);
   }
 
   const infosSearchInput = document.getElementById("infos-search");
   if (infosSearchInput) {
     infosSearchInput.addEventListener("input", (event) => {
       infosSuchbegriff = event.target.value;
+      wikiSeite = 1;
       renderInfos();
     });
   }
@@ -3967,7 +4842,59 @@
   if (wikiSortSelect) {
     wikiSortSelect.addEventListener("change", () => {
       infoSortierung = wikiSortSelect.value;
+      wikiSeite = 1;
       renderInfos();
+    });
+  }
+
+  if (el.wikiPagination) {
+    el.wikiPagination.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-seite]");
+      if (!btn || btn.disabled) return;
+      const ziel = Number(btn.dataset.seite);
+      if (!ziel || ziel < 1) return;
+      wikiSeite = ziel;
+      renderInfos();
+    });
+  }
+
+  if (el.btnToggleWikiKategorien) {
+    el.btnToggleWikiKategorien.addEventListener("click", () => {
+      wikiKategorienVerwaltungOffen = !wikiKategorienVerwaltungOffen;
+      renderWikiKategorienVerwaltung();
+    });
+  }
+
+  if (el.wikiKategorienVerwaltung) {
+    el.wikiKategorienVerwaltung.addEventListener("click", (event) => {
+      const entfernenBtn = event.target.closest('[data-role="wiki-kategorie-entfernen"]');
+      if (entfernenBtn) {
+        entferneWikiKategorie(entfernenBtn.dataset.kategorie);
+        return;
+      }
+
+      const umbenennenBtn = event.target.closest('[data-role="wiki-kategorie-umbenennen"]');
+      if (umbenennenBtn) {
+        const zeile = umbenennenBtn.closest(".rollen-katalog__zeile");
+        const input = zeile.querySelector('[data-role="wiki-kategorie-umbenennen-input"]');
+        benenneWikiKategorieUm(umbenennenBtn.dataset.alt, input.value);
+        return;
+      }
+
+      if (event.target.id === "wiki-kategorie-hinzufuegen-btn") {
+        const neuInput = document.getElementById("wiki-kategorie-neu-input");
+        if (!neuInput) return;
+        fuegeWikiKategorieHinzu(neuInput.value);
+      }
+    });
+
+    el.wikiKategorienVerwaltung.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      if (event.target.id === "wiki-kategorie-neu-input") {
+        event.preventDefault();
+        const btn = document.getElementById("wiki-kategorie-hinzufuegen-btn");
+        if (btn) btn.click();
+      }
     });
   }
 
@@ -3976,8 +4903,8 @@
     el.infoTitelInput.value = "";
     el.infoTextInput.innerHTML = "";
     el.infoHinweisInput.value = "";
-    if (el.infoKategorieInput) el.infoKategorieInput.value = "";
-    el.infoFormTitle.textContent = "Neuen Info-Eintrag hinzufügen";
+    if (el.infoKategorieInput) aktualisiereInfoKategorieAuswahl();
+    el.infoFormTitle.textContent = "Neuen Wiki-Eintrag hinzufügen";
     el.infoFormSubmit.textContent = "Hinzufügen";
     el.infoFormCancel.hidden = true;
   }
@@ -3991,7 +4918,7 @@
       const text = el.infoTextInput.innerHTML.trim();
       const nurText = el.infoTextInput.textContent.trim();
       const hinweis = el.infoHinweisInput.value.trim();
-      const kategorie = el.infoKategorieInput ? el.infoKategorieInput.value.trim() : "";
+      const kategorie = el.infoKategorieInput ? normalisierteWikiKategorie(el.infoKategorieInput.value) : "";
       if (!titel || !nurText) return;
 
       const bearbeiteId = el.infoEditingId.value;
@@ -4004,8 +4931,8 @@
           // WICHTIG: null statt undefined - Firestore lehnt "undefined" als
           // Feldwert komplett ab (auch verschachtelt in einem Array!) und
           // verwirft dann das GESAMTE .set() inkl. aller anderen Änderungen.
-          // Da hinweis/kategorie optional sind, muss ein leeres Feld als
-          // null gespeichert werden, nicht als undefined.
+          // Da hinweis optional ist, muss ein leeres Feld als null
+          // gespeichert werden, nicht als undefined.
           info.hinweis = hinweis || null;
           info.kategorie = kategorie || null;
         }
@@ -4019,6 +4946,7 @@
           text: sanitisiereRichText(text),
           hinweis: hinweis || null,
           kategorie: kategorie || null,
+          erstelltAm: new Date().toISOString(),
         });
         speichereInfos();
         renderInfos(); // sofort sichtbar, nicht erst beim nächsten Firestore-Update
@@ -4033,8 +4961,8 @@
     el.infoFormCancel.addEventListener("click", setzeInfoFormularZurueck);
   }
 
-  if (el.infosGrid) {
-    el.infosGrid.addEventListener("click", (event) => {
+  if (el.wikiTableBody) {
+    el.wikiTableBody.addEventListener("click", (event) => {
       const deleteBtn = event.target.closest('[data-role="delete-info"]');
       if (deleteBtn && istAdmin()) {
         const info = infosListe.find((i) => i.id === deleteBtn.dataset.id);
@@ -4061,7 +4989,7 @@
         el.infoTitelInput.value = info.titel;
         el.infoTextInput.innerHTML = verarbeiteRichInhalt(info.text);
         el.infoHinweisInput.value = info.hinweis || "";
-        if (el.infoKategorieInput) el.infoKategorieInput.value = info.kategorie || "";
+        if (el.infoKategorieInput) el.infoKategorieInput.innerHTML = wikiKategorienOptionen(info.kategorie);
         el.infoFormTitle.textContent = `„${info.titel}“ bearbeiten`;
         el.infoFormSubmit.textContent = "Speichern";
         el.infoFormCancel.hidden = false;
@@ -5041,7 +5969,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 91;
+  const APP_VERSION = 94;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
