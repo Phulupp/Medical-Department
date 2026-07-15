@@ -14,7 +14,7 @@
     rel="stylesheet"
   />
 
-  <link rel="stylesheet" href="css/style.css?v=91" />
+  <link rel="stylesheet" href="css/style.css?v=94" />
 
   <!-- Firebase SDK (Authentifizierung + Echtzeit-Datenbank) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -444,9 +444,15 @@
 
         <div class="notes-card">
           <form class="notes-form" id="form-note">
+            <input type="text" id="notiz-titel-input" class="field-input" placeholder="Titel..." maxlength="140" required />
+
             <div class="format-toolbar" data-target="note-input">
               <button type="button" class="format-btn" data-format="bold" title="Fett"><strong>F</strong></button>
               <button type="button" class="format-btn" data-format="underline" title="Unterstrichen"><u>U</u></button>
+              <button type="button" class="format-btn" data-format="italic" title="Kursiv"><em>K</em></button>
+              <span class="format-toolbar__divider"></span>
+              <button type="button" class="format-btn" data-format="insertUnorderedList" title="Aufzählung"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="4.5" cy="6" r="1.1" fill="currentColor" stroke="none"></circle><circle cx="4.5" cy="12" r="1.1" fill="currentColor" stroke="none"></circle><circle cx="4.5" cy="18" r="1.1" fill="currentColor" stroke="none"></circle><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line></svg></button>
+              <button type="button" class="format-btn" data-format="insertOrderedList" title="Nummerierung"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><text x="1.5" y="8.5" font-size="6.5" fill="currentColor" stroke="none" font-family="sans-serif">1</text><text x="1.5" y="14.5" font-size="6.5" fill="currentColor" stroke="none" font-family="sans-serif">2</text><text x="1.5" y="20.5" font-size="6.5" fill="currentColor" stroke="none" font-family="sans-serif">3</text><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line></svg></button>
               <span class="format-toolbar__divider"></span>
               <div class="color-picker">
                 <button type="button" class="format-btn color-picker__trigger" data-role="color-trigger" title="Textfarbe">
@@ -465,17 +471,49 @@
             <div class="notes-form__main">
               <div class="rich-editor" id="note-input" contenteditable="true" data-placeholder="Notiz eintragen..."></div>
             </div>
-            <button type="submit" class="btn btn--primary">Hinzufügen</button>
+
+            <div class="notes-form__fusszeile">
+              <select id="notiz-thema-input" class="field-input notes-form__thema-select">
+                <!-- wird per JavaScript befüllt -->
+              </select>
+              <label class="notes-form__hervorheben" id="notiz-hervorheben-label" hidden>
+                <input type="checkbox" id="notiz-hervorheben-input" />
+                Als „Wichtig" hervorheben
+              </label>
+              <button type="submit" class="btn btn--primary">Hinzufügen</button>
+            </div>
           </form>
         </div>
+
         <div class="sale-log-search">
-          <input type="text" id="notes-search" placeholder="Notizen durchsuchen..." autocomplete="off" />
+          <input type="text" id="notes-search" placeholder="Nach Titel, Inhalt oder Autor suchen..." autocomplete="off" />
+        </div>
+
+        <div class="notes-filterleiste">
+          <button type="button" class="btn btn--ghost" id="btn-toggle-notizen-themen" hidden>Themen verwalten</button>
+          <div class="notes-filterleiste__rechts">
+            <select id="notes-thema-filter" class="wiki-sort-select">
+              <!-- wird per JavaScript befüllt -->
+            </select>
+            <select id="notes-sort-select" class="wiki-sort-select">
+              <option value="neueste">Neueste zuerst</option>
+              <option value="aelteste">Älteste zuerst</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="rollen-katalog notes-themen-katalog" id="notizen-themen-verwaltung" hidden>
+          <!-- wird per JavaScript befüllt -->
         </div>
 
         <div class="notes-list notes-list--page" id="notes-list">
           <!-- wird per JavaScript befüllt -->
         </div>
         <p class="empty-state" id="notes-empty" hidden>Noch keine Notizen vorhanden.</p>
+
+        <div class="notes-pagination" id="notes-pagination">
+          <!-- wird per JavaScript befüllt -->
+        </div>
       </section>
 
       <!-- ============================ -->
@@ -484,16 +522,17 @@
       <section class="view" id="view-infos">
         <!-- Nur für Admins sichtbar -->
         <div class="notes-card" id="infos-admin-form" hidden>
-          <h3 id="info-form-title">Neuen Info-Eintrag hinzufügen</h3>
+          <h3 id="info-form-title">Neuen Wiki-Eintrag hinzufügen</h3>
           <form id="form-add-info">
             <input type="hidden" id="info-editing-id" value="" />
 
             <div class="info-form-row">
-              <input type="text" id="info-titel-input" class="field-input info-form-row__compact" placeholder="Titel, z. B. Medikamentenname" required />
-              <input type="text" id="info-kategorie-input" class="field-input info-form-row__compact" placeholder="Kategorie (optional, z. B. Notfall)" list="info-kategorien-liste" autocomplete="off" />
+              <input type="text" id="info-titel-input" class="field-input info-form-row__compact" placeholder="Titel (z. B. Adrenalinspritze)" required />
+              <select id="info-kategorie-input" class="field-input info-form-row__compact">
+                <!-- wird per JavaScript befüllt -->
+              </select>
               <input type="text" id="info-hinweis-input" class="field-input info-form-row__compact" placeholder="Zusatz-Hinweis (optional)" />
             </div>
-            <datalist id="info-kategorien-liste"></datalist>
 
             <div class="format-toolbar" data-target="info-text-input">
               <button type="button" class="format-btn" data-format="bold" title="Fett (markierten Text auswählen)"><strong>F</strong></button>
@@ -532,6 +571,20 @@
             <div class="wiki-kategorien" id="wiki-kategorien-liste">
               <!-- wird per JavaScript befüllt -->
             </div>
+
+            <button type="button" class="btn btn--ghost wiki-sidebar__neue-kategorie-btn" id="btn-toggle-wiki-kategorien" hidden>
+              + Neue Kategorie hinzufügen
+            </button>
+            <div class="rollen-katalog notes-themen-katalog" id="wiki-kategorien-verwaltung" hidden>
+              <!-- wird per JavaScript befüllt -->
+            </div>
+
+            <div class="kontakte-schnellinfo-box">
+              <p class="wiki-sidebar__titel">Übersicht</p>
+              <div id="wiki-schnellinfo">
+                <!-- wird per JavaScript befüllt -->
+              </div>
+            </div>
           </aside>
 
           <div class="wiki-main">
@@ -543,10 +596,23 @@
               </select>
             </div>
 
-            <div class="info-panel__grid" id="infos-grid">
+            <div class="table-card">
+              <div class="wiki-table">
+                <div class="wiki-row wiki-row--head">
+                  <span>Medikament</span>
+                  <span>Beschreibung</span>
+                  <span class="wiki-row__actions-col">Aktionen</span>
+                </div>
+                <div id="wiki-table-body">
+                  <!-- wird per JavaScript befüllt -->
+                </div>
+              </div>
+              <p class="empty-state" id="infos-empty" hidden>Keine Einträge gefunden.</p>
+            </div>
+
+            <div class="notes-pagination" id="wiki-pagination">
               <!-- wird per JavaScript befüllt -->
             </div>
-            <p class="empty-state" id="infos-empty" hidden>Keine Einträge gefunden.</p>
           </div>
         </div>
       </section>
@@ -980,10 +1046,10 @@
     </div>
   </div>
 
-  <script src="js/firebase-config.js?v=91"></script>
-  <script src="js/app.js?v=91"></script>
+  <script src="js/firebase-config.js?v=94"></script>
+  <script src="js/app.js?v=94"></script>
   <!-- Login-/Benutzersystem: eigenes ES-Modul mit dem modernen Firebase
        Modular SDK (siehe js/auth.js für den ausführlich kommentierten Code) -->
-  <script type="module" src="js/auth.js?v=91"></script>
+  <script type="module" src="js/auth.js?v=94"></script>
 </body>
 </html>

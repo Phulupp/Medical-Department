@@ -1816,10 +1816,75 @@ p {
   align-self: flex-end;
 }
 
+/* Fußzeile des Erstellen-Formulars: Themen-Auswahl links, optionales
+   Hervorheben-Kästchen (nur Admins), "Hinzufügen"-Button immer ganz rechts
+   (auch wenn das Hervorheben-Kästchen für Nicht-Admins ausgeblendet ist). */
+.notes-form__fusszeile {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.notes-form__fusszeile .btn {
+  margin-left: auto;
+  align-self: center;
+}
+
+.notes-form__thema-select {
+  flex: 0 0 200px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+}
+
+.notes-form__hervorheben {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.notes-form__hervorheben input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-brass);
+  cursor: pointer;
+}
+
+/* Such-/Filterleiste unterhalb des Erstellen-Formulars: links (nur für
+   Admins sichtbar) der Umschalter für die Themen-Verwaltung, rechts
+   Themen-Filter + Sortierung - dieselbe schlichte Select-Optik wie beim
+   Wiki (.wiki-sort-select), damit kein neuer Stil eingeführt wird. */
+.notes-filterleiste {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 2px 0 4px;
+}
+
+.notes-filterleiste__rechts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* Admin-Panel "Themen verwalten": nutzt bewusst dieselben Klassen wie
+   .rollen-katalog (Kontakte-Seite), hier aber in einer vollbreiten
+   Seite statt einer schmalen Sidebar - deshalb auf eine angenehme
+   Lesebreite begrenzt statt über die volle Breite zu laufen. */
+.notes-themen-katalog {
+  max-width: 460px;
+}
+
 .notes-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .note-item {
@@ -1828,7 +1893,7 @@ p {
   border-left: 3px solid var(--color-slate);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
-  padding: 15px 20px;
+  padding: 12px 18px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1843,8 +1908,36 @@ p {
   border-left-color: var(--color-sage);
 }
 
+/* Hervorgehobene ("Wichtig") Einträge: dezente, nicht übertriebene
+   Hervorhebung - warmer Rahmen + minimal getönter Hintergrund, keine neue
+   Farbe (nutzt die bestehende Akzentfarbe --color-brass). Bewusst NACH den
+   Kategorie-Modifikatoren notiert, damit "Wichtig" immer gewinnt,
+   unabhängig vom Reiter (Allgemein/Personal/Herstellung). */
+.note-item--pinned {
+  border-left-color: var(--color-brass);
+  background: var(--color-brass-soft);
+}
+
 .note-item__body {
   flex: 1;
+  min-width: 0;
+}
+
+.note-item__kopf {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.note-item__titel {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-text);
+  margin: 0;
+  line-height: 1.3;
 }
 
 .note-item__kategorie {
@@ -1853,7 +1946,34 @@ p {
   font-weight: 700;
   padding: 3px 9px;
   border-radius: var(--radius-pill);
-  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+/* Dezent variierende Badge-Farben je Thema (siehe notizThemaFarbe() in
+   js/app.js) - dieselben fünf Akzentfarben wie überall sonst im Design. */
+.note-item__kategorie--oxblood {
+  background: var(--color-oxblood-soft);
+  color: var(--color-oxblood-text);
+}
+
+.note-item__kategorie--sage {
+  background: var(--color-sage-soft);
+  color: var(--color-sage-text);
+}
+
+.note-item__kategorie--personal {
+  background: var(--color-personal-soft);
+  color: var(--color-personal-text);
+}
+
+.note-item__kategorie--slate {
+  background: var(--color-slate-soft);
+  color: var(--color-slate-text);
+}
+
+.note-item__kategorie--brass {
+  background: var(--color-brass-soft);
+  color: var(--color-brass-text);
 }
 
 .note-item__text {
@@ -1864,10 +1984,102 @@ p {
   word-break: break-word;
 }
 
+.note-item__text ul,
+.note-item__text ol {
+  margin: 4px 0 4px 20px;
+  padding: 0;
+}
+
+.note-item__text li {
+  margin-bottom: 2px;
+}
+
 .note-item__meta {
   font-size: 11px;
   color: var(--color-text-soft);
-  margin-top: 8px;
+  margin-top: 7px;
+}
+
+.note-item__aktionen {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Inline-Bearbeitungsformular eines Eintrags (klappt unterhalb der Karte
+   auf, analog zu .kontakt-edit-form auf der Kontakte-Seite). */
+.note-item-edit {
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-top: -2px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.note-item-edit .notes-form__fusszeile .btn {
+  margin-left: auto;
+}
+
+/* Pagination: schlicht/dezent, wie im Mockup ("1–5 von 32 Notizen" +
+   « 1 2 3 4 7 »). */
+.notes-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.notes-pagination__info {
+  font-size: 11.5px;
+  color: var(--color-text-soft);
+}
+
+.notes-pagination__buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.notes-pagination__btn {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.notes-pagination__btn:hover:not(:disabled) {
+  background: var(--color-surface-soft);
+  color: var(--color-brass-text);
+}
+
+.notes-pagination__btn--aktiv {
+  background: var(--color-brass-soft);
+  color: var(--color-brass-text);
+}
+
+.notes-pagination__btn--nav:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.notes-pagination__ellipsis {
+  font-size: 12px;
+  color: var(--color-text-soft);
+  padding: 0 3px;
 }
 
 /* --------------------------------------------------------------------------
@@ -2028,90 +2240,8 @@ p {
   border-color: var(--color-brass);
 }
 
-.info-panel__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 22px;
-}
-
-.info-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-lg);
-  padding: 26px 26px 24px;
-  box-shadow: var(--shadow-soft);
-  position: relative;
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.info-card:hover {
-  border-color: var(--color-brass);
-  transform: translateY(-2px);
-}
-
-.info-card__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-soft);
-  color: var(--color-brass-text);
-  margin-bottom: 18px;
-}
-
-.info-card__icon svg {
-  width: 23px;
-  height: 23px;
-}
-
-.info-card__edit {
-  position: absolute;
-  top: 18px;
-  right: 50px;
-  width: 26px;
-  height: 26px;
-  font-size: 11px;
-}
-
-.info-card__delete {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  width: 26px;
-  height: 26px;
-  font-size: 11px;
-}
-
-.info-card__name {
-  display: block;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 18px;
-  margin-bottom: 4px;
-  padding-right: 22px;
-}
-
-.info-card__kategorie {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  color: var(--color-text-soft);
-  margin-bottom: 13px;
-}
-
-.info-card__text {
-  display: block;
-  font-size: 13px;
-  color: var(--color-text-muted);
-  line-height: 1.65;
-}
-
 .info-card__hint {
   display: inline-block;
-  margin-top: 12px;
   font-family: var(--font-mono);
   font-size: 10.5px;
   font-weight: 600;
@@ -2119,6 +2249,160 @@ p {
   background: var(--color-sage-soft);
   padding: 4px 9px;
   border-radius: var(--radius-sm);
+  align-self: flex-start;
+}
+
+/* Kompakte Tabellenübersicht (ersetzt die frühere Kartenansicht) - dieselbe
+   CSS-Grid-"Tabelle ohne <table>"-Technik wie beim Medikamenten-Register auf
+   der Verkauf-Seite (siehe .med-table/.med-row), nur mit den für die
+   Wiki-Seite passenden drei Spalten. Bewusst KEINE Icons/Illustrationen bei
+   den Einträgen - der Fokus liegt auf den Informationen selbst. */
+.wiki-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.wiki-row {
+  display: grid;
+  grid-template-columns: 28fr 52fr 20fr;
+  align-items: center;
+  column-gap: 18px;
+}
+
+.wiki-row--head {
+  padding: 14px 20px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-text-soft);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.wiki-row__actions-col {
+  text-align: right;
+}
+
+#wiki-table-body .wiki-row {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--color-hairline);
+  transition: background 0.15s ease;
+}
+
+#wiki-table-body .wiki-row:last-child {
+  border-bottom: none;
+}
+
+#wiki-table-body .wiki-row:hover {
+  background: var(--color-surface-soft);
+}
+
+.wiki-row__name-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wiki-row__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.wiki-row__kategorie {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+
+/* Dezent variierende Badge-Farben je Kategorie (siehe wikiKategorieFarbe()
+   in js/app.js) - dieselben fünf Akzentfarben wie überall sonst im Design. */
+.wiki-row__kategorie--oxblood {
+  background: var(--color-oxblood-soft);
+  color: var(--color-oxblood-text);
+}
+
+.wiki-row__kategorie--sage {
+  background: var(--color-sage-soft);
+  color: var(--color-sage-text);
+}
+
+.wiki-row__kategorie--personal {
+  background: var(--color-personal-soft);
+  color: var(--color-personal-text);
+}
+
+.wiki-row__kategorie--slate {
+  background: var(--color-slate-soft);
+  color: var(--color-slate-text);
+}
+
+.wiki-row__kategorie--brass {
+  background: var(--color-brass-soft);
+  color: var(--color-brass-text);
+}
+
+.wiki-row__beschreibung-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wiki-row__beschreibung {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wiki-row__aktionen {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.wiki-row__action {
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wiki-row__action--bearbeiten {
+  color: var(--color-brass-text);
+}
+
+.wiki-row__action--bearbeiten:hover {
+  text-decoration: underline;
+}
+
+.wiki-row__action--loeschen {
+  color: var(--color-oxblood-text);
+}
+
+.wiki-row__action--loeschen:hover {
+  text-decoration: underline;
+}
+
+/* "+ Neue Kategorie hinzufügen"-Button unterhalb der Kategorienliste
+   (nur für Admins sichtbar) - klappt beim Klick dasselbe Katalog-Panel auf,
+   das auch Umbenennen/Löschen anbietet (siehe .rollen-katalog). */
+.wiki-sidebar__neue-kategorie-btn {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 14px;
+  font-size: 12px;
+  padding: 9px 10px;
 }
 
 /* --------------------------------------------------------------------------
