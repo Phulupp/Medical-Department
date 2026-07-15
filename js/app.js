@@ -154,6 +154,21 @@
   const NOTIZEN_COLLECTION = "notizen";
   const VERKAUFSLOG_COLLECTION = "verkaufslog";
   const KONTAKTE_COLLECTION = "kontakte";
+  // Verwalteter Rollen-Katalog für die Kontakte-Seite (Beruf/Rolle je
+  // Kontakt) - Admins können hier jederzeit neue Rollen anlegen, bestehende
+  // umbenennen (mit Kaskade auf betroffene Kontakte) oder löschen, ganz ohne
+  // Code-Änderung. "Sonstiges" ist der feste Auffangwert für Kontakte, deren
+  // gespeicherte Rolle nicht (mehr) im Katalog vorkommt - dafür ist beim
+  // Löschen KEINE Kaskade nötig (siehe entferneKontaktRolle).
+  const KONTAKTE_ROLLEN_DOC = "department/kontakte-rollen";
+  const KONTAKTE_ROLLEN_FALLBACK = "Sonstiges";
+  const DEFAULT_KONTAKTE_ROLLEN = ["Bürger", "Arzt", "Sheriff", "Rancher", "Schmied", "Schreiner", KONTAKTE_ROLLEN_FALLBACK];
+  // Dezente, bereits im Design vorhandene Akzentfarben (siehe CSS-Variablen
+  // --color-oxblood/-sage/-personal/-slate/-brass) - KEINE neuen Farben.
+  // Jede Rolle bekommt darüber deterministisch (per Namens-Hash) eine davon
+  // zugewiesen, damit die Badge-Farbe stabil bleibt, ohne pro Rolle manuell
+  // eine Farbe pflegen zu müssen.
+  const KONTAKT_ROLLEN_FARBEN = ["personal", "oxblood", "sage", "brass", "slate"];
   const ANKUENDIGUNGEN_COLLECTION = "ankuendigungen";
   const HANDBUCH_COLLECTION = "handbuch";
   const ONLINE_SCHWELLE_MS = 45 * 1000;   // Nach 45s ohne Update gilt jemand als offline
@@ -315,6 +330,9 @@
   // geladen und live aktuell gehalten, damit neue/entfernte Badges sofort
   // überall (Anzeige + Bearbeiten-Modus) sichtbar werden.
   let personalBadgesKatalog = { fachgebiete: [], zustaendigkeiten: [] };
+  let unsubKontakteRollen = null;
+  let kontakteRollenKatalog = [];  // Live-Liste der Rollen (siehe KONTAKTE_ROLLEN_DOC)
+  let aktiveKontaktRolle = "alle"; // Filter in der Kontakte-Sidebar ("alle" = kein Filter)
   let benutzerListe = [];          // Alle Accounts (nur für Admins geladen) - für die Benutzerverwaltung
   let bekanntePendingUids = null;  // null = Liste noch nie geladen (verhindert Toast beim allerersten Laden)
   let benutzerSuche = "";          // Suchbegriff im Admin Panel (Filter nach Benutzername)
@@ -369,11 +387,17 @@
     formKontakt: document.getElementById("form-kontakt"),
     kontaktNummerInput: document.getElementById("kontakt-nummer-input"),
     kontaktNameInput: document.getElementById("kontakt-name-input"),
+    kontaktBerufInput: document.getElementById("kontakt-beruf-input"),
     kontaktNotizInput: document.getElementById("kontakt-notiz-input"),
     kontaktList: document.getElementById("kontakt-list"),
     kontakteEmpty: document.getElementById("kontakte-empty"),
     kontakteNoResults: document.getElementById("kontakte-no-results"),
     kontakteSearch: document.getElementById("kontakte-search"),
+    kontakteRollenListe: document.getElementById("kontakte-rollen-liste"),
+    kontakteSchnellinfo: document.getElementById("kontakte-schnellinfo"),
+    btnToggleKontakteRollen: document.getElementById("btn-toggle-kontakte-rollen"),
+    kontakteRollenVerwaltung: document.getElementById("kontakte-rollen-verwaltung"),
+    kontakteMainTitel: document.getElementById("kontakte-main-titel"),
 
     btnCheckout: document.getElementById("btn-checkout"),
     salesLogList: document.getElementById("sales-log-list"),
@@ -882,6 +906,7 @@
     abonniereInfos();
     abonniereAnkuendigungen();
     abonniereKontakte();
+    abonniereKontakteRollen();
 
     aktualisiereUhrzeit();
     wendeStartseitenPraeferenzAn();
@@ -2678,10 +2703,73 @@
   }
 
   /* ------------------------------------------------------------------------
-     10a2. Kontakte: Telegramm-Verzeichnis (BW-Nummer + Name + Notiz)
+     10a2. Kontakte: Telegramm-Verzeichnis (BW-Nummer + Name + Beruf/Rolle +
+           Notiz). Die Rollen (Beruf) sind NICHT hart codiert, sondern in
+           einem eigenen, von Admins verwaltbaren Firestore-Katalog
+           gespeichert (siehe KONTAKTE_ROLLEN_DOC weiter oben) - genau wie
+           schon beim Badge-Katalog der Personal-Seite.
      ------------------------------------------------------------------------ */
   let letzteKontakte = [];
   let kontakteSuchbegriff = "";
+  let kontakteRollenVerwaltungOffen = false; // Auf-/Zuklappen des Admin-Panels in der Sidebar
+
+  // Liefert die tatsächlich anzuzeigende/zu zählende Rolle eines Kontakts:
+  // die gespeicherte Rolle, sofern sie aktuell im Katalog existiert - sonst
+  // (z. B. weil ein Admin die Rolle inzwischen gelöscht hat) automatisch
+  // "Sonstiges". Dadurch braucht das Löschen einer Rolle KEINE Kaskade auf
+  // bestehende Kontakte (siehe entferneKontaktRolle).
+  function normalisierterKontaktBeruf(beruf) {
+    const wert = (beruf || "").trim();
+    if (wert && kontakteRollenKatalog.includes(wert)) return wert;
+    return KONTAKTE_ROLLEN_FALLBACK;
+  }
+
+  // Feste, zurückhaltende Farbzuordnung für die Standard-Rollen; für neu von
+  // Admins angelegte Rollen wird deterministisch (per Namens-Hash) eine der
+  // fünf bestehenden Akzentfarben verwendet - es werden KEINE neuen Farben
+  // erfunden, nur die immer schon vorhandenen (oxblood/sage/personal/slate/
+  // brass) unterschiedlich kombiniert.
+  const KONTAKT_ROLLEN_FARBEN_FEST = {
+    bürger: "slate",
+    arzt: "personal",
+    sheriff: "oxblood",
+    rancher: "sage",
+    schmied: "brass",
+    schreiner: "personal",
+    sonstiges: "slate",
+  };
+
+  function kontaktRollenFarbe(name) {
+    const bereinigt = (name || "").trim().toLowerCase();
+    if (KONTAKT_ROLLEN_FARBEN_FEST[bereinigt]) return KONTAKT_ROLLEN_FARBEN_FEST[bereinigt];
+    let hash = 0;
+    for (let i = 0; i < bereinigt.length; i++) hash = (hash * 31 + bereinigt.charCodeAt(i)) >>> 0;
+    return KONTAKT_ROLLEN_FARBEN[hash % KONTAKT_ROLLEN_FARBEN.length];
+  }
+
+  function kontaktRollenBadge(beruf) {
+    const anzeige = normalisierterKontaktBeruf(beruf);
+    const farbe = kontaktRollenFarbe(anzeige);
+    return `<span class="kontakt-badge kontakt-badge--${farbe}">${escapeHtml(anzeige)}</span>`;
+  }
+
+  // <option>-Liste für die Beruf/Rolle-Auswahlfelder (Hinzufügen + Bearbeiten)
+  function kontakteRollenOptionen(aktuellerBeruf) {
+    const ausgewaehlt = normalisierterKontaktBeruf(aktuellerBeruf);
+    return kontakteRollenKatalog
+      .map((rolle) => `<option value="${escapeHtml(rolle)}"${rolle === ausgewaehlt ? " selected" : ""}>${escapeHtml(rolle)}</option>`)
+      .join("");
+  }
+
+  // Hält das feste Beruf/Rolle-Auswahlfeld im "Neuen Kontakt eintragen"-
+  // Formular aktuell (dieses Feld wird NICHT bei jedem Kontakt-Render neu
+  // aufgebaut, deshalb ein eigener kleiner Sync statt Teil von renderKontakteListe).
+  function aktualisiereKontaktBerufAuswahl() {
+    if (!el.kontaktBerufInput) return;
+    const vorher = el.kontaktBerufInput.value;
+    el.kontaktBerufInput.innerHTML = kontakteRollenKatalog.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join("");
+    if (kontakteRollenKatalog.includes(vorher)) el.kontaktBerufInput.value = vorher;
+  }
 
   function abonniereKontakte() {
     db.collection(KONTAKTE_COLLECTION).onSnapshot(
@@ -2689,13 +2777,16 @@
         const kontakte = [];
         snapshot.forEach((doc) => {
           const d = doc.data();
+          const erstelltMillis = d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now();
           kontakte.push({
             id: doc.id,
             nummer: d.nummer || "",
             name: d.name || "",
+            beruf: d.beruf || "",
             notiz: d.notiz || "",
             autor: d.autor || "",
-            millis: d.zeitpunkt && d.zeitpunkt.toMillis ? d.zeitpunkt.toMillis() : Date.now(),
+            millis: erstelltMillis,
+            aktualisiertMillis: d.zuletztAktualisiert && d.zuletztAktualisiert.toMillis ? d.zuletztAktualisiert.toMillis() : erstelltMillis,
           });
         });
         // Nach der Nummer sortiert (numerisch, aufsteigend – niedrigste zuerst)
@@ -2711,7 +2802,16 @@
     );
   }
 
+  // Umbrella-Funktion: aktualisiert Liste, Rollen-Filter (mit Zählern),
+  // Schnellinfo-Box und (nur für Admins) das Rollen-Verwaltungs-Panel.
   function renderKontakte() {
+    renderKontakteListe();
+    renderKontakteRollenFilter();
+    renderKontakteSchnellinfo();
+    renderKontakteRollenVerwaltung();
+  }
+
+  function renderKontakteListe() {
     if (!el.kontaktList) return;
 
     const aktivesElement = document.activeElement;
@@ -2721,6 +2821,7 @@
 
     const begriff = kontakteSuchbegriff.trim().toLowerCase();
     const gefiltert = letzteKontakte.filter((k) => {
+      if (aktiveKontaktRolle !== "alle" && normalisierterKontaktBeruf(k.beruf) !== aktiveKontaktRolle) return false;
       if (!begriff) return true;
       return (
         k.nummer.toLowerCase().includes(begriff) ||
@@ -2728,6 +2829,10 @@
         k.notiz.toLowerCase().includes(begriff)
       );
     });
+
+    if (el.kontakteMainTitel) {
+      el.kontakteMainTitel.textContent = aktiveKontaktRolle === "alle" ? "Alle Kontakte" : aktiveKontaktRolle;
+    }
 
     el.kontaktList.innerHTML = "";
     el.kontakteEmpty.hidden = letzteKontakte.length !== 0;
@@ -2740,15 +2845,18 @@
       zeile.innerHTML = `
         <span class="kontakt-row__nummer" data-role="copy-kontakt" data-nummer="${escapeHtml(k.nummer)}" title="Klicken zum Kopieren">${escapeHtml(k.nummer)}</span>
         <span class="kontakt-row__name">${escapeHtml(k.name)}</span>
+        <span class="kontakt-row__rolle">${kontaktRollenBadge(k.beruf)}</span>
         <span class="kontakt-row__notiz">${k.notiz ? escapeHtml(k.notiz) : "—"}</span>
-        ${
-          darfBearbeiten
-            ? `
-              <button type="button" class="icon-btn icon-btn--edit" data-role="toggle-edit-kontakt" data-id="${k.id}" title="Kontakt bearbeiten">${ICON_EDIT}</button>
-              <button type="button" class="icon-btn icon-btn--delete" data-role="delete-kontakt" data-id="${k.id}" title="Kontakt löschen">${ICON_TRASH}</button>
-            `
-            : ""
-        }
+        <span class="kontakt-row__aktionen">
+          ${
+            darfBearbeiten
+              ? `
+                <button type="button" class="icon-btn icon-btn--edit" data-role="toggle-edit-kontakt" data-id="${k.id}" title="Kontakt bearbeiten">${ICON_EDIT}</button>
+                <button type="button" class="icon-btn icon-btn--delete" data-role="delete-kontakt" data-id="${k.id}" title="Kontakt löschen">${ICON_TRASH}</button>
+              `
+              : ""
+          }
+        </span>
       `;
       el.kontaktList.appendChild(zeile);
 
@@ -2764,12 +2872,212 @@
             <input type="text" inputmode="numeric" value="${escapeHtml(ziffernOhnePrefix)}" data-role="edit-kontakt-nummer" />
           </div>
           <input type="text" class="field-input" value="${escapeHtml(k.name)}" placeholder="Name" data-role="edit-kontakt-name" style="flex: 1 1 200px;" />
+          <select class="field-input" data-role="edit-kontakt-beruf" style="flex: 0 0 150px;">${kontakteRollenOptionen(k.beruf)}</select>
           <input type="text" class="field-input" value="${escapeHtml(k.notiz)}" placeholder="Notiz" data-role="edit-kontakt-notiz" style="flex: 1 1 200px;" />
           <button type="button" class="btn btn--primary" data-role="confirm-edit-kontakt" data-id="${k.id}">Speichern</button>
         `;
         el.kontaktList.appendChild(bearbeitenZeile);
       }
     });
+  }
+
+  // Linke Sidebar: Filterliste "Beruf / Rolle" inkl. Kontakt-Zähler je Rolle
+  // (unabhängig von der aktuellen Textsuche - genau wie die bestehenden
+  // Kategorien-Filter auf der Infos-Seite).
+  function renderKontakteRollenFilter() {
+    if (!el.kontakteRollenListe) return;
+
+    const zaehler = {};
+    letzteKontakte.forEach((k) => {
+      const rolle = normalisierterKontaktBeruf(k.beruf);
+      zaehler[rolle] = (zaehler[rolle] || 0) + 1;
+    });
+
+    const eintraege = [
+      { label: "Alle Kontakte", wert: "alle", anzahl: letzteKontakte.length },
+      ...kontakteRollenKatalog.map((rolle) => ({ label: rolle, wert: rolle, anzahl: zaehler[rolle] || 0 })),
+    ];
+
+    el.kontakteRollenListe.innerHTML = eintraege
+      .map(
+        (e) => `
+          <button type="button" class="wiki-kategorie${e.wert === aktiveKontaktRolle ? " wiki-kategorie--active" : ""}" data-rolle="${escapeHtml(e.wert)}">
+            <span>${escapeHtml(e.label)}</span><span class="wiki-kategorie__count">${e.anzahl}</span>
+          </button>
+        `
+      )
+      .join("");
+
+    el.kontakteRollenListe.querySelectorAll(".wiki-kategorie").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        aktiveKontaktRolle = btn.dataset.rolle;
+        renderKontakteListe();
+        renderKontakteRollenFilter();
+      });
+    });
+  }
+
+  // "Schnellinfo"-Kasten unten in der Sidebar - rein informativ, kein Filter.
+  function renderKontakteSchnellinfo() {
+    if (!el.kontakteSchnellinfo) return;
+
+    const heute = new Date();
+    const istHeute = (millis) => {
+      const d = new Date(millis);
+      return d.getFullYear() === heute.getFullYear() && d.getMonth() === heute.getMonth() && d.getDate() === heute.getDate();
+    };
+    const heuteHinzugefuegt = letzteKontakte.filter((k) => istHeute(k.millis)).length;
+
+    let letzteAktualisierung = "—";
+    if (letzteKontakte.length) {
+      const neuesteMillis = Math.max(...letzteKontakte.map((k) => k.aktualisiertMillis || k.millis));
+      letzteAktualisierung = formatiereZeitstempel(neuesteMillis);
+    }
+
+    el.kontakteSchnellinfo.innerHTML = `
+      <div class="kontakte-schnellinfo__zeile">
+        <span>Kontakte insgesamt</span><span class="kontakte-schnellinfo__wert">${letzteKontakte.length}</span>
+      </div>
+      <div class="kontakte-schnellinfo__zeile">
+        <span>Heute hinzugefügt</span><span class="kontakte-schnellinfo__wert">${heuteHinzugefuegt}</span>
+      </div>
+      <div class="kontakte-schnellinfo__zeile">
+        <span>Letzte Aktualisierung</span><span class="kontakte-schnellinfo__wert">${letzteAktualisierung}</span>
+      </div>
+    `;
+  }
+
+  // Admin-Panel "Rollen verwalten": neue Rollen anlegen, bestehende umbenennen
+  // (mit Kaskade auf betroffene Kontakte) oder löschen (ohne Kaskade - siehe
+  // normalisierterKontaktBeruf). Der feste Auffangwert "Sonstiges" kann weder
+  // umbenannt noch gelöscht werden.
+  function renderKontakteRollenVerwaltung() {
+    if (!el.kontakteRollenVerwaltung) return;
+    const admin = istAdmin();
+    if (el.btnToggleKontakteRollen) el.btnToggleKontakteRollen.hidden = !admin;
+    el.kontakteRollenVerwaltung.hidden = !admin || !kontakteRollenVerwaltungOffen;
+    if (!admin || !kontakteRollenVerwaltungOffen) return;
+
+    const aktivesElement = document.activeElement;
+    if (el.kontakteRollenVerwaltung.contains(aktivesElement) && (aktivesElement.tagName === "INPUT" || aktivesElement.tagName === "SELECT")) {
+      return;
+    }
+
+    const zeilen = kontakteRollenKatalog
+      .map((rolle) => {
+        const gesperrt = rolle === KONTAKTE_ROLLEN_FALLBACK;
+        return `
+          <div class="rollen-katalog__zeile">
+            <input type="text" class="field-input" value="${escapeHtml(rolle)}" data-role="rollen-umbenennen-input" data-alt="${escapeHtml(rolle)}" ${gesperrt ? "disabled" : ""} />
+            ${
+              gesperrt
+                ? `<span class="rollen-katalog__hinweis" title="Fester Auffangwert für Kontakte ohne (mehr) gültige Rolle">Standardwert – nicht änderbar</span>`
+                : `
+                  <div class="rollen-katalog__zeile-aktionen">
+                    <button type="button" class="btn btn--ghost rollen-katalog__speichern-btn" data-role="rollen-umbenennen" data-alt="${escapeHtml(rolle)}">Speichern</button>
+                    <button type="button" class="badge-pill__entfernen" data-role="rollen-entfernen" data-rolle="${escapeHtml(rolle)}" title="Rolle löschen">${ICON_X_KLEIN}</button>
+                  </div>
+                `
+            }
+          </div>
+        `;
+      })
+      .join("");
+
+    el.kontakteRollenVerwaltung.innerHTML = `
+      <div class="rollen-katalog__liste">${zeilen}</div>
+      <div class="rollen-katalog__neu">
+        <input type="text" id="rollen-katalog-neu-input" class="field-input" placeholder="Neue Rolle..." autocomplete="off" />
+        <button type="button" class="btn btn--ghost" id="rollen-katalog-hinzufuegen-btn">Hinzufügen</button>
+      </div>
+    `;
+  }
+
+  /* ------------------------------------------------------------------------
+     10a3. Firestore: Rollen-Katalog der Kontakte-Seite (siehe KONTAKTE_ROLLEN_DOC)
+     ------------------------------------------------------------------------ */
+  function abonniereKontakteRollen() {
+    if (unsubKontakteRollen) return;
+
+    unsubKontakteRollen = docRef(KONTAKTE_ROLLEN_DOC).onSnapshot(
+      (doc) => {
+        if (doc.exists && Array.isArray(doc.data().rollen) && doc.data().rollen.length) {
+          kontakteRollenKatalog = doc.data().rollen;
+        } else {
+          kontakteRollenKatalog = [...DEFAULT_KONTAKTE_ROLLEN];
+          speichereKontakteRollen();
+        }
+        // Der Auffangwert "Sonstiges" muss immer vorhanden sein.
+        if (!kontakteRollenKatalog.includes(KONTAKTE_ROLLEN_FALLBACK)) {
+          kontakteRollenKatalog = [...kontakteRollenKatalog, KONTAKTE_ROLLEN_FALLBACK];
+        }
+        aktualisiereKontaktBerufAuswahl();
+        renderKontakte();
+      },
+      (fehler) => console.error("Fehler beim Laden der Kontakt-Rollen:", fehler)
+    );
+  }
+
+  function speichereKontakteRollen() {
+    docRef(KONTAKTE_ROLLEN_DOC)
+      .set({ rollen: kontakteRollenKatalog, aktualisiertAm: firebase.firestore.FieldValue.serverTimestamp() })
+      .catch((fehler) => {
+        console.error("Kontakt-Rollen konnten nicht gespeichert werden:", fehler);
+        zeigeToast("Speichern fehlgeschlagen – bitte Internetverbindung prüfen.");
+      });
+  }
+
+  // Legt eine neue Rolle im Katalog an (Admins können so jederzeit weitere
+  // Berufe/Rollen ergänzen, z. B. Bestatter, Richter, Fotograf, ...).
+  function fuegeKontaktRolleHinzu(name) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Rollen verwalten.");
+    const bereinigt = (name || "").trim();
+    if (!bereinigt) return;
+    if (kontakteRollenKatalog.some((r) => r.toLowerCase() === bereinigt.toLowerCase())) {
+      zeigeToast("Diese Rolle gibt es schon.");
+      return;
+    }
+    kontakteRollenKatalog = [...kontakteRollenKatalog, bereinigt];
+    speichereKontakteRollen();
+  }
+
+  // Benennt eine Rolle um UND überträgt die Änderung (Kaskade) auf alle
+  // Kontakte, die aktuell diese Rolle tragen.
+  function benenneKontaktRolleUm(alterName, neuerNameRoh) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Rollen verwalten.");
+    if (alterName === KONTAKTE_ROLLEN_FALLBACK) return zeigeToast('„Sonstiges“ kann nicht umbenannt werden.');
+    const neuerName = (neuerNameRoh || "").trim();
+    if (!neuerName) return zeigeToast("Bitte einen Namen eingeben.");
+    if (neuerName === alterName) return;
+    if (kontakteRollenKatalog.some((r) => r.toLowerCase() === neuerName.toLowerCase())) {
+      zeigeToast("Diese Rolle gibt es schon.");
+      return;
+    }
+
+    kontakteRollenKatalog = kontakteRollenKatalog.map((r) => (r === alterName ? neuerName : r));
+    speichereKontakteRollen();
+
+    const betroffene = letzteKontakte.filter((k) => k.beruf === alterName);
+    if (betroffene.length) {
+      const batch = db.batch();
+      betroffene.forEach((k) => batch.update(db.collection(KONTAKTE_COLLECTION).doc(k.id), { beruf: neuerName }));
+      batch.commit().catch((fehler) => console.error("Rollen-Umbenennung konnte nicht auf alle Kontakte übertragen werden:", fehler));
+    }
+    if (aktiveKontaktRolle === alterName) aktiveKontaktRolle = neuerName;
+    zeigeToast(`Rolle in „${neuerName}“ umbenannt.`);
+  }
+
+  // Entfernt eine Rolle dauerhaft aus dem Katalog - bewusst OHNE Kaskade auf
+  // bestehende Kontakte: ein Kontakt mit einer inzwischen gelöschten Rolle
+  // wird automatisch als "Sonstiges" angezeigt und gezählt (siehe
+  // normalisierterKontaktBeruf).
+  function entferneKontaktRolle(name) {
+    if (!istAdmin()) return zeigeToast("Nur Admins dürfen Rollen verwalten.");
+    if (name === KONTAKTE_ROLLEN_FALLBACK) return zeigeToast('„Sonstiges“ kann nicht gelöscht werden.');
+    kontakteRollenKatalog = kontakteRollenKatalog.filter((r) => r !== name);
+    speichereKontakteRollen();
+    if (aktiveKontaktRolle === name) aktiveKontaktRolle = "alle";
+    renderKontakte();
   }
 
   // Nummernfeld: nur Ziffern erlauben, "BW-" wird automatisch vorangestellt
@@ -2786,6 +3094,7 @@
 
       const ziffern = el.kontaktNummerInput.value.trim();
       const name = el.kontaktNameInput.value.trim();
+      const beruf = normalisierterKontaktBeruf(el.kontaktBerufInput ? el.kontaktBerufInput.value : "");
       const notiz = el.kontaktNotizInput.value.trim();
 
       if (!ziffern) {
@@ -2808,9 +3117,11 @@
         .add({
           nummer,
           name,
+          beruf,
           notiz,
           autor: aktuellerNutzer.name,
           zeitpunkt: firebase.firestore.FieldValue.serverTimestamp(),
+          zuletztAktualisiert: firebase.firestore.FieldValue.serverTimestamp(),
         })
         .then(() => {
           el.kontaktNummerInput.value = "";
@@ -2829,7 +3140,14 @@
   if (el.kontakteSearch) {
     el.kontakteSearch.addEventListener("input", (event) => {
       kontakteSuchbegriff = event.target.value;
-      renderKontakte();
+      renderKontakteListe();
+    });
+  }
+
+  if (el.btnToggleKontakteRollen) {
+    el.btnToggleKontakteRollen.addEventListener("click", () => {
+      kontakteRollenVerwaltungOffen = !kontakteRollenVerwaltungOffen;
+      renderKontakteRollenVerwaltung();
     });
   }
 
@@ -2862,6 +3180,7 @@
         const form = confirmBtn.closest(".kontakt-edit-form");
         const ziffern = form.querySelector('[data-role="edit-kontakt-nummer"]').value.replace(/\D/g, "");
         const name = form.querySelector('[data-role="edit-kontakt-name"]').value.trim();
+        const beruf = normalisierterKontaktBeruf(form.querySelector('[data-role="edit-kontakt-beruf"]').value);
         const notiz = form.querySelector('[data-role="edit-kontakt-notiz"]').value.trim();
 
         if (!ziffern) return zeigeToast("Bitte eine gültige Nummer eingeben.");
@@ -2874,7 +3193,7 @@
 
         db.collection(KONTAKTE_COLLECTION)
           .doc(confirmBtn.dataset.id)
-          .update({ nummer: neueNummer, name, notiz })
+          .update({ nummer: neueNummer, name, beruf, notiz, zuletztAktualisiert: firebase.firestore.FieldValue.serverTimestamp() })
           .then(() => zeigeToast("Kontakt aktualisiert."))
           .catch((fehler) => {
             console.error("Kontakt konnte nicht aktualisiert werden:", fehler);
@@ -2894,6 +3213,40 @@
           console.error("Kontakt konnte nicht gelöscht werden:", fehler);
           zeigeToast("Kontakt konnte nicht gelöscht werden.");
         });
+    });
+  }
+
+  // Rollen-Verwaltungs-Panel: Hinzufügen/Umbenennen/Löschen per Klick-Delegation.
+  if (el.kontakteRollenVerwaltung) {
+    el.kontakteRollenVerwaltung.addEventListener("click", (event) => {
+      const entfernenBtn = event.target.closest('[data-role="rollen-entfernen"]');
+      if (entfernenBtn) {
+        entferneKontaktRolle(entfernenBtn.dataset.rolle);
+        return;
+      }
+
+      const umbenennenBtn = event.target.closest('[data-role="rollen-umbenennen"]');
+      if (umbenennenBtn) {
+        const zeile = umbenennenBtn.closest(".rollen-katalog__zeile");
+        const input = zeile.querySelector('[data-role="rollen-umbenennen-input"]');
+        benenneKontaktRolleUm(umbenennenBtn.dataset.alt, input.value);
+        return;
+      }
+
+      if (event.target.id === "rollen-katalog-hinzufuegen-btn") {
+        const neuInput = document.getElementById("rollen-katalog-neu-input");
+        if (!neuInput) return;
+        fuegeKontaktRolleHinzu(neuInput.value);
+      }
+    });
+
+    el.kontakteRollenVerwaltung.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      if (event.target.id === "rollen-katalog-neu-input") {
+        event.preventDefault();
+        const btn = document.getElementById("rollen-katalog-hinzufuegen-btn");
+        if (btn) btn.click();
+      }
     });
   }
 
@@ -4688,7 +5041,7 @@
   // zusammen mit dem Wert in version.json. So merkt die App automatisch,
   // wenn eine neuere Version online verfügbar ist (auch wenn jemand
   // tagelang eingeloggt in einem offenen Tab bleibt).
-  const APP_VERSION = 90;
+  const APP_VERSION = 91;
   const UPDATE_CHECK_INTERVALL_MS = 3 * 60 * 1000; // alle 3 Minuten prüfen
 
   (function initUpdateChecker() {
