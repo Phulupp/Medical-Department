@@ -1,90 +1,78 @@
 /* ==========================================================================
-   BLACK WOLF MEDICAL — Ärztliche Registratur
+   HORNHAUSEN-HOF — Hofverwaltung (1899)
    ---------------------------------------------------------------------------
-   Konzept: ruhige, hochwertige interne Verwaltungssoftware. Anthrazit statt
-   tiefschwarz, Gold als einzige Akzentfarbe, viel Weißraum, dünne
-   Trennlinien statt großer Boxen/Schatten. Ein einziges Theme (dunkel),
-   horizontale Top-Navigation statt Sidebar.
-
-   Typografie: Cormorant Garamond für Überschriften, Inter für Fließtext
-   und Zahlen (tabular-nums für saubere Ausrichtung, keine dritte Schrift).
-
-   Signatur-Element: die dünne Gold-Linie als Trenner/Unterstreichung
-   (z. B. aktiver Nav-Punkt), und "N°"-artige Eyebrow-Labels.
-   Reine Desktop-Ansicht (keine mobile Optimierung).
+   Western/Red-Dead-Redemption-Anmutung: dunkles Holz, Pergament, alte
+   Dokumente, rustikale Rahmen, warme Braun-/Beigetöne, elegante Verzierungen,
+   Windräder/Scheunen/Felder als Liniengrafik. Keine modernen Karten, keine
+   modernen Icons, keine modernen Dashboard-Elemente.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
    1. Design-Tokens
    -------------------------------------------------------------------------- */
 :root {
-  /* Grundflächen — Anthrazit, drei ruhige Ebenen statt Papierschichten */
-  --color-bg: #121212;
-  --color-bg-secondary: #181715;
-  --color-surface: #1d1a17;
-  --color-surface-soft: #221f1b;
-  --color-surface-raised: #201d19;
-  --color-hover: #242019;
+  /* Dunkles Holz (Sidebar, Kopfleisten, Footer) */
+  --wood-950: #150d08;
+  --wood-900: #1d130c;
+  --wood-850: #241708;
+  --wood-800: #2b1c10;
+  --wood-700: #3a2615;
+  --wood-600: #4a3018;
+  --wood-line: #0e0906;
+  --wood-grain: rgba(0, 0, 0, 0.22);
+  --wood-grain-light: rgba(255, 220, 160, 0.05);
 
-  /* Text — warmes Off-White auf Anthrazit */
-  --color-text: #ece6d9;
-  --color-text-muted: #aca69a;
-  --color-text-soft: #8c8881;
+  /* Pergament (Hauptfläche, Karten) */
+  --parch-100: #f4e8c8;
+  --parch-200: #ecdcb2;
+  --parch-300: #e2cd98;
+  --parch-400: #d6bc80;
+  --parch-edge: #b99a5e;
+  --parch-shadow: rgba(90, 62, 24, 0.28);
 
-  /* Gold — die eine Markenfarbe */
-  --color-brass: #c6a15b;
-  --color-brass-bright: #d8bb7d;
-  --color-brass-soft: #2a2216;
-  --color-brass-text: #c6a15b;
+  /* Tinte / Text auf Pergament */
+  --ink-900: #2c1d10;
+  --ink-800: #3a2818;
+  --ink-700: #4d3a24;
+  --ink-soft: #6e5738;
+  --ink-faint: #8a744f;
 
-  /* Rot — Gefahr/Löschen, gedämpft */
-  --color-oxblood: #b37363;
-  --color-oxblood-soft: #2a1f1b;
-  --color-oxblood-text: #ce9384;
+  /* Text auf dunklem Holz */
+  --wood-text: #e9d9b3;
+  --wood-text-muted: #b89f77;
+  --wood-text-soft: #8d7554;
 
-  /* Grün — zweiter, sehr sparsamer Statusakzent (Herstellung, Verkauf) */
-  --color-sage: #8ca377;
-  --color-sage-soft: #1e241a;
-  --color-sage-text: #a3b98c;
+  /* Messing/Gold-Akzent */
+  --brass: #9c7a34;
+  --brass-bright: #c9a34e;
+  --brass-deep: #7a5c22;
+  --brass-soft: rgba(201, 163, 78, 0.16);
 
-  /* Blau — Personal-Kategorie, gedämpft */
-  --color-personal: #7c9bc7;
-  --color-personal-soft: #1b2330;
-  --color-personal-text: #9fbbde;
+  /* Status-Akzente (gedämpft, erdig) */
+  --status-open: #a85c3f;      /* Offen / warm ochre-red */
+  --status-open-soft: rgba(168, 92, 63, 0.15);
+  --status-progress: #7d6a2e;
+  --status-progress-soft: rgba(125, 106, 46, 0.16);
+  --status-done: #4d6b3f;      /* übernommen/geschlossen, gedämpftes Grün */
+  --status-done-soft: rgba(77, 107, 63, 0.16);
+  --status-danger: #7a2e21;
+  --status-danger-soft: rgba(122, 46, 33, 0.15);
 
-  /* Neutral (Allgemein) */
-  --color-slate: #aca69a;
-  --color-slate-soft: #201c18;
-  --color-slate-text: #c7bca8;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
 
-  /* Marken-Gold fürs Emblem */
-  --color-brand-start: #d8bb7d;
-  --color-brand-end: #9c7c3e;
+  --shadow-card: 0 3px 10px rgba(40, 25, 10, 0.22), 0 1px 0 rgba(255, 255, 255, 0.35) inset;
+  --shadow-raised: 0 14px 34px rgba(20, 12, 5, 0.4);
+  --shadow-modal: 0 30px 70px rgba(10, 6, 3, 0.6);
 
-  /* Rahmen — ein einziger dünner Linien-Ton */
-  --color-input-border: #2a2723;
-  --color-card-border: #2a2723;
-  --color-hairline: #2a2723;
+  --sidebar-width: 232px;
+  --content-width: 1360px;
 
-  /* Schatten — sehr zurückhaltend, nur für schwebende Ebenen (Modals/Popover) */
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-medium: 0 10px 26px rgba(0, 0, 0, 0.35);
-  --shadow-modal: 0 30px 70px rgba(0, 0, 0, 0.55);
-
-  /* Radien — knapp, architektonisch, kein "App-Bubbly" */
-  --radius-sm: 4px;
-  --radius-md: 7px;
-  --radius-lg: 12px;
-  --radius-pill: 999px;
-
-  /* Layout */
-  --content-width: 1480px;
-  --topnav-height: 68px;
-
-  /* Schrift — nur zwei Familien, keine dritte Mono-Schrift */
-  --font-display: "Cormorant Garamond", Georgia, serif;
-  --font-body: "Inter", "Segoe UI", sans-serif;
-  --font-mono: var(--font-body);
+  --font-brand: "Rye", "Playfair Display", serif;
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-body: "Vollkorn", Georgia, "Times New Roman", serif;
+  --font-mono: "Vollkorn", Georgia, serif;
 }
 
 /* --------------------------------------------------------------------------
@@ -102,11 +90,11 @@ body {
 }
 
 body {
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--wood-900);
+  color: var(--ink-900);
   font-family: var(--font-body);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.55;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
@@ -130,23 +118,18 @@ a {
   color: inherit;
 }
 
-/* Stellt sicher, dass das native [hidden]-Attribut IMMER greift, auch wenn
-   eine Komponente (z. B. .app, .auth-screen) eigene display-Werte setzt. */
 [hidden] {
   display: none !important;
 }
 
-/* Bewusst kräftig statt der dezenten --color-brass-soft: Die gedämpfte
-   Variante ist auf den dunklen Flächen kaum vom unmarkierten Text zu
-   unterscheiden - eine Markierung muss aber immer sofort sichtbar sein. */
 ::selection {
-  background: var(--color-brass);
-  color: var(--color-bg);
+  background: var(--brass-bright);
+  color: var(--wood-950);
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
 }
 
 ::-webkit-scrollbar-track {
@@ -154,12 +137,13 @@ a {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-hairline);
-  border-radius: var(--radius-pill);
+  background: var(--parch-edge);
+  border-radius: 999px;
+  border: 3px solid var(--parch-100);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-brass);
+  outline: 2px solid var(--brass-bright);
   outline-offset: 2px;
 }
 
@@ -167,8 +151,8 @@ h1,
 h2,
 h3 {
   font-family: var(--font-display);
-  font-weight: 600;
-  color: var(--color-text);
+  font-weight: 700;
+  color: var(--ink-900);
   margin: 0;
 }
 
@@ -176,499 +160,247 @@ p {
   margin: 0;
 }
 
-/* --------------------------------------------------------------------------
-   3. App-Grundgerüst
-   -------------------------------------------------------------------------- */
-.app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-/* --------------------------------------------------------------------------
-   4. Topnav — horizontale Navigation, keine Sidebar
-   -------------------------------------------------------------------------- */
-.topnav {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  flex-shrink: 0;
-  background: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.topnav__inner {
-  max-width: var(--content-width);
-  margin: 0 auto;
-  height: var(--topnav-height);
-  display: flex;
-  align-items: center;
-  gap: 44px;
-  padding: 0 48px;
-}
-
-.topnav__brand {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  flex-shrink: 0;
-}
-
-.brand-mark {
-  width: 26px;
-  height: 26px;
+/* Dekorative Verzierung: kleine Rauten-Trenner, wie auf altem Briefpapier */
+.ornament-divider {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-brass);
-  flex-shrink: 0;
-}
-
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.brand-text__title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 16.5px;
-  letter-spacing: 0.01em;
-  color: var(--color-text);
-}
-
-.brand-text__subtitle {
-  font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 8.5px;
-  letter-spacing: 0.19em;
-  text-transform: uppercase;
-  color: var(--color-brass-text);
-}
-
-.topnav__nav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-}
-
-/* --------------------------------------------------------------------------
-   5. Navigation
-   -------------------------------------------------------------------------- */
-.nav__item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 8px 4px;
-  margin: 0 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-soft);
-  transition: color 0.15s ease;
-  white-space: nowrap;
-}
-
-.nav__item::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--color-brass);
-  opacity: 0;
-  transform: translateY(2px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.nav__item:hover {
-  color: var(--color-text);
-}
-
-.nav__item--active {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-.nav__item--active::after {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Zeigt die Anzahl ausstehender Registrierungsanfragen direkt am
-   "Admin"-Reiter, damit ein Admin neue Anfragen sofort sieht, ohne
-   extra reinklicken zu müssen. */
-.nav__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 5px;
-  margin-left: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--color-oxblood);
-  color: #fff;
-  font-size: 10.5px;
-  font-weight: 700;
-  line-height: 1;
-}
-
-/* --------------------------------------------------------------------------
-   6. Topnav-Aktionen: Online-Widget & Nutzer-Badge
-   -------------------------------------------------------------------------- */
-.topnav__actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.online-widget {
-  position: relative;
-}
-
-.online-widget__btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  padding: 8px 12px;
-  border-radius: var(--radius-pill);
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.online-widget__btn:hover {
-  background: var(--color-surface-soft);
-  color: var(--color-text);
-}
-
-.online-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-sage);
-  flex-shrink: 0;
-}
-
-.online-panel {
-  display: none;
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 220px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-medium);
-  padding: 14px;
-  z-index: 50;
-}
-
-.online-panel--visible {
-  display: block;
-}
-
-.online-panel__title {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-  margin-bottom: 10px;
-}
-
-.online-panel__person {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--color-text);
-  padding: 5px 0;
-}
-
-.online-panel__empty {
-  font-size: 12.5px;
-  color: var(--color-text-soft);
-  font-style: italic;
-}
-
-.user-badge-wrapper {
-  position: relative;
-  padding-left: 6px;
-  margin-left: 4px;
-  border-left: 1px solid var(--color-hairline);
-}
-
-.user-badge {
-  display: flex;
-  align-items: center;
   gap: 10px;
-  padding: 6px 10px 6px 6px;
-  border-radius: var(--radius-pill);
-  transition: background 0.15s ease;
+  color: var(--brass);
+  opacity: 0.75;
+  margin: 10px 0;
 }
 
-.user-badge:hover {
-  background: var(--color-surface-soft);
-}
-
-.user-badge__avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--color-brass);
-  color: var(--color-bg);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.user-badge__info {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-  text-align: left;
-  min-width: 0;
-}
-
-.user-badge__name {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 150px;
-}
-
-.user-badge__role {
-  font-size: 10.5px;
-  color: var(--color-text-soft);
-}
-
-.user-badge__chevron {
-  color: var(--color-text-soft);
-  font-size: 15px;
-  flex-shrink: 0;
-}
-
-.user-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  min-width: 200px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-medium);
-  padding: 6px;
-  z-index: 50;
-}
-
-.user-menu--visible {
-  display: block;
-}
-
-.user-menu__item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 9px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.user-menu__item:hover {
-  background: var(--color-hover);
-}
-
-/* --------------------------------------------------------------------------
-   7. Inhaltsbereich, Seitenkopf, Footer
-   -------------------------------------------------------------------------- */
-.content-shell {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  max-width: var(--content-width);
-  width: 100%;
-  min-width: 0;
-  margin: 0 auto;
-}
-
-.page-header {
-  padding: 56px 48px 32px;
-}
-
-.page-header__eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--color-brass-text);
-  margin-bottom: 14px;
-}
-
-.page-header__icon {
-  opacity: 0.85;
-  flex-shrink: 0;
-}
-
-.page-header h1 {
-  font-size: 44px;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.1;
-}
-
-.page-header p:not(.page-header__eyebrow) {
-  font-size: 14.5px;
-  color: var(--color-text-muted);
-  margin-top: 10px;
-  max-width: 620px;
-  line-height: 1.6;
-}
-
-.main {
-  flex: 1;
-}
-
-.view {
-  display: none;
-  padding: 8px 48px 64px;
-}
-
-.view--active {
-  display: block;
-}
-
-/* Elegante Tabs (ersetzen das alte Dropdown-Menü, z. B. bei "Infos") */
-.org-tabs {
-  display: flex;
-  gap: 36px;
-  border-bottom: 1px solid var(--color-hairline);
-  margin-bottom: 32px;
-}
-
-.org-tabs__tab {
-  padding: 0 0 16px;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  position: relative;
-  transition: color 0.2s ease;
-}
-
-.org-tabs__tab:hover {
-  color: var(--color-text);
-}
-
-.org-tabs__tab--active {
-  color: var(--color-brass-text);
-  font-weight: 600;
-}
-
-.org-tabs__tab--active::after {
+.ornament-divider::before,
+.ornament-divider::after {
   content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--color-brass);
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--brass), transparent);
 }
 
-.page-footer {
-  padding: 24px 48px 36px;
-  border-top: 1px solid var(--color-hairline);
-  margin-top: 20px;
-  color: var(--color-text-soft);
-  font-size: 11.5px;
-  line-height: 1.7;
-}
-
-.page-footer__small {
-  color: var(--color-text-soft);
-}
-
-.view-lead {
-  font-size: 13px;
-  color: var(--color-text-soft);
-  margin-bottom: 20px;
-  font-style: italic;
+.ornament-divider__diamond {
+  width: 7px;
+  height: 7px;
+  background: var(--brass);
+  transform: rotate(45deg);
+  flex-shrink: 0;
 }
 
 /* --------------------------------------------------------------------------
-   8. Auth-Screen (Login)
+   3. Holz-Textur & Pergament-Textur (per CSS erzeugt, keine Bild-Assets)
+   -------------------------------------------------------------------------- */
+.tex-wood {
+  background-color: var(--wood-800);
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      var(--wood-grain-light) 0px,
+      transparent 2px,
+      transparent 7px,
+      var(--wood-grain) 8px,
+      transparent 9px,
+      transparent 26px
+    ),
+    linear-gradient(180deg, var(--wood-700) 0%, var(--wood-800) 40%, var(--wood-900) 100%);
+}
+
+.tex-parchment {
+  background-color: var(--parch-200);
+  background-image:
+    radial-gradient(ellipse 620px 340px at 8% 0%, rgba(255, 250, 230, 0.55), transparent 60%),
+    radial-gradient(ellipse 500px 380px at 96% 12%, var(--parch-300) 0%, transparent 55%),
+    radial-gradient(ellipse 700px 420px at 20% 100%, var(--parch-300) 0%, transparent 55%),
+    radial-gradient(ellipse 420px 300px at 80% 90%, rgba(140, 100, 40, 0.12), transparent 60%);
+}
+
+/* --------------------------------------------------------------------------
+   4. Farm-Illustration (wiederverwendbares Liniengrafik-SVG: Windrad + Scheune)
+   -------------------------------------------------------------------------- */
+.farm-scene {
+  color: var(--ink-700);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.farm-scene--dark {
+  color: var(--wood-text-muted);
+  opacity: 0.5;
+}
+
+/* --------------------------------------------------------------------------
+   5. Login-Bildschirm (Farmtor mit Holzschild)
    -------------------------------------------------------------------------- */
 .auth-screen {
   position: fixed;
   inset: 0;
-  background: var(--color-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  background:
+    radial-gradient(ellipse 900px 620px at 50% -10%, #4a3420 0%, transparent 60%),
+    linear-gradient(180deg, #2c2013 0%, #1c130b 55%, #100a06 100%);
 }
 
-.auth-screen__watermark {
+.auth-screen__sky {
   position: absolute;
-  right: -80px;
-  bottom: -100px;
-  width: 560px;
-  height: 560px;
-  color: var(--color-brass);
-  opacity: 0.05;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 700px 500px at 78% 8%, rgba(216, 158, 90, 0.35), transparent 65%),
+    linear-gradient(180deg, #5c3d22 0%, #38270f 45%, #1a1108 100%);
+  z-index: 0;
+}
+
+.auth-screen__scene {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46%;
+  z-index: 1;
+  color: #2f1f10;
+  opacity: 0.95;
+}
+
+.auth-screen__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: radial-gradient(ellipse 1300px 950px at 50% 32%, transparent 50%, rgba(8, 5, 2, 0.42) 100%);
   pointer-events: none;
 }
 
+.auth-gate {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+}
+
+.auth-gate__sign-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.auth-gate__chains {
+  display: flex;
+  gap: 130px;
+  margin-bottom: -6px;
+}
+
+.auth-gate__chain {
+  width: 2px;
+  height: 34px;
+  background: repeating-linear-gradient(180deg, #6b5a3c 0 4px, #251a0d 4px 8px);
+  border-radius: 2px;
+}
+
+.auth-gate__sign {
+  position: relative;
+  padding: 20px 42px;
+  background: linear-gradient(180deg, #6b4726 0%, #4a2f18 100%);
+  border: 3px solid #2a1a0c;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-raised), 0 0 0 1px rgba(201, 163, 78, 0.15) inset;
+  text-align: center;
+}
+
+.auth-gate__sign::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px solid rgba(201, 163, 78, 0.3);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.auth-gate__title {
+  display: block;
+  font-family: var(--font-brand);
+  font-size: 34px;
+  letter-spacing: 0.04em;
+  color: var(--brass-bright);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+  line-height: 1.1;
+}
+
+.auth-gate__subtitle {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  color: var(--wood-text-muted);
+  text-transform: uppercase;
+}
+
 .auth-card {
-  width: 400px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
+  width: 380px;
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-modal);
-  padding: 40px 36px 32px;
+  padding: 34px 32px 28px;
   position: relative;
 }
 
-.auth-card::before {
+.auth-card::before,
+.auth-card::after,
+.auth-card__corner-tl,
+.auth-card__corner-br {
   content: "";
   position: absolute;
-  top: 0;
-  left: 40px;
-  right: 40px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--color-brass), transparent);
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--brass);
+  opacity: 0.55;
+}
+
+.auth-card::before {
+  top: 8px;
+  left: 8px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.auth-card::after {
+  bottom: 8px;
+  right: 8px;
+  border-left: none;
+  border-top: none;
 }
 
 .auth-card__brand {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  margin-bottom: 32px;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-card__brand .brand-text__title {
+  font-family: var(--font-brand);
+  font-size: 24px;
+  color: var(--ink-900);
+  letter-spacing: 0.02em;
+}
+
+.auth-card__brand .brand-text__subtitle {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--brass-deep);
 }
 
 .auth-form {
   display: none;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .auth-form--active {
@@ -681,561 +413,20 @@ p {
 }
 
 .auth-hint {
-  margin-top: 20px;
+  margin-top: 18px;
   font-size: 12px;
-  color: var(--color-oxblood-text);
-  background: var(--color-oxblood-soft);
+  color: var(--status-danger);
+  background: var(--status-danger-soft);
   padding: 12px 14px;
   border-radius: var(--radius-sm);
+  border: 1px solid rgba(122, 46, 33, 0.3);
 }
 
 .auth-hint code {
-  font-family: var(--font-mono);
+  font-family: monospace;
   font-size: 11px;
 }
 
-/* --------------------------------------------------------------------------
-   9. Formularfelder
-   -------------------------------------------------------------------------- */
-.field-label {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  margin: 12px 0 6px;
-  display: block;
-  letter-spacing: 0.01em;
-}
-
-.field-label:first-child {
-  margin-top: 0;
-}
-
-.field-input {
-  width: 100%;
-  border: 1.5px solid var(--color-input-border);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
-  padding: 11px 13px;
-  font-size: 13.5px;
-  color: var(--color-text);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.field-input::placeholder {
-  color: var(--color-text-soft);
-}
-
-.field-input:focus {
-  outline: none;
-  border-color: var(--color-brass);
-  box-shadow: 0 0 0 3px var(--color-brass-soft);
-}
-
-.field-textarea {
-  resize: vertical;
-  min-height: 70px;
-  font-family: inherit;
-  line-height: 1.5;
-}
-
-.field-error {
-  color: var(--color-oxblood-text);
-  font-size: 12px;
-  margin-top: 8px;
-}
-
-/* Rich-Text-Editor (Notizen/Ankündigungen) */
-.format-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-bottom: 8px;
-}
-
-.format-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  color: var(--color-text-muted);
-  background: var(--color-surface-soft);
-}
-
-.format-btn:hover {
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-}
-
-.format-toolbar__divider {
-  width: 1px;
-  height: 18px;
-  background: var(--color-input-border);
-  margin: 0 3px;
-}
-
-.color-picker {
-  position: relative;
-}
-
-.color-picker__trigger {
-  position: relative;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.color-picker__underline {
-  position: absolute;
-  left: 6px;
-  right: 6px;
-  bottom: 5px;
-  height: 2px;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  transition: background 0.15s ease;
-}
-
-.color-picker__popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  min-width: 150px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-medium);
-  padding: 6px;
-  z-index: 60;
-}
-
-.color-picker__option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--color-text);
-  text-align: left;
-  transition: background 0.15s ease;
-}
-
-.color-picker__option:hover {
-  background: var(--color-surface-soft);
-}
-
-.color-picker__dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.color-picker__divider {
-  height: 1px;
-  background: var(--color-hairline);
-  margin: 5px 4px;
-}
-
-.color-picker__option--reset {
-  color: var(--color-text-soft);
-  font-style: italic;
-}
-
-.rich-editor {
-  width: 100%;
-  border: 1.5px solid var(--color-input-border);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  font-size: 13.5px;
-  font-family: inherit;
-  color: var(--color-text);
-  min-height: 110px;
-  max-height: 380px;
-  overflow-y: auto;
-  line-height: 1.6;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.rich-editor:focus {
-  outline: none;
-  border-color: var(--color-brass);
-  box-shadow: 0 0 0 3px var(--color-brass-soft);
-}
-
-.rich-editor:empty::before {
-  content: attr(data-placeholder);
-  color: var(--color-text-soft);
-  pointer-events: none;
-}
-
-/* --------------------------------------------------------------------------
-   10. Buttons
-   -------------------------------------------------------------------------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 11px 20px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 600;
-  transition: filter 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  white-space: nowrap;
-}
-
-.btn--primary {
-  background: var(--color-brass);
-  color: var(--color-bg);
-  box-shadow: var(--shadow-soft);
-}
-
-.btn--primary:hover {
-  filter: brightness(1.08);
-}
-
-.btn--ghost {
-  background: transparent;
-  color: var(--color-text-muted);
-  border: 1.5px solid var(--color-card-border);
-}
-
-.btn--ghost:hover {
-  background: var(--color-surface-soft);
-  color: var(--color-text);
-  border-color: var(--color-input-border);
-}
-
-.btn--ghost-active {
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-  border-color: transparent;
-}
-
-.btn--danger {
-  background: var(--color-oxblood);
-  color: var(--color-text);
-}
-
-.btn--danger:hover {
-  filter: brightness(1.12);
-}
-
-.btn--checkout {
-  background: var(--color-sage);
-  color: var(--color-text);
-  box-shadow: var(--shadow-soft);
-}
-
-.btn--checkout:hover {
-  filter: brightness(1.1);
-}
-
-.btn__icon {
-  font-size: 14px;
-}
-
-.icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  background: var(--color-surface-soft);
-  color: var(--color-text-muted);
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.icon-btn--edit:hover {
-  background: var(--color-personal-soft);
-  color: var(--color-personal-text);
-}
-
-.icon-btn--copy:hover {
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-}
-
-.icon-btn--delete:hover {
-  background: var(--color-oxblood-soft);
-  color: var(--color-oxblood-text);
-}
-
-.icon-btn--locked {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.icon-btn--stats {
-  opacity: 0.5;
-  font-size: 13px;
-}
-
-.icon-btn--stats:hover {
-  opacity: 1;
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-}
-
-.icon-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.row-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* --------------------------------------------------------------------------
-   11. Karten (generische Container)
-   -------------------------------------------------------------------------- */
-.settings-card,
-.notes-card,
-.board-card,
-.table-card,
-.placeholder-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
-  padding: 32px 34px;
-  margin-bottom: 28px;
-}
-
-.settings-card h3,
-.notes-card h3,
-.board-card h3 {
-  font-size: 18px;
-  margin-bottom: 10px;
-}
-
-.settings-card__hint {
-  font-size: 12.5px;
-  color: var(--color-text-soft);
-  margin-bottom: 20px;
-  line-height: 1.65;
-}
-
-.settings-form {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.settings-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.settings-list__item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: var(--color-surface-soft);
-  border-radius: var(--radius-sm);
-  padding: 11px 14px;
-}
-
-.settings-list__name {
-  font-weight: 600;
-  font-size: 13px;
-  margin-right: 8px;
-}
-
-.settings-list__role {
-  font-size: 11.5px;
-  color: var(--color-text-muted);
-}
-
-.settings-list__protected {
-  font-size: 10.5px;
-  color: var(--color-brass-text);
-  background: var(--color-brass-soft);
-  padding: 3px 8px;
-  border-radius: var(--radius-pill);
-  margin-left: 8px;
-}
-
-.mitarbeiter-pin-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  background: var(--color-surface-soft);
-  padding: 0 14px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  white-space: nowrap;
-  height: 42px;
-}
-
-.mitarbeiter-pin-toggle input {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--color-brass);
-  cursor: pointer;
-}
-
-/* --------------------------------------------------------------------------
-   Benutzerverwaltung (Login-/Benutzersystem) - reine Ergänzungen, keine
-   bestehende Regel wird verändert. ".settings-list__item--user" macht aus
-   der sonst einzeiligen Reihe eine gestapelte Karte, weil hier deutlich
-   mehr Informationen je Benutzer angezeigt werden (Rang, Status,
-   Registrierungsdatum, letzter Login, Notiz, mehrere Aktionen).
-   -------------------------------------------------------------------------- */
-.settings-list__item--user {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-}
-
-.settings-list__user-main {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.settings-list__user-meta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.settings-list__meta-text {
-  font-size: 11.5px;
-  color: var(--color-text-soft);
-}
-
-.settings-list__status-pill {
-  font-size: 10.5px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: var(--radius-pill);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.settings-list__status-pill--pending {
-  color: var(--color-brass-text);
-  background: var(--color-brass-soft);
-}
-
-.settings-list__status-pill--approved {
-  color: var(--color-sage-text);
-  background: var(--color-sage-soft);
-}
-
-.settings-list__status-pill--rejected,
-.settings-list__status-pill--locked {
-  color: var(--color-oxblood-text);
-  background: var(--color-oxblood-soft);
-}
-
-.settings-list__note-input {
-  font-size: 12.5px;
-  padding: 8px 11px;
-}
-
-.settings-list__user-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.settings-list__rolle-select {
-  flex: 0 0 170px;
-  padding: 7px 10px;
-  font-size: 12.5px;
-}
-
-.settings-list__sperr-dauer-select {
-  flex: 0 0 130px;
-  padding: 7px 10px;
-  font-size: 12.5px;
-}
-
-/* --------------------------------------------------------------------------
-   Vereinfachte, klickbare Benutzer-Zeile (öffnet das Detail-Modal) - die
-   frühere gestapelte ".settings-list__item--user"-Karte mit allen Aktionen
-   direkt in der Zeile wurde dadurch ersetzt.
-   -------------------------------------------------------------------------- */
-.settings-list__item--clickable {
-  cursor: pointer;
-  transition: box-shadow 0.15s ease, background 0.15s ease;
-}
-
-.settings-list__item--clickable:hover,
-.settings-list__item--clickable:focus-visible {
-  box-shadow: inset 0 0 0 1px var(--color-brass-soft);
-  outline: none;
-}
-
-.settings-list__user-row-main {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.settings-list__user-row-rolle {
-  font-size: 11.5px;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  margin-left: 10px;
-}
-
-.settings-list__wartet-hinweis {
-  font-size: 10.5px;
-  color: var(--color-oxblood-text);
-  background: var(--color-oxblood-soft);
-  padding: 3px 8px;
-  border-radius: var(--radius-pill);
-}
-
-/* --------------------------------------------------------------------------
-   Aktivitäts-Log (Admin Panel)
-   -------------------------------------------------------------------------- */
-.admin-log__item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: var(--color-surface-soft);
-  border-radius: var(--radius-sm);
-  padding: 9px 14px;
-}
-
-.admin-log__item-text {
-  font-size: 12.5px;
-}
-
-.admin-log__item-zeit {
-  font-size: 10.5px;
-  color: var(--color-text-muted);
-}
-
-/* --------------------------------------------------------------------------
-   Login-Bildschirm: neue Bausteine für Registrieren/Passwort-vergessen-
-   Links und die Status-Hinweise (wartet auf Freigabe/abgelehnt/gesperrt) -
-   nutzen dieselben Tokens wie der Rest der Login-Karte.
-   -------------------------------------------------------------------------- */
 .auth-links {
   display: flex;
   flex-direction: column;
@@ -1249,14 +440,15 @@ p {
   border: none;
   padding: 0;
   font-size: 12px;
-  color: var(--color-text-soft);
+  color: var(--ink-soft);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
+  font-style: italic;
 }
 
 .auth-link:hover {
-  color: var(--color-brass-text);
+  color: var(--brass-deep);
 }
 
 .auth-status {
@@ -1272,1881 +464,1011 @@ p {
 
 .auth-status__text {
   font-size: 13.5px;
-  color: var(--color-text-muted);
-  line-height: 1.6;
+  color: var(--ink-700);
+  line-height: 1.65;
 }
 
-.placeholder-card {
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--parch-edge);
+}
+
+/* --------------------------------------------------------------------------
+   6. Formularfelder
+   -------------------------------------------------------------------------- */
+.field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 12px 0 6px;
+  display: block;
+}
+
+.field-label:first-child {
+  margin-top: 0;
+}
+
+.field-input {
+  width: 100%;
+  border: 1.5px solid var(--parch-edge);
+  background: var(--parch-100);
+  border-radius: var(--radius-sm);
+  padding: 10px 13px;
+  font-size: 13.5px;
+  font-family: var(--font-body);
+  color: var(--ink-900);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field-input::placeholder {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px var(--brass-soft);
+}
+
+.field-textarea {
+  resize: vertical;
+  min-height: 70px;
+  line-height: 1.5;
+}
+
+.field-error {
+  color: var(--status-danger);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.field-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-top: 12px;
+}
+
+.field-checkbox-row input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--brass);
+}
+
+/* --------------------------------------------------------------------------
+   7. Buttons
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: filter 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  white-space: nowrap;
+  font-family: var(--font-body);
+}
+
+.btn--primary {
+  background: linear-gradient(180deg, var(--wood-700), var(--wood-850));
+  color: var(--brass-bright);
+  border: 1px solid var(--wood-line);
+  box-shadow: var(--shadow-card);
+}
+
+.btn--primary:hover {
+  filter: brightness(1.18);
+}
+
+.btn--primary:active {
+  transform: translateY(1px);
+}
+
+.btn--gold {
+  background: linear-gradient(180deg, var(--brass-bright), var(--brass-deep));
+  color: #2a1c0a;
+  border: 1px solid var(--brass-deep);
+  box-shadow: var(--shadow-card);
+}
+
+.btn--gold:hover {
+  filter: brightness(1.08);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  border: 1.5px solid var(--parch-edge);
+}
+
+.btn--ghost:hover {
+  background: rgba(155, 122, 52, 0.12);
+  color: var(--ink-900);
+  border-color: var(--brass);
+}
+
+.btn--danger {
+  background: var(--status-danger);
+  color: #f2e4d6;
+}
+
+.btn--danger:hover {
+  filter: brightness(1.15);
+}
+
+.btn--sm {
+  padding: 7px 14px;
+  font-size: 11.5px;
+}
+
+.btn--full {
+  width: 100%;
+}
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  background: rgba(155, 122, 52, 0.1);
+  color: var(--ink-soft);
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.icon-btn:hover {
+  border-color: var(--brass);
+  color: var(--brass-deep);
+}
+
+.icon-btn--delete:hover {
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+  background: var(--status-danger-soft);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* --------------------------------------------------------------------------
+   8. App-Grundgerüst: Holz-Sidebar + Pergament-Inhalt
+   -------------------------------------------------------------------------- */
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  flex: 0 0 var(--sidebar-width);
+  width: var(--sidebar-width);
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  border-right: 3px solid var(--wood-line);
+  box-shadow: 6px 0 18px rgba(0, 0, 0, 0.35);
+  z-index: 20;
+}
+
+.sidebar__brand {
+  padding: 26px 22px 20px;
   text-align: center;
-  padding: 70px 40px;
-  color: var(--color-text-muted);
+  border-bottom: 1px solid rgba(201, 163, 78, 0.22);
 }
 
-.placeholder-card--compact {
-  padding: 40px;
-}
-
-.placeholder-card__icon {
-  font-size: 38px;
-  margin-bottom: 16px;
-  opacity: 0.7;
-}
-
-.placeholder-card h2 {
-  font-size: 22px;
+.sidebar__brand-icon {
+  color: var(--brass-bright);
   margin-bottom: 8px;
 }
 
-.placeholder-card p {
-  max-width: 420px;
-  margin: 0 auto;
+.sidebar__brand-title {
+  display: block;
+  font-family: var(--font-brand);
+  font-size: 21px;
+  letter-spacing: 0.03em;
+  color: var(--wood-text);
+}
+
+.sidebar__brand-subtitle {
+  display: block;
+  margin-top: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--brass-bright);
+}
+
+.sidebar__nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+.sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--wood-text-muted);
+  transition: background 0.15s ease, color 0.15s ease;
+  text-align: left;
+  position: relative;
+}
+
+.sidebar__item svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.sidebar__item:hover {
+  color: var(--wood-text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar__item--active {
+  color: var(--brass-bright);
+  background: rgba(201, 163, 78, 0.12);
+}
+
+.sidebar__item--active::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--brass-bright);
+  border-radius: 0 3px 3px 0;
+}
+
+.sidebar__badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--status-danger);
+  color: #f2e4d6;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sidebar__divider {
+  height: 1px;
+  background: rgba(201, 163, 78, 0.16);
+  margin: 10px 6px;
+}
+
+.sidebar__footer {
+  border-top: 1px solid rgba(201, 163, 78, 0.22);
+  padding: 14px;
+  position: relative;
+}
+
+.sidebar__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s ease;
+}
+
+.sidebar__user:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar__user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--brass-bright), var(--brass-deep));
+  color: #2a1c0a;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 2px solid var(--wood-line);
+}
+
+.sidebar__user-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  text-align: left;
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebar__user-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--wood-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar__user-role {
+  font-size: 10.5px;
+  color: var(--brass-bright);
+}
+
+.sidebar__user-chevron {
+  color: var(--wood-text-soft);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.sidebar__user-menu {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 14px;
+  right: 14px;
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+  padding: 6px;
+  z-index: 50;
+}
+
+.sidebar__user-menu--visible {
+  display: block;
+}
+
+.sidebar__user-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-900);
+}
+
+.sidebar__user-menu-item:hover {
+  background: var(--brass-soft);
+}
+
+/* --------------------------------------------------------------------------
+   9. Hauptbereich
+   -------------------------------------------------------------------------- */
+.main-area {
+  flex: 1;
+  min-width: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 16px 40px 0;
+}
+
+.online-widget {
+  position: relative;
+}
+
+.online-widget__btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
+  transition: border-color 0.15s ease;
+}
+
+.online-widget__btn:hover {
+  border-color: var(--brass);
+}
+
+.online-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-done);
+  flex-shrink: 0;
+}
+
+.online-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 210px;
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+  padding: 12px;
+  z-index: 50;
+}
+
+.online-panel--visible {
+  display: block;
+}
+
+.online-panel__title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+
+.online-panel__person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-900);
+  padding: 4px 0;
+}
+
+.online-panel__empty {
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.content-shell {
+  flex: 1;
+  max-width: var(--content-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 40px 60px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 0 30px;
+  position: relative;
+}
+
+.page-header__text h1 {
+  font-size: 34px;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.page-header__text p {
+  margin-top: 8px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  max-width: 560px;
+  line-height: 1.6;
+}
+
+.page-header__art {
+  flex-shrink: 0;
+  width: 260px;
+  height: 90px;
+  color: var(--ink-700);
+  opacity: 0.5;
+}
+
+.view {
+  display: none;
+}
+
+.view--active {
+  display: block;
+}
+
+/* Tabs (Alle/Offen/In Bearbeitung/Abgeschlossen etc.) */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 22px;
+  flex-wrap: wrap;
+}
+
+.tabs__tab {
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: rgba(155, 122, 52, 0.08);
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.tabs__tab:hover {
+  border-color: var(--parch-edge);
+}
+
+.tabs__tab--active {
+  background: var(--wood-800);
+  color: var(--brass-bright);
+  border-color: var(--wood-line);
+}
+
+/* --------------------------------------------------------------------------
+   10. Parchment-Karten
+   -------------------------------------------------------------------------- */
+.parch-card {
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 26px 28px;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.parch-card h3 {
+  font-size: 17px;
+  margin-bottom: 8px;
+}
+
+.parch-card__hint {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-bottom: 18px;
   line-height: 1.6;
 }
 
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
-  color: var(--color-text-soft);
+  padding: 36px 20px;
+  color: var(--ink-faint);
   font-size: 13px;
   font-style: italic;
 }
 
 /* --------------------------------------------------------------------------
-   12. Suchfelder & Werkzeugleisten
+   11. Übersicht (Dashboard)
    -------------------------------------------------------------------------- */
+.dash-hero {
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 34px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 26px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-hero__greeting {
+  position: relative;
+  z-index: 1;
+}
+
+.dash-hero__eyebrow {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  margin-bottom: 4px;
+}
+
+.dash-hero__name {
+  font-size: 32px;
+}
+
+.dash-hero__sub {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.dash-hero__art {
+  width: 300px;
+  height: 130px;
+  color: var(--ink-700);
+  opacity: 0.45;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.dash-stat {
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dash-stat__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.dash-stat__value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.dash-stat__sub {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.dash-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 30px;
+  align-items: start;
+}
+
+.dash-panel {
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.dash-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--parch-edge);
+  background: rgba(155, 122, 52, 0.06);
+}
+
+.dash-panel__title {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 700;
+}
+
+.dash-panel__more {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brass-deep);
+}
+
+.dash-panel__more:hover {
+  text-decoration: underline;
+}
+
+.dash-panel__body {
+  padding: 4px 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.dash-mini-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(185, 154, 94, 0.35);
+  font-size: 12.5px;
+}
+
+.dash-mini-row:last-child {
+  border-bottom: none;
+}
+
+.dash-mini-row__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.dash-mini-row__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.dash-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--wood-text-muted);
+  margin: 6px 0 16px;
+}
+
+.dash-quicklinks {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 34px;
+}
+
+.dash-quicklink {
+  text-align: left;
+  padding: 20px 18px;
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-md);
+  background: var(--parch-100);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.dash-quicklink:hover {
+  border-color: var(--brass);
+  transform: translateY(-2px);
+}
+
+.dash-quicklink__icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  color: var(--brass-deep);
+  margin-bottom: 12px;
+}
+
+.dash-quicklink__titel {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--ink-900);
+  margin-bottom: 4px;
+}
+
+.dash-quicklink__text {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-pill--offen {
+  background: var(--status-open-soft);
+  color: var(--status-open);
+}
+
+.status-pill--bearbeitung {
+  background: var(--status-progress-soft);
+  color: var(--status-progress);
+}
+
+.status-pill--geschlossen,
+.status-pill--uebernommen {
+  background: var(--status-done-soft);
+  color: var(--status-done);
+}
+
+.status-pill--entwurf {
+  background: rgba(120, 100, 60, 0.14);
+  color: var(--ink-soft);
+}
+
+/* --------------------------------------------------------------------------
+   12. Tabellen (CSS-Grid statt <table>)
+   -------------------------------------------------------------------------- */
+.reg-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.reg-row {
+  display: grid;
+  align-items: center;
+  column-gap: 14px;
+}
+
+.reg-row--head {
+  padding: 12px 22px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border-bottom: 2px solid var(--parch-edge);
+}
+
+.reg-row--body {
+  padding: 13px 22px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(185, 154, 94, 0.4);
+  transition: background 0.15s ease;
+}
+
+.reg-row--body:last-child {
+  border-bottom: none;
+}
+
+.reg-row--body:hover {
+  background: rgba(155, 122, 52, 0.07);
+}
+
+.reg-row__actions-col {
+  text-align: right;
+}
+
+.reg-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink-900);
+}
+
+.reg-num {
+  font-weight: 700;
+  color: var(--ink-800);
+}
+
+.table-card {
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+/* Toolbar oberhalb von Tabellen */
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 28px;
+  gap: 12px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
 }
 
 .toolbar__buttons {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-left: auto;
-}
-
-.search-field,
-.sale-log-search {
-  display: flex;
-  align-items: center;
   gap: 10px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  padding: 13px 18px;
-  box-shadow: var(--shadow-soft);
+  margin-left: auto;
 }
 
 .search-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-md);
+  padding: 11px 16px;
+  box-shadow: var(--shadow-card);
   flex: 1;
   min-width: 220px;
 }
 
-.search-field--kunde {
-  flex: 0 0 280px;
-}
-
-.sale-log-search {
-  margin-bottom: 24px;
-}
-
-.search-field__icon {
-  font-size: 13px;
-  opacity: 0.6;
-  flex-shrink: 0;
-}
-
-.search-field input,
-.sale-log-search input {
+.search-field input {
   border: none;
   outline: none;
   background: transparent;
-  font-size: 13.5px;
-  width: 100%;
-  color: var(--color-text);
-  font-family: inherit;
-}
-
-.search-field input::placeholder,
-.sale-log-search input::placeholder {
-  color: var(--color-text-soft);
-}
-
-/* --------------------------------------------------------------------------
-   13. Kennzahlen (Stat-Cards)
-   -------------------------------------------------------------------------- */
-.medikamente-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 32px;
-}
-
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1px;
-  background: var(--color-card-border);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  flex: 1;
-  box-shadow: var(--shadow-soft);
-}
-
-.stat-card {
-  background: var(--color-surface);
-  padding: 26px 30px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.stat-card__label {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-}
-
-.stat-card__value {
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.stat-card--mint .stat-card__value {
-  color: var(--color-brass-text);
-}
-
-.stat-card--blue .stat-card__value {
-  color: var(--color-personal-text);
-}
-
-.stat-card--peach .stat-card__value {
-  color: var(--color-sage-text);
-}
-
-/* --------------------------------------------------------------------------
-   14. Medikamenten-Register (statt klassischer Tabelle)
-   -------------------------------------------------------------------------- */
-/* --------------------------------------------------------------------------
-   14. Medikamenten-Register (CSS-Grid statt <table> — garantiert exakt
-       gleiche Spaltenbreiten zwischen Kopf- und Datenzeilen)
-   -------------------------------------------------------------------------- */
-.table-card {
-  padding: 6px;
-}
-
-.med-table {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.med-row {
-  display: grid;
-  grid-template-columns: 34fr 14fr 14fr 16fr 22fr;
-  align-items: center;
-  column-gap: 12px;
-}
-
-.med-row--head {
-  padding: 14px 20px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.med-row__actions-col {
-  text-align: right;
-}
-
-/* Sortier-Modus: Zeile per Halten + Ziehen an neue Position verschieben */
-.med-row--sortierbar {
-  cursor: grab;
-}
-
-.med-row--sortierbar:active {
-  cursor: grabbing;
-}
-
-.med-row--wird-gezogen {
-  opacity: 0.4;
-}
-
-.med-row--drueber {
-  box-shadow: inset 0 2px 0 var(--color-brass), inset 0 -2px 0 var(--color-brass);
-}
-
-.icon-btn--drag {
-  cursor: grab;
-  color: var(--color-text-soft);
-}
-
-.icon-btn--drag:active {
-  cursor: grabbing;
-}
-
-#med-table-body .med-row {
-  padding: 13px 20px;
-  font-size: 13.5px;
-  border-bottom: 1px solid var(--color-hairline);
-  position: relative;
-  transition: background 0.15s ease;
-}
-
-#med-table-body .med-row:last-child {
-  border-bottom: none;
-}
-
-#med-table-body .med-row::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: transparent;
-  transition: background 0.15s ease;
-}
-
-#med-table-body .med-row:hover {
-  background: var(--color-surface-soft);
-}
-
-#med-table-body .med-row:hover::before {
-  background: var(--color-brass);
-}
-
-.med-name {
-  display: flex;
-  align-items: center;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.med-price {
-  font-family: var(--font-mono);
-  color: var(--color-text-muted);
-  font-weight: 600;
-  font-size: 13.5px;
-}
-
-.qty-input {
-  width: 68px;
-  border: 1.5px solid var(--color-input-border);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
-  padding: 7px 10px;
-  font-family: var(--font-mono);
   font-size: 13px;
-  color: var(--color-text);
-  text-align: center;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.qty-input:hover {
-  border-color: var(--color-text-soft);
-}
-
-.qty-input:focus {
-  outline: none;
-  border-color: var(--color-brass);
-  box-shadow: 0 0 0 3px var(--color-brass-soft);
-}
-
-.subtotal {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 13.5px;
-  color: var(--color-sage-text);
-}
-
-.med-row--foot {
-  grid-template-columns: 62fr 16fr 22fr;
-  padding: 15px 20px;
-  border-top: 2px solid var(--color-hairline);
-}
-
-.med-table__total-label {
-  text-align: right;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  font-size: 12.5px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.med-table__total-value {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 16px;
-  color: var(--color-brass-text);
-}
-
-/* --------------------------------------------------------------------------
-   14b. Start-Dashboard: Begrüßung, Info-Leiste, Schnellzugriff
-   -------------------------------------------------------------------------- */
-.dashboard-hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 40px;
-  padding: 56px 0 44px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.dashboard-hero__zeit {
-  font-size: 15px;
-  color: var(--color-text-muted);
-  margin-bottom: 4px;
-}
-
-.dashboard-hero__greeting h1 {
-  font-size: 38px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin-bottom: 10px;
-}
-
-.dashboard-hero__sub {
-  font-size: 13.5px;
-  color: var(--color-text-soft);
-}
-
-.dashboard-hero__info {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  min-width: 220px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.dashboard-info-item {
-  display: grid;
-  grid-template-columns: 16px 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 12px;
-  padding: 13px 20px;
-}
-
-.dashboard-info-item + .dashboard-info-item {
-  border-top: 1px solid var(--color-hairline);
-}
-
-.dashboard-info-item__icon {
-  grid-row: 1 / 3;
-  align-self: center;
-  width: 16px;
-  height: 16px;
-  color: var(--color-brass-text);
-}
-
-.dashboard-info-item__label {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-  margin-bottom: 3px;
-}
-
-.dashboard-info-item__value {
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  color: var(--color-text);
-}
-
-.dashboard-section-titel {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-  margin: 40px 0 18px;
-}
-
-.dashboard-quicklinks {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-.dashboard-quicklink {
-  text-align: left;
-  padding: 24px 22px 22px;
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.dashboard-quicklink:hover {
-  border-color: var(--color-brass);
-  transform: translateY(-2px);
-}
-
-.dashboard-quicklink__icon {
-  display: block;
-  width: 24px;
-  height: 24px;
-  color: var(--color-brass-text);
-  margin-bottom: 16px;
-}
-
-.dashboard-quicklink__titel {
-  display: block;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 16.5px;
-  color: var(--color-text);
-  margin-bottom: 5px;
-}
-
-.dashboard-quicklink__text {
-  display: block;
-  font-size: 12px;
-  color: var(--color-text-soft);
-}
-
-.dashboard-board-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 40px;
-}
-
-.dashboard-board-header .dashboard-section-titel {
-  margin: 0;
-}
-
-/* --------------------------------------------------------------------------
-   15. Schwarzes Brett (Ankündigungen)
-   -------------------------------------------------------------------------- */
-.board-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.board-item {
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-left: 3px solid var(--color-brass);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
-  padding: 18px 22px;
-  position: relative;
-}
-
-.board-item__text {
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--color-text);
-}
-
-.board-item__meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 12px;
-  font-size: 11px;
-  color: var(--color-text-soft);
-}
-
-/* --------------------------------------------------------------------------
-   16. Notizen
-   -------------------------------------------------------------------------- */
-.notes-kategorie-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 7px 16px;
-  border-radius: var(--radius-pill);
-  margin-bottom: 18px;
-}
-
-.notes-kategorie-badge--allgemein {
-  background: var(--color-slate-soft);
-  color: var(--color-slate-text);
-}
-
-.notes-kategorie-badge--personal {
-  background: var(--color-personal-soft);
-  color: var(--color-personal-text);
-}
-
-.notes-kategorie-badge--herstellung {
-  background: var(--color-sage-soft);
-  color: var(--color-sage-text);
-}
-
-.notes-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* Bewusst KEIN "display: flex" hier: als Flex-Container mit Zeilen-Achse
-   würde das einzelne Kind (der Rich-Editor) nur so breit wie sein Inhalt
-   werden statt die volle Breite auszufüllen - dadurch wirkte das Feld
-   winzig/gequetscht statt wie ein normales, breites Eingabefeld. */
-.notes-form__main {
-  display: block;
-}
-
-.notes-form button {
-  align-self: flex-end;
-}
-
-/* Fußzeile des Erstellen-Formulars: Themen-Auswahl links, optionales
-   Hervorheben-Kästchen (nur Admins), "Hinzufügen"-Button immer ganz rechts
-   (auch wenn das Hervorheben-Kästchen für Nicht-Admins ausgeblendet ist). */
-.notes-form__fusszeile {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
-}
-
-.notes-form__fusszeile .btn {
-  margin-left: auto;
-  align-self: center;
-}
-
-.notes-form__thema-select {
-  flex: 0 0 200px;
-  padding: 9px 12px;
-  font-size: 12.5px;
-}
-
-.notes-form__hervorheben {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12.5px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  user-select: none;
-}
-
-.notes-form__hervorheben input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--color-brass);
-  cursor: pointer;
-}
-
-/* Such-/Filterleiste unterhalb des Erstellen-Formulars: links (nur für
-   Admins sichtbar) der Umschalter für die Themen-Verwaltung, rechts
-   Themen-Filter + Sortierung - dieselbe schlichte Select-Optik wie beim
-   Wiki (.wiki-sort-select), damit kein neuer Stil eingeführt wird. */
-.notes-filterleiste {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin: 2px 0 4px;
-}
-
-.notes-filterleiste__rechts {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto;
-}
-
-/* Admin-Panel "Themen verwalten": nutzt bewusst dieselben Klassen wie
-   .rollen-katalog (Kontakte-Seite), hier aber in einer vollbreiten
-   Seite statt einer schmalen Sidebar - deshalb auf eine angenehme
-   Lesebreite begrenzt statt über die volle Breite zu laufen. */
-.notes-themen-katalog {
-  max-width: 460px;
-}
-
-.notes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.note-item {
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-left: 3px solid var(--color-slate);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
-  padding: 12px 18px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.note-item--personal {
-  border-left-color: var(--color-personal);
-}
-
-.note-item--herstellung {
-  border-left-color: var(--color-sage);
-}
-
-/* Hervorgehobene ("Wichtig") Einträge: dezente, nicht übertriebene
-   Hervorhebung - warmer Rahmen + minimal getönter Hintergrund, keine neue
-   Farbe (nutzt die bestehende Akzentfarbe --color-brass). Bewusst NACH den
-   Kategorie-Modifikatoren notiert, damit "Wichtig" immer gewinnt,
-   unabhängig vom Reiter (Allgemein/Personal/Herstellung). */
-.note-item--pinned {
-  border-left-color: var(--color-brass);
-  background: var(--color-brass-soft);
-}
-
-.note-item__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.note-item__kopf {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 5px;
-}
-
-.note-item__titel {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--color-text);
-  margin: 0;
-  line-height: 1.3;
-}
-
-.note-item__kategorie {
-  display: inline-flex;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-  flex-shrink: 0;
-}
-
-/* Dezent variierende Badge-Farben je Thema (siehe notizThemaFarbe() in
-   js/app.js) - dieselben fünf Akzentfarben wie überall sonst im Design. */
-.note-item__kategorie--oxblood {
-  background: var(--color-oxblood-soft);
-  color: var(--color-oxblood-text);
-}
-
-.note-item__kategorie--sage {
-  background: var(--color-sage-soft);
-  color: var(--color-sage-text);
-}
-
-.note-item__kategorie--personal {
-  background: var(--color-personal-soft);
-  color: var(--color-personal-text);
-}
-
-.note-item__kategorie--slate {
-  background: var(--color-slate-soft);
-  color: var(--color-slate-text);
-}
-
-.note-item__kategorie--brass {
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-}
-
-.note-item__text {
-  font-size: 13.5px;
-  color: var(--color-text);
-  line-height: 1.55;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.note-item__text ul,
-.note-item__text ol {
-  margin: 4px 0 4px 20px;
-  padding: 0;
-}
-
-.note-item__text li {
-  margin-bottom: 2px;
-}
-
-.note-item__meta {
-  font-size: 11px;
-  color: var(--color-text-soft);
-  margin-top: 7px;
-}
-
-.note-item__aktionen {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-/* Inline-Bearbeitungsformular eines Eintrags (klappt unterhalb der Karte
-   auf, analog zu .kontakt-edit-form auf der Kontakte-Seite). */
-.note-item-edit {
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-  margin-top: -2px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.note-item-edit .notes-form__fusszeile .btn {
-  margin-left: auto;
-}
-
-/* Pagination: schlicht/dezent, wie im Mockup ("1–5 von 32 Notizen" +
-   « 1 2 3 4 7 »). */
-.notes-pagination {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 4px;
-  padding-top: 14px;
-  border-top: 1px solid var(--color-hairline);
-}
-
-.notes-pagination__info {
-  font-size: 11.5px;
-  color: var(--color-text-soft);
-}
-
-.notes-pagination__buttons {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-}
-
-.notes-pagination__btn {
-  min-width: 28px;
-  height: 28px;
-  padding: 0 8px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  background: transparent;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.notes-pagination__btn:hover:not(:disabled) {
-  background: var(--color-surface-soft);
-  color: var(--color-brass-text);
-}
-
-.notes-pagination__btn--aktiv {
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-}
-
-.notes-pagination__btn--nav:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.notes-pagination__ellipsis {
-  font-size: 12px;
-  color: var(--color-text-soft);
-  padding: 0 3px;
-}
-
-/* --------------------------------------------------------------------------
-   17. Medizin-Wiki
-   -------------------------------------------------------------------------- */
-.info-panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-left: 3px solid var(--color-personal);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-soft);
-  padding: 24px 28px 20px;
-  margin-bottom: 20px;
-}
-
-.info-form-row {
-  display: flex;
-  gap: 12px;
-}
-
-.info-form-row__compact {
-  flex: 1;
-}
-
-.info-form-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-/* Prominente Suche über der ganzen Breite */
-.wiki-search {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-lg);
-  padding: 20px 26px;
-  box-shadow: var(--shadow-soft);
-  margin-bottom: 40px;
-  transition: border-color 0.2s ease;
-}
-
-.wiki-search:focus-within {
-  border-color: var(--color-brass);
-}
-
-.wiki-search input {
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 16.5px;
   width: 100%;
-  color: var(--color-text);
-  font-family: inherit;
-}
-
-.wiki-search input::placeholder {
-  color: var(--color-text-soft);
-}
-
-.wiki-search .search-field__icon {
-  font-size: 17px;
-}
-
-.wiki-search .search-field__icon {
-  font-size: 15px;
-  opacity: 0.6;
-}
-
-/* Zwei-Spalten-Layout: Kategorien links, Ergebnisse rechts */
-.wiki-layout {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 48px;
-  align-items: start;
-}
-
-.wiki-sidebar__titel {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-  margin-bottom: 14px;
-}
-
-.wiki-kategorien {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.wiki-kategorie {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  text-align: left;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.wiki-kategorie:hover {
-  background: var(--color-surface-soft);
-  color: var(--color-text);
-}
-
-.wiki-kategorie--active {
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-  font-weight: 600;
-}
-
-.wiki-kategorie__count {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-text-soft);
-}
-
-.wiki-kategorie--active .wiki-kategorie__count {
-  color: var(--color-brass-text);
-}
-
-.wiki-main__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.wiki-main__header h3 {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 19px;
-}
-
-.wiki-sort-select {
-  border: 1.5px solid var(--color-input-border);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.wiki-sort-select:hover,
-.wiki-sort-select:focus {
-  outline: none;
-  border-color: var(--color-brass);
-}
-
-.info-card__hint {
-  display: inline-block;
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--color-sage-text);
-  background: var(--color-sage-soft);
-  padding: 4px 9px;
-  border-radius: var(--radius-sm);
-  align-self: flex-start;
-}
-
-/* Kompakte Tabellenübersicht (ersetzt die frühere Kartenansicht) - dieselbe
-   CSS-Grid-"Tabelle ohne <table>"-Technik wie beim Medikamenten-Register auf
-   der Verkauf-Seite (siehe .med-table/.med-row), nur mit den für die
-   Wiki-Seite passenden drei Spalten. Bewusst KEINE Icons/Illustrationen bei
-   den Einträgen - der Fokus liegt auf den Informationen selbst. */
-.wiki-table {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.wiki-row {
-  display: grid;
-  grid-template-columns: 28fr 52fr 20fr;
-  align-items: center;
-  column-gap: 18px;
-}
-
-.wiki-row--head {
-  padding: 14px 20px;
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.wiki-row__actions-col {
-  text-align: right;
-}
-
-#wiki-table-body .wiki-row {
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--color-hairline);
-  transition: background 0.15s ease;
-}
-
-#wiki-table-body .wiki-row:last-child {
-  border-bottom: none;
-}
-
-#wiki-table-body .wiki-row:hover {
-  background: var(--color-surface-soft);
-}
-
-.wiki-row__name-col {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.wiki-row__name {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--color-text);
-}
-
-.wiki-row__kategorie {
-  display: inline-flex;
-  align-self: flex-start;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 3px 9px;
-  border-radius: var(--radius-pill);
-}
-
-/* Dezent variierende Badge-Farben je Kategorie (siehe wikiKategorieFarbe()
-   in js/app.js) - dieselben fünf Akzentfarben wie überall sonst im Design. */
-.wiki-row__kategorie--oxblood {
-  background: var(--color-oxblood-soft);
-  color: var(--color-oxblood-text);
-}
-
-.wiki-row__kategorie--sage {
-  background: var(--color-sage-soft);
-  color: var(--color-sage-text);
-}
-
-.wiki-row__kategorie--personal {
-  background: var(--color-personal-soft);
-  color: var(--color-personal-text);
-}
-
-.wiki-row__kategorie--slate {
-  background: var(--color-slate-soft);
-  color: var(--color-slate-text);
-}
-
-.wiki-row__kategorie--brass {
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-}
-
-.wiki-row__beschreibung-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.wiki-row__beschreibung {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  line-height: 1.55;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.wiki-row__aktionen {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
-}
-
-.wiki-row__action {
-  font-size: 12.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.wiki-row__action--bearbeiten {
-  color: var(--color-brass-text);
-}
-
-.wiki-row__action--bearbeiten:hover {
-  text-decoration: underline;
-}
-
-.wiki-row__action--loeschen {
-  color: var(--color-oxblood-text);
-}
-
-.wiki-row__action--loeschen:hover {
-  text-decoration: underline;
-}
-
-/* "+ Neue Kategorie hinzufügen"-Button unterhalb der Kategorienliste
-   (nur für Admins sichtbar) - klappt beim Klick dasselbe Katalog-Panel auf,
-   das auch Umbenennen/Löschen anbietet (siehe .rollen-katalog). */
-.wiki-sidebar__neue-kategorie-btn {
-  width: 100%;
-  justify-content: center;
-  margin-bottom: 14px;
-  font-size: 12px;
-  padding: 9px 10px;
-}
-
-/* --------------------------------------------------------------------------
-   18. Verkaufsliste (Kassenbon-Register)
-   -------------------------------------------------------------------------- */
-.sale-log-group {
-  margin-bottom: 12px;
-}
-
-.sale-log-group__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  background: var(--color-text);
-  color: var(--color-bg);
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  padding: 10px 18px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 15px;
-}
-
-.sale-log-group__header:hover {
-  filter: brightness(1.15);
-}
-
-.sale-log-group__meta {
-  font-weight: 500;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-bg);
-  opacity: 0.75;
-}
-
-.sale-log-group__chevron {
-  transition: transform 0.2s ease;
-  color: var(--color-bg);
-  opacity: 0.75;
-  margin-right: 8px;
-}
-
-.sale-log-group--collapsed .sale-log-group__chevron {
-  transform: rotate(-90deg);
-}
-
-.sale-log-group--collapsed .sale-log-group__items {
-  display: none;
-}
-
-.sale-item {
-  background: var(--color-surface);
-  border-radius: 0 0 var(--radius-md) var(--radius-md);
-  box-shadow: var(--shadow-soft);
-  border: 1px solid var(--color-card-border);
-  border-top: none;
-  padding: 16px 18px 12px;
-  margin-bottom: 12px;
-}
-
-.sale-item__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.sale-item__kunde-name {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 15.5px;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sale-item__kein-kunde {
-  color: var(--color-text-soft);
-  font-style: italic;
-  font-weight: 500;
+  color: var(--ink-900);
   font-family: var(--font-body);
 }
 
-.sale-item__header-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.sale-item__edit-kunde-btn {
-  width: 22px;
-  height: 22px;
-  font-size: 9px;
-}
-
-.sale-item__verkaeufer {
-  font-size: 11px;
-  color: var(--color-text-soft);
-  margin: 2px 0 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px dashed var(--color-input-border);
-}
-
-.sale-item__time {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-text-soft);
-  white-space: nowrap;
-}
-
-.sale-ticket__lines {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
-}
-
-.sale-ticket__line {
-  display: flex;
-  align-items: baseline;
-  font-size: 12.5px;
-  color: var(--color-text);
-}
-
-.sale-ticket__line-name {
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.sale-ticket__line-dots {
-  flex: 1;
-  margin: 0 6px;
-  border-bottom: 1px dotted var(--color-text-soft);
-  transform: translateY(-3px);
-}
-
-.sale-ticket__line-price {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  flex-shrink: 0;
-  color: var(--color-text-muted);
-}
-
-.sale-item__total {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  color: var(--color-sage-text);
-}
-
-.sale-item__total span {
-  font-size: 16px;
-  font-weight: 700;
-  margin-left: 6px;
-}
-
-.sale-item__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-  padding-top: 10px;
-  border-top: 1px dashed var(--color-input-border);
-}
-
-.sale-item__actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.sale-item__add-btn {
-  font-size: 11.5px;
-  padding: 7px 13px;
-}
-
-.sale-item__add-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  background: var(--color-surface-soft);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  margin-top: 10px;
-}
-
-.sale-item__add-form input,
-.sale-item__add-form select {
-  flex: 1 1 160px;
-}
-
-.sale-item__add-form button {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-/* --------------------------------------------------------------------------
-   19. Personal — Ärztliche Direktion / Praxisleitungen (Rhodes, Blackwater,
-       Valentine) / Medizinisches Personal (Standort-Reiter + kompakte Liste
-       statt Tabelle). Weiterhin keine Profilbilder/Online-Status - reine,
-       ruhige Register-Optik, ganz ohne neue Farben/Typografie.
-   -------------------------------------------------------------------------- */
-.staff-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 8px;
-}
-
-.staff-search-field {
-  max-width: 340px;
-}
-
-.staff-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 48px;
-  margin-bottom: 32px;
-}
-
-/* Ein Kapitel: "Ärztliche Direktion" / "Praxisleitungen" / "Medizinisches
-   Personal" / "Badges verwalten" - dezente Gold-Labels, keine großen
-   Displaytitel, keine Versalien. */
-.org-chapter__titel {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 17px;
-  color: var(--color-brass-text);
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-/* Ärztliche Direktion: eigene, herausgehobene Karte ganz oben - zeigt
-   ausschließlich Mitarbeiter mit gesetztem "Ärztliche Direktion"-Merkmal. */
-.direktion-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 18px;
-  padding: 20px 22px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  transition: border-color 0.2s ease;
-}
-
-.direktion-card + .direktion-card {
-  margin-top: 12px;
-}
-
-.direktion-card:hover {
-  border-color: var(--color-brass);
-}
-
-.direktion-card__icon {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-}
-
-.direktion-card__info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-}
-
-.direktion-card__name {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 17px;
-  color: var(--color-text);
-}
-
-.direktion-card__rang {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--color-brass-text);
-}
-
-.direktion-card__beschreibung {
-  margin-top: 4px;
-  font-size: 12.5px;
-  color: var(--color-text-muted);
-  line-height: 1.5;
-}
-
-/* Praxisleitungen: drei schlichte Übersichtskarten (Rhodes/Blackwater/
-   Valentine) nebeneinander. */
-.praxis-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-}
-
-@media (max-width: 900px) {
-  .praxis-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.praxis-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 18px 20px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  transition: border-color 0.2s ease;
-}
-
-.praxis-card:hover {
-  border-color: var(--color-brass);
-}
-
-.praxis-card__kopf {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.praxis-card__pin {
-  display: inline-flex;
-  color: var(--color-brass-text);
-}
-
-.praxis-card__standort {
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--color-text);
-}
-
-.praxis-card__chefarzt {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.praxis-card__label {
-  font-size: 11px;
-  color: var(--color-text-soft);
-}
-
-.praxis-card__label--gold {
-  color: var(--color-brass-text);
-  font-weight: 600;
-}
-
-.praxis-card__chefarzt-name {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 15.5px;
-  color: var(--color-text);
-}
-
-.praxis-card__unbesetzt {
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-style: italic;
-  color: var(--color-text-soft);
-}
-
-.praxis-card__divider {
-  height: 1px;
-  background: var(--color-hairline);
-}
-
-.praxis-card__fachrichtungen {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.praxis-card__badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.praxis-card__footer {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--color-text-soft);
-}
-
-/* Badge-Pille: kleines, dezentes Label mit Icon - identische Optik in der
-   Anzeige (Praxisleitungen, Mitarbeiterliste, Katalog-Verwaltung) UND als
-   klickbarer Umschalter im Bearbeiten-Modus. */
-.badge-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 10px;
-  border-radius: var(--radius-pill);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-card-border);
-  color: var(--color-text-muted);
-  font-size: 11.5px;
-  font-weight: 500;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.badge-pill svg {
-  color: var(--color-brass-text);
-  flex: 0 0 auto;
-}
-
-.badge-pill--umschalter {
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-
-.badge-pill--umschalter:hover {
-  border-color: var(--color-brass);
-}
-
-.badge-pill--aktiv {
-  background: var(--color-brass-soft);
-  border-color: var(--color-brass);
-  color: var(--color-brass-text);
-}
-
-.badge-pill--verwaltung {
-  padding-right: 6px;
-}
-
-.badge-pill__entfernen {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  color: var(--color-text-soft);
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.badge-pill__entfernen:hover {
-  background: var(--color-oxblood-soft);
-  color: var(--color-oxblood-text);
-}
-
-/* Medizinisches Personal: kompakte Liste statt Tabelle - ein Eintrag pro
-   Mitarbeiter mit Avatar, Name/Rang und Badges. */
-.staff-list {
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.staff-list__item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 13px 20px;
-  border-bottom: 1px solid var(--color-hairline);
-  border-left: 2px solid transparent;
-  transition: border-color 0.2s ease, background 0.2s ease;
-}
-
-.staff-list__item:last-child {
-  border-bottom: none;
-}
-
-.staff-list__item:not(.staff-list__item--empty):not(.staff-list__item--edit):hover {
-  border-left-color: var(--color-brass);
-  background: var(--color-surface-raised);
-}
-
-.staff-list__item:not(.staff-list__item--empty):not(.staff-list__item--edit):hover .staff-list__name {
-  color: var(--color-brass-text);
-}
-
-.staff-list__item--empty {
-  color: var(--color-text-soft);
-  font-size: 12.5px;
+.search-field input::placeholder {
+  color: var(--ink-faint);
   font-style: italic;
 }
 
-.staff-list__avatar {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
+/* --------------------------------------------------------------------------
+   13. Waren & Preise
+   -------------------------------------------------------------------------- */
+.waren-row {
+  grid-template-columns: 34fr 18fr 18fr 30fr;
 }
-
-.staff-list__info {
-  flex: 0 0 200px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.staff-list__name {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--color-text);
-  transition: color 0.2s ease;
-}
-
-.staff-list__rang {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-brass-text);
-}
-
-.staff-list__badges {
-  flex: 1 1 auto;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.staff-list__chevron {
-  flex: 0 0 auto;
-  color: var(--color-text-soft);
-  font-size: 16px;
-}
-
-/* Bearbeiten-Modus: kompakte, editierbare Karte statt der reinen
-   Listenzeile - Name/Rang/Standort/Ärztliche Direktion in einer Zeile,
-   darunter die Badge-Umschalter je Kategorie. */
-.staff-list__item--edit {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  padding: 16px 20px;
-}
-
-.staff-edit__zeile {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 18px;
-}
-
-.staff-edit__name {
-  flex: 1 1 200px;
-}
-
-.staff-edit__rang,
-.staff-edit__standort {
-  /* Feste flex-basis (statt "auto") ist hier wichtig: nur so gewinnt sie
-     gegen die spätere, allgemeinere Regel ".org-row__rang-select { width:
-     100% }" (siehe weiter unten) - sonst würde dieses Feld trotz "flex: 0 0"
-     die volle Zeilenbreite einnehmen und umbrechen. */
-  flex: 0 0 160px;
-}
-
-.staff-edit__direktion {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12.5px;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.staff-edit__direktion input {
-  accent-color: var(--color-brass);
-}
-
-.staff-edit__badges {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.staff-edit__badges-label {
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-}
-
-.staff-edit__badges-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.org-row__du {
-  font-family: var(--font-body);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-  margin-left: 10px;
-}
-
-.org-row__name-input {
-  border: none;
-  border-bottom: 1.5px solid var(--color-input-border);
-  background: transparent;
-  padding: 4px 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--color-text);
-  border-radius: 0;
-  width: 100%;
-}
-
-.org-row__name-input::placeholder {
-  color: var(--color-text-soft);
-  font-weight: 500;
-  font-family: var(--font-body);
-}
-
-.org-row__name-input:focus {
-  outline: none;
-  border-color: var(--color-brass);
-}
-
-.org-row__rang-select {
-  border: none;
-  border-bottom: 1.5px solid var(--color-input-border);
-  background: transparent;
-  padding: 4px 0;
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  width: 100%;
-}
-
-.org-row__rang-select:hover,
-.org-row__rang-select:focus {
-  outline: none;
-  border-color: var(--color-brass);
-}
-
-/* Standort-Reiter beim Medizinischen Personal (nutzt .org-tabs, hier nur
-   kleinerer Abstand nach unten) */
-.staff-location-tabs {
-  margin-bottom: 24px;
-}
-
-/* Badges verwalten (nur im Bearbeiten-Modus, nur für Admins) */
-.badge-katalog {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.badge-katalog__gruppe {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.badge-katalog__label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-}
-
-.badge-katalog__liste {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.badge-katalog__leer {
-  font-size: 12.5px;
-}
-
-.badge-katalog__neu {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding-top: 6px;
-  border-top: 1px solid var(--color-hairline);
-}
-
-.badge-katalog__neu .org-row__rang-select {
-  flex: 0 0 auto;
-  width: auto;
-  min-width: 170px;
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
-}
-
-.badge-katalog__neu .field-input {
-  flex: 1 1 220px;
-}
-
-/* Hinweis-Kasten unterhalb der Mitarbeiterliste - identische Optik wie der
-   Hinweis-Kasten im Handbuch (dezente Fläche, kein neues Komponentenmuster). */
-.staff-hinweis {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--color-text-soft);
-  background: var(--color-surface-soft);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-}
-
-.staff-hinweis__icon {
-  flex: 0 0 auto;
-  margin-top: 1px;
-  color: var(--color-brass-text);
-}
-
 
 /* --------------------------------------------------------------------------
-   20. Kontakte (Telegramm-Verzeichnis)
+   14. Bestellungen
+   -------------------------------------------------------------------------- */
+.bestellungen-row {
+  grid-template-columns: 16fr 14fr 10fr 14fr 12fr 12fr 16fr 10fr;
+}
+
+.notiz-text {
+  color: var(--ink-soft);
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   15. Kontakte
    -------------------------------------------------------------------------- */
 .kontakt-form {
   display: flex;
@@ -3158,34 +1480,32 @@ p {
 .kontakt-nummer-field {
   display: flex;
   align-items: center;
-  border: 1.5px solid var(--color-input-border);
-  background: var(--color-surface-raised);
+  border: 1.5px solid var(--parch-edge);
+  background: var(--parch-100);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  flex: 0 0 130px;
+  flex: 0 0 120px;
 }
 
 .kontakt-nummer-field:focus-within {
-  border-color: var(--color-brass);
-  box-shadow: 0 0 0 3px var(--color-brass-soft);
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px var(--brass-soft);
 }
 
 .kontakt-nummer-field__prefix {
-  padding: 11px 0 11px 12px;
-  font-family: var(--font-mono);
+  padding: 10px 0 10px 12px;
   font-weight: 700;
-  color: var(--color-text-muted);
-  font-size: 14px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
 }
 
 .kontakt-nummer-field input {
   border: none;
   background: transparent;
-  padding: 11px 12px 11px 2px;
-  font-family: var(--font-mono);
+  padding: 10px 12px 10px 2px;
   font-weight: 700;
-  font-size: 14px;
-  color: var(--color-text);
+  font-size: 13.5px;
+  color: var(--ink-900);
   width: 100%;
   min-width: 0;
 }
@@ -3194,295 +1514,239 @@ p {
   outline: none;
 }
 
-/* Zwei-Spalten-Layout wie bei der Infos-Seite (Rollen-Filter links,
-   Kontaktübersicht rechts) - nutzt bewusst dieselbe .wiki-layout-Komponente,
-   keine neue Layout-Sprache. */
-.kontakte-layout {
-  margin-top: 32px;
-}
-
-.kontakte-rollen-toggle {
-  width: 100%;
-  justify-content: center;
-  margin: 4px 0 16px;
-}
-
-.kontakte-schnellinfo-box {
-  margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid var(--color-hairline);
-}
-
-.kontakte-schnellinfo__zeile {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 0;
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-
-.kontakte-schnellinfo__wert {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 12.5px;
-  color: var(--color-text);
-  text-align: right;
-}
-
-/* Admin-Panel zur Verwaltung der Beruf/Rolle-Werte - optisch am
-   Badge-Katalog der Personal-Seite angelehnt. */
-.rollen-katalog {
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-card-border);
-  border-radius: var(--radius-md);
-  padding: 14px;
-  margin-bottom: 8px;
-}
-
-.rollen-katalog__liste {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-/* Schmale Sidebar (200px) - jede Rolle bekommt eine eigene, gestapelte
-   Zeile statt nebeneinander liegender Felder, damit nichts überläuft. */
-.rollen-katalog__zeile {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.rollen-katalog__zeile:last-child {
-  border-bottom: none;
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
-
-.rollen-katalog__zeile .field-input {
-  padding: 7px 10px;
-  font-size: 12.5px;
-}
-
-.rollen-katalog__zeile-aktionen {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-}
-
-.rollen-katalog__speichern-btn {
-  padding: 5px 10px;
-  font-size: 11px;
-  flex: 1;
-}
-
-.rollen-katalog__hinweis {
-  font-size: 10.5px;
-  color: var(--color-text-soft);
-  white-space: normal;
-}
-
-.rollen-katalog__neu {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rollen-katalog__neu .field-input {
-  padding: 8px 10px;
-  font-size: 12.5px;
-}
-
-.kontakt-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
 .kontakt-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
-  border-left: 2px solid transparent;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
-  padding: 12px 16px;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  grid-template-columns: 14fr 22fr 16fr 34fr 14fr;
 }
 
-.kontakt-row:hover {
-  border-left-color: var(--color-brass);
-  background: var(--color-surface-raised);
-}
-
-.kontakt-row__nummer {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 12.5px;
-  color: var(--color-brass-text);
-  background: var(--color-brass-soft);
-  padding: 5px 11px;
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  min-width: 76px;
-  text-align: center;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.kontakt-row__nummer:hover {
-  background: var(--color-brass);
-  color: var(--color-bg);
-}
-
-.kontakt-row__name {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 14.5px;
-  color: var(--color-text);
-  flex: 0 0 190px;
-  min-width: 0;
-}
-
-.kontakt-row__rolle {
-  flex: 0 0 auto;
-}
-
-.kontakt-row__notiz {
-  font-size: 12.5px;
-  color: var(--color-text-muted);
-  flex: 1;
-  font-style: italic;
-}
-
-.kontakt-row__aktionen {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.kontakt-row__meta {
-  font-size: 11px;
-  color: var(--color-text-soft);
-  flex-shrink: 0;
-}
-
-/* Beruf/Rolle-Badge - dezente, leicht variierende Farben aus den fünf
-   bestehenden Akzentfarben (siehe kontaktRollenFarbe() in js/app.js). */
 .kontakt-badge {
   display: inline-flex;
   align-items: center;
-  padding: 5px 11px;
-  border-radius: var(--radius-pill);
-  font-size: 11px;
-  font-weight: 600;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
   white-space: nowrap;
+  background: var(--brass-soft);
+  color: var(--brass-deep);
 }
 
-.kontakt-badge--oxblood {
-  background: var(--color-oxblood-soft);
-  color: var(--color-oxblood-text);
-}
-
-.kontakt-badge--sage {
-  background: var(--color-sage-soft);
-  color: var(--color-sage-text);
-}
-
-.kontakt-badge--personal {
-  background: var(--color-personal-soft);
-  color: var(--color-personal-text);
-}
-
-.kontakt-badge--slate {
-  background: var(--color-slate-soft);
-  color: var(--color-slate-text);
-}
-
-.kontakt-badge--brass {
-  background: var(--color-brass-soft);
-  color: var(--color-brass-text);
-}
-
-.kontakt-edit-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  background: var(--color-surface-soft);
-  border-radius: var(--radius-md);
-  padding: 12px 16px;
-  margin: -4px 0 8px;
+.kontakt-tel {
+  font-weight: 700;
+  color: var(--brass-deep);
+  background: var(--brass-soft);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
 }
 
 /* --------------------------------------------------------------------------
-   22. Statistik-Modal
+   16. Handelsrechner
    -------------------------------------------------------------------------- */
-.modal--stats {
-  width: 460px;
+.rechner-layout {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 22px;
+  align-items: start;
 }
 
-.stats-modal__hint {
-  font-size: 12px;
-  color: var(--color-text-soft);
-  margin-bottom: 16px;
+.rechner-section-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brass-deep);
+  margin-bottom: 14px;
 }
 
-.stats-modal__list {
+.rechner-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.rechner-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.rechner-toggle {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  gap: 20px;
+  margin-bottom: 14px;
 }
 
-.stats-modal__row {
+.rechner-radio {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-800);
+  cursor: pointer;
+}
+
+.rechner-radio input {
+  accent-color: var(--brass-deep);
+  width: 15px;
+  height: 15px;
+}
+
+.rechner-slider-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-soft);
 }
 
-.stats-modal__rank {
-  font-family: var(--font-mono);
+.rechner-slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--brass-deep);
+}
+
+.rechner-slider-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1.5px solid var(--parch-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
-  font-size: 12.5px;
-  color: var(--color-text-soft);
-  width: 20px;
+  font-size: 15px;
+  color: var(--ink-soft);
   flex-shrink: 0;
 }
 
-.stats-modal__name {
-  flex: 1;
-  font-weight: 600;
-  font-size: 13px;
+.rechner-slider-btn:hover {
+  border-color: var(--brass);
+  color: var(--brass-deep);
 }
 
-.stats-modal__count {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--color-sage-text);
+.rechner-slider-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+.rechner-field-box {
+  background: var(--parch-200);
+  border: 1px solid var(--parch-edge);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.rechner-field-box__label {
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.rechner-field-box__value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.rechner-field-box__unit {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ink-faint);
+  margin-left: 4px;
+}
+
+.rechner-hinweis {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12px;
+  color: var(--ink-soft);
+  background: rgba(155, 122, 52, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.rechner-preview {
+  position: sticky;
+  top: 20px;
+}
+
+.rechner-preview__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--parch-edge);
+  font-size: 12.5px;
+}
+
+.rechner-preview__row:last-of-type {
+  border-bottom: none;
+}
+
+.rechner-preview__label {
+  color: var(--ink-soft);
+}
+
+.rechner-preview__value {
+  font-weight: 700;
+  color: var(--ink-900);
+}
+
+.rechner-preview__total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 2px solid var(--parch-edge);
+}
+
+.rechner-preview__total-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.rechner-preview__total-value {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--brass-deep);
+}
+
+.rechner-preview__notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  background: rgba(155, 122, 52, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin: 16px 0;
+}
+
+.rechner-angebote-row {
+  grid-template-columns: 12fr 18fr 14fr 10fr 10fr 12fr 12fr 12fr;
 }
 
 /* --------------------------------------------------------------------------
-   23. Modals allgemein
+   17. Modals
    -------------------------------------------------------------------------- */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 7, 6, 0.65);
-  backdrop-filter: blur(3px);
+  background: rgba(15, 9, 4, 0.6);
+  backdrop-filter: blur(2px);
   display: none;
   align-items: center;
   justify-content: center;
@@ -3498,8 +1762,8 @@ p {
 
 .modal {
   width: 420px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-card-border);
+  background: var(--parch-100);
+  border: 1px solid var(--parch-edge);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-modal);
   padding: 26px;
@@ -3516,7 +1780,7 @@ p {
 }
 
 .modal--large {
-  width: 560px;
+  width: 580px;
   max-height: 85vh;
   overflow-y: auto;
 }
@@ -3537,11 +1801,11 @@ p {
   height: 28px;
   border-radius: var(--radius-sm);
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--ink-soft);
 }
 
 .modal__close:hover {
-  background: var(--color-surface-soft);
+  background: rgba(155, 122, 52, 0.12);
 }
 
 .modal__body {
@@ -3551,7 +1815,7 @@ p {
 
 .modal__hint {
   font-size: 12.5px;
-  color: var(--color-text-muted);
+  color: var(--ink-soft);
   margin-bottom: 4px;
 }
 
@@ -3563,24 +1827,127 @@ p {
 }
 
 /* --------------------------------------------------------------------------
-   24. Toast, Update-Banner, Easter Egg
+   18. Admin (Benutzerverwaltung / Log)
+   -------------------------------------------------------------------------- */
+.settings-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.settings-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--parch-200);
+  border-radius: var(--radius-sm);
+  padding: 11px 14px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.settings-list__item:hover {
+  box-shadow: inset 0 0 0 1px var(--brass);
+}
+
+.settings-list__name {
+  font-weight: 700;
+  font-size: 13px;
+  margin-right: 8px;
+}
+
+.settings-list__role {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin-left: 8px;
+}
+
+.settings-list__protected {
+  font-size: 10.5px;
+  color: var(--brass-deep);
+  background: var(--brass-soft);
+  padding: 3px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+}
+
+.settings-list__wartet {
+  font-size: 10.5px;
+  color: var(--status-danger);
+  background: var(--status-danger-soft);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.admin-log__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--parch-200);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+}
+
+.admin-log__item-text {
+  font-size: 12.5px;
+}
+
+.admin-log__item-zeit {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+
+.detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.detail-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.detail-row__label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  flex: 0 0 130px;
+}
+
+/* --------------------------------------------------------------------------
+   19. Toast, Update-Banner
    -------------------------------------------------------------------------- */
 .toast {
   position: fixed;
   bottom: 28px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: var(--color-text);
-  color: var(--color-bg);
+  background: var(--wood-850);
+  color: var(--brass-bright);
   padding: 13px 22px;
   border-radius: var(--radius-sm);
   font-size: 13px;
-  font-weight: 500;
-  box-shadow: var(--shadow-medium);
+  font-weight: 600;
+  box-shadow: var(--shadow-raised);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease, transform 0.2s ease;
   z-index: 200;
+  border: 1px solid var(--brass-deep);
 }
 
 .toast--visible {
@@ -3596,312 +1963,76 @@ p {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: var(--color-brass);
-  color: var(--color-bg);
+  background: var(--brass-bright);
+  color: #2a1c0a;
   padding: 10px 20px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .update-banner .btn {
-  background: var(--color-bg);
-  color: var(--color-brass-text);
-}
-
-.easter-egg-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(8, 7, 6, 0.78);
-  align-items: center;
-  justify-content: center;
-  z-index: 400;
-}
-
-.easter-egg-overlay--visible {
-  display: flex;
-}
-
-.easter-egg-card {
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
-  padding: 40px;
-  text-align: center;
-  max-width: 380px;
-  box-shadow: var(--shadow-modal);
-}
-
-.easter-egg-emoji {
-  font-size: 46px;
-  margin-bottom: 14px;
-}
-
-.easter-egg-card h2 {
-  font-size: 22px;
-  margin-bottom: 10px;
-}
-
-.easter-egg-card p {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  line-height: 1.6;
-  margin-bottom: 20px;
+  background: var(--wood-900);
+  color: var(--brass-bright);
 }
 
 /* --------------------------------------------------------------------------
-   25. Handbuch (interne Dokumentenbibliothek)
-   ---------------------------------------------------------------------------
-   Wirkt wie eine professionelle interne Wissensdatenbank statt wie eine
-   Wiki-/Infoseite: schmale, dauerhaft sichtbare Dokumentenliste links, rechts
-   ausschließlich das geöffnete Dokument - kompakt statt großzügig, dünne
-   Trennlinien statt großer Karten/Container. Nutzt ausschließlich bestehende
-   Farb- und Abstands-Tokens, keine neuen Werte.
+   20. Footer
    -------------------------------------------------------------------------- */
-.handbuch-layout {
+.page-footer {
+  padding: 22px 0 10px;
+  border-top: 1px solid var(--parch-edge);
+  margin-top: 10px;
+  color: var(--ink-faint);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.page-footer__links {
   display: flex;
-  align-items: flex-start;
-  gap: 44px;
+  gap: 18px;
+  margin-top: 6px;
 }
 
-/* Linke Seite: reine Dokumentenliste, bleibt beim Lesen/Scrollen sichtbar */
-.handbuch-sidebar {
-  flex: 0 0 216px;
-  position: sticky;
-  top: 24px;
-  display: flex;
-  flex-direction: column;
-}
-
-.handbuch-sidebar__titel {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--color-text-soft);
-  margin-bottom: 14px;
-}
-
-.handbuch-liste {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-bottom: 16px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.handbuch-liste-item {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 8px 12px;
-  border-left: 2px solid transparent;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.handbuch-liste-item:hover {
-  background: var(--color-surface-soft);
-  color: var(--color-text);
-}
-
-.handbuch-liste-item--active {
-  color: var(--color-text);
-  font-weight: 600;
-  border-left-color: var(--color-brass);
-  background: var(--color-surface-soft);
-}
-
-.handbuch-sidebar__leer {
-  padding: 0 0 16px;
-  text-align: left;
-  font-size: 12px;
-}
-
-.handbuch-sidebar__hinweis {
-  font-size: 11.5px;
-  color: var(--color-text-soft);
-  line-height: 1.6;
-  background: var(--color-surface-soft);
+/* --------------------------------------------------------------------------
+   21. Rollen-/Produkt-Verwaltung (Kataloge)
+   -------------------------------------------------------------------------- */
+.katalog-box {
+  background: var(--parch-200);
+  border: 1px solid var(--parch-edge);
   border-radius: var(--radius-md);
-  padding: 14px 16px;
+  padding: 14px;
+  margin-bottom: 8px;
 }
 
-/* Rechte Seite: ausschließlich das geöffnete Dokument, keine Karten */
-.handbuch-hauptbereich {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.handbuch-top-zeile {
+.katalog-zeile {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.handbuch-zurueck {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--color-text-soft);
-  transition: color 0.15s ease;
-}
-
-.handbuch-zurueck:hover {
-  color: var(--color-brass-text);
-}
-
-/* Schlichte, dezente Informationsleiste in einer Zeile, dünne Trennlinie darunter */
-.handbuch-kopf {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 28px;
-  row-gap: 4px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--color-hairline);
-}
-
-.handbuch-kopf__zeile {
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.handbuch-kopf__label {
-  color: var(--color-text-soft);
-  margin-right: 4px;
-}
-
-.handbuch-kopf__value {
-  color: var(--color-text-muted);
-  font-weight: 600;
-}
-
-/* Leseansicht: kompakte, ruhige Dokumenten-Typografie - keine Karten, keine
-   unnötigen Container, wesentlich mehr Inhalt pro Bildschirm als zuvor. */
-.handbuch-inhalt {
-  max-width: 720px;
-  padding: 18px 0 8px;
-  font-size: 13.5px;
-  line-height: 1.65;
-  color: var(--color-text);
-}
-
-.handbuch-inhalt h1 {
-  font-family: var(--font-display);
-  font-size: 23px;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-  margin: 0 0 16px;
-}
-
-.handbuch-inhalt h2 {
-  font-family: var(--font-display);
-  font-size: 15.5px;
-  font-weight: 700;
-  color: var(--color-brass-text);
-  margin: 18px 0 6px;
-}
-
-/* Dünne Trennlinie zwischen Abschnitten statt großer Leerflächen - sitzt vor
-   jeder Abschnittsüberschrift außer der allerersten. */
-.handbuch-inhalt h2:not(:first-child) {
-  margin-top: 20px;
-  padding-top: 14px;
-  border-top: 1px solid var(--color-hairline);
-}
-
-.handbuch-inhalt p {
-  margin: 0 0 8px;
-}
-
-.handbuch-inhalt ul,
-.handbuch-inhalt ol {
-  margin: 0 0 8px;
-  padding-left: 20px;
-}
-
-.handbuch-inhalt li {
-  margin-bottom: 2px;
-}
-
-.handbuch-inhalt li::marker {
-  color: var(--color-brass-text);
-}
-
-.handbuch-inhalt hr {
-  border: none;
-  border-top: 1px solid var(--color-hairline);
-  margin: 16px 0;
-}
-
-.handbuch-inhalt strong {
-  color: var(--color-text);
-  font-weight: 700;
-}
-
-.handbuch-inhalt em {
-  font-style: italic;
-  color: var(--color-text-muted);
-}
-
-/* Bearbeitungsmodus: eigene Toolbar-Klasse statt ".format-toolbar", damit
-   der bestehende, generische Handler für Notizen/Ankündigungen/Wiki
-   unangetastet bleibt (der kennt nur Fett/Unterstrichen) - diese Toolbar
-   hier wird von einem eigenen, zusätzlichen Handler in js/app.js gesteuert. */
-.handbuch-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+  gap: 8px;
+  padding-bottom: 10px;
   margin-bottom: 10px;
+  border-bottom: 1px solid var(--parch-edge);
 }
 
-.handbuch-toolbar .format-btn {
-  font-size: 11px;
-  font-weight: 700;
+.katalog-zeile:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
-.handbuch-editor__feld {
-  max-width: 720px;
-  min-height: 320px;
-  max-height: none;
-  font-size: 13.5px;
-  line-height: 1.65;
-}
-
-.handbuch-editor__feld h1 {
-  font-family: var(--font-display);
-  font-size: 21px;
-  font-weight: 600;
-  margin: 0 0 12px;
-}
-
-.handbuch-editor__feld h2 {
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-brass-text);
-  margin: 14px 0 6px;
-}
-
-.handbuch-editor__feld p {
-  margin: 0 0 8px;
-}
-
-.handbuch-editor__feld ul,
-.handbuch-editor__feld ol {
-  margin: 0 0 8px;
-  padding-left: 18px;
-}
-
-.handbuch-editor__feld hr {
-  border: none;
-  border-top: 1px solid var(--color-hairline);
-  margin: 14px 0;
+/* --------------------------------------------------------------------------
+   22. Responsive Grundschutz (reine Desktop-Optik, minimaler Umbruch)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1180px) {
+  .dash-columns {
+    grid-template-columns: 1fr;
+  }
+  .dash-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dash-quicklinks {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .rechner-layout {
+    grid-template-columns: 1fr;
+  }
 }
